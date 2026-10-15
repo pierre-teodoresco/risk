@@ -26,6 +26,7 @@ export type BoardOptions = {
   arrow: Arrow;
   lang: Lang;
   /** Screen space kept free for the HUD, in CSS pixels. */
+  waterMotion?: boolean;
   pad: { top: number; right: number; bottom: number; left: number };
 };
 export type Battle = { from: string; to: string; conquered: boolean; attackerLoss: number; defenderLoss: number };
@@ -153,6 +154,9 @@ export class BoardEngine {
   private lineMats: LineMaterial[] = [];
   private ocean: THREE.Mesh;
   private oceanBase: Float32Array;
+  private waterTime = { value: 0 };
+  private reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  private waterWasMoving = true;
   private boot = performance.now() / 1000;
   private raf = 0;
   private resizeObs: ResizeObserver;
@@ -187,9 +191,26 @@ export class BoardEngine {
     sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
 
-    const oceanGeo = new THREE.PlaneGeometry(80, 56, 110, 78);
+    const oceanGeo = new THREE.PlaneGeometry(180, 140, 110, 78);
     oceanGeo.rotateX(-Math.PI / 2);
-    this.ocean = new THREE.Mesh(oceanGeo, new THREE.MeshStandardMaterial({ color: 0x2b8cc6, roughness: 0.3, metalness: 0.05, flatShading: true }));
+    const water = new THREE.MeshStandardMaterial({ color: 0x258fc0, roughness: 0.26, metalness: 0.08 });
+    water.onBeforeCompile = (shader) => {
+      shader.uniforms.uWaterTime = this.waterTime;
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", "#include <common>\nvarying vec2 vWaterPosition;")
+        .replace("#include <begin_vertex>", "#include <begin_vertex>\nvWaterPosition = position.xz;");
+      shader.fragmentShader = shader.fragmentShader
+        .replace("#include <common>", "#include <common>\nuniform float uWaterTime;\nvarying vec2 vWaterPosition;")
+        .replace("#include <color_fragment>", `#include <color_fragment>
+          vec2 sea = vWaterPosition;
+          float tide = sin(sea.x * 0.65 + sea.y * 0.9 + uWaterTime * 0.55);
+          float ripple = sin(sea.x * 3.4 + sin(sea.y * 2.8 - uWaterTime * 0.7) * 0.8 + uWaterTime);
+          float glint = pow(max(0.0, ripple * sin(sea.y * 3.2 - uWaterTime * 0.6)), 8.0);
+          diffuseColor.rgb *= 1.0 + tide * 0.06;
+          diffuseColor.rgb += vec3(0.02, 0.04, 0.05) * glint;
+        `);
+    };
+    this.ocean = new THREE.Mesh(oceanGeo, water);
     this.ocean.position.y = -0.04;
     this.ocean.receiveShadow = true;
     this.scene.add(this.ocean);
@@ -629,6 +650,8 @@ export class BoardEngine {
   }
 
   /** Frames the whole map inside the area the HUD leaves free. */
+  resetView() { this.resize(true); }
+
   private fit(w: number, h: number) {
     const { pad } = this.opts;
     const freeW = Math.max(120, w - pad.left - pad.right), freeH = Math.max(120, h - pad.top - pad.bottom);
@@ -636,19 +659,28 @@ export class BoardEngine {
     const mapW = VW * S + 1, mapH = VH * S + 1;
     const tanV = Math.tan(vfov / 2), tanH = tanV * (w / h);
     const fitW = (mapW / 2) / (tanH * (freeW / w)), fitH = (mapH * Math.cos(tilt) / 2) / (tanV * (freeH / h));
-    // On portrait screens fit the height and let the player drag sideways, instead of a tiny map.
-    const dist = (w < h ? Math.max(fitH, fitW * 0.5) : Math.max(fitW, fitH)) * 1.02;
+    let dist = Math.max(fitW, fitH) * 1.04;
+    // Check the projected corners: perspective makes the near edge larger than
+    // the far edge. A height-only estimate could crop northern territories.
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const shiftX = ((pad.right - pad.left) / w) * dist * tanH;
+      const shiftZ = ((pad.bottom - pad.top) / h) * dist * tanV / Math.cos(tilt);
+      const target = new THREE.Vector3(shiftX, 0, shiftZ);
+      this.controls.target.copy(target);
+      this.camera.position.set(target.x, dist * Math.cos(tilt), target.z + dist * Math.sin(tilt));
+      this.camera.lookAt(target);
+      this.camera.updateMatrixWorld();
+      const corners = [-1, 1].flatMap((x) => [-1, 1].map((z) =>
+        new THREE.Vector3(x * mapW / 2, 1, z * mapH / 2).project(this.camera)));
+      if (corners.every((p) =>
+        (p.x + 1) * w / 2 >= pad.left && (p.x + 1) * w / 2 <= w - pad.right &&
+        (1 - p.y) * h / 2 >= pad.top && (1 - p.y) * h / 2 <= h - pad.bottom)) break;
+      dist *= 1.06;
+    }
+    this.controls.maxDistance = Math.max(40, dist * 1.3);
     const fog = this.scene.fog as THREE.Fog;
     fog.near = dist + 10;
     fog.far = dist + 40;
-    // Shift the target so the map is centred in the free area, not the whole canvas.
-    const shiftX = ((pad.right - pad.left) / 2 / w) * 2 * dist * tanH;
-    const shiftZ = ((pad.bottom - pad.top) / 2 / h) * 2 * dist * tanV / Math.cos(tilt);
-    const target = new THREE.Vector3(shiftX, 0, shiftZ + 0.3);
-    this.controls?.target.copy(target);
-    this.camera.position.set(target.x, target.y + dist * Math.cos(tilt), target.z + dist * Math.sin(tilt));
-    this.camera.lookAt(target);
-    if (this.controls) this.controls.maxDistance = Math.max(40, dist * 1.3);
   }
 
   // ---------- Pointer ----------
@@ -694,9 +726,16 @@ export class BoardEngine {
     const el = now - this.boot, o = this.opts;
 
     const p = this.ocean.geometry.attributes.position.array as Float32Array, b = this.oceanBase;
-    for (let k = 0; k < p.length; k += 3) p[k + 1] = Math.sin(b[k] * 0.55 + now * 0.9) * 0.05 + Math.cos(b[k + 2] * 0.7 + now * 1.2) * 0.04;
-    this.ocean.geometry.attributes.position.needsUpdate = true;
-    this.ocean.geometry.computeVertexNormals();
+    const waterMoving = o.waterMotion !== false && !this.reducedMotion.matches;
+    if (waterMoving) this.waterTime.value += dt;
+    if (waterMoving || this.waterWasMoving) {
+      const time = this.waterTime.value;
+      for (let k = 0; k < p.length; k += 3)
+        p[k + 1] = Math.sin(b[k] * 0.75 + time * 0.9) * 0.055 + Math.cos(b[k + 2] * 0.95 + time * 1.2) * 0.045;
+      this.ocean.geometry.attributes.position.needsUpdate = true;
+      this.ocean.geometry.computeVertexNormals();
+    }
+    this.waterWasMoving = waterMoving;
 
     for (let t = 0; t < N; t++) {
       const id = IDS[t];

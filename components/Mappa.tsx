@@ -102,7 +102,8 @@ export default function Mappa() {
     gameRef = useRef<PublicGame | null>(null),
     busyRef = useRef(false),
     audioRef = useRef(false),
-    requestRunning = useRef(false);
+    requestRunning = useRef(false),
+    sessionEpoch = useRef(0);
   const t = texts(lang);
   const me = game?.players.find((p) => p.id === game.me),
     winner = game?.players.find((p) => p.id === game?.winner);
@@ -143,8 +144,9 @@ export default function Mappa() {
   }, [troopChanges]);
   const fetchState = useCallback(
     async (code: string, heartbeat = false) => {
-      if (requestRunning.current) return;
+      if (requestRunning.current || !token.current) return;
       requestRunning.current = true;
+      const epoch = sessionEpoch.current;
       try {
         const res = await fetch("/api/rooms/" + code, {
           method: heartbeat ? "POST" : "GET",
@@ -158,9 +160,9 @@ export default function Mappa() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        accept(data.game);
+        if (epoch === sessionEpoch.current) accept(data.game);
       } catch {
-        setLost(true);
+        if (epoch === sessionEpoch.current) setLost(true);
       } finally {
         requestRunning.current = false;
       }
@@ -337,6 +339,7 @@ export default function Mappa() {
     busyRef.current = true;
     setBusy(true);
     setError("");
+    const epoch = sessionEpoch.current;
     try {
       const res = await fetch("/api/rooms/" + g.code, {
         method: "POST",
@@ -352,16 +355,19 @@ export default function Mappa() {
         signal: AbortSignal.timeout(20000),
       });
       const d = await res.json();
+      if (epoch !== sessionEpoch.current) return false;
       if (!res.ok) throw new Error(d.error);
-      accept(d.game);
-      if (action.type === "message") setDraft("");
       if (action.type === "leave") {
         localStorage.removeItem(sessionKey(g.code));
         home();
+      } else {
+        accept(d.game);
+        if (action.type === "message") setDraft("");
       }
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "serverError");
+      if (epoch === sessionEpoch.current)
+        setError(e instanceof Error ? e.message : "serverError");
       return false;
     } finally {
       setBusy(false);
@@ -369,6 +375,11 @@ export default function Mappa() {
     }
   }
   function home() {
+    sessionEpoch.current++;
+    token.current = "";
+    setLost(false);
+    setConfirm(null);
+    setTroopChanges([]);
     setGame(null);
     gameRef.current = null;
     setPreview(null);
@@ -587,6 +598,7 @@ export default function Mappa() {
     return (
       <>
         <GameScreen
+          key={`session:${game.code}:${game.me}`}
           game={game}
           lang={lang}
           setLang={setLang}
@@ -599,7 +611,10 @@ export default function Mappa() {
           copyInvite={copy}
           copied={copied}
           openRules={() => setRules(true)}
-          onLeave={() => setConfirm({ type: "leave" })}
+          onLeave={() => {
+            if (me?.eliminated || game.phase === "finished") home();
+            else setConfirm({ type: "leave" });
+          }}
           onKick={(player) => setConfirm({ type: "kick", player })}
           onHome={home}
           troopChanges={troopChanges}

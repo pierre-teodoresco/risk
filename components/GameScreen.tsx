@@ -20,6 +20,7 @@ import {
   Handshake,
   Link2,
   ShieldOff,
+  ScrollText,
 } from "lucide-react";
 import Crest from "./Crest";
 import type { ContinentBadge } from "./Board3D";
@@ -27,6 +28,7 @@ import type { TroopChange } from "@/lib/game-feedback";
 import type { Arrow, BoardOptions, Lands } from "./board/engine";
 import { BY_ID, CONTINENTS, WORLD, type Lang } from "@/lib/world";
 import { connected, validSet, type Action, type PublicGame } from "@/lib/game";
+import { inConversation, unreadMessages } from "@/lib/chat-inbox";
 import { blitzOdds } from "@/lib/odds";
 import { eventText, fmt, hudTexts, texts } from "@/lib/i18n";
 
@@ -86,6 +88,7 @@ export default function GameScreen(props: Props) {
   const terrName = (id: string) => BY_ID[id]?.[lang] ?? id;
 
   // ---------- Local UI state ----------
+  const autoTrigger = useRef<HTMLButtonElement | null>(null);
   const [selected, setSelected] = useState(""),
     [target, setTarget] = useState(""),
     [amount, setAmount] = useState<number | null>(null),
@@ -105,11 +108,19 @@ export default function GameScreen(props: Props) {
     [toasts, setToasts] = useState<Toast[]>([]),
     [pulse, setPulse] = useState<{ id: string; at: number } | null>(null),
     [icons, setIcons] = useState<string[]>([]),
-    [readMessages, setReadMessages] = useState(game.messages.length),
+    [readIds, setReadIds] = useState<string[]>(() => {
+      const saved = pref<unknown>(`read.${game.code}.${game.me}`, []);
+      return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : [];
+    }),
+    [autoConfirm, setAutoConfirm] = useState(false),
+    [compact, setCompact] = useState(false),
+    [waterMotion, setWaterMotion] = useState(true),
     [deferredInvite, setDeferredInvite] = useState<string[]>([]),
     [narrow, setNarrow] = useState(false);
 
   useEffect(() => {
+    setCompact(pref("compact", false));
+    setWaterMotion(pref("waterMotion", true));
     setShowNames(pref("names", false));
     setShowBonus(pref("bonus", false));
     setUnitMode(pref("units", "army"));
@@ -139,8 +150,33 @@ export default function GameScreen(props: Props) {
     }
   }, [game.pending?.from, game.pending?.to, game.pending?.min, game.pending?.max]);
   useEffect(() => {
-    if (chat && chatTab === "chat") setReadMessages(game.messages.length);
-  }, [chat, chatTab, game.messages.length]);
+    const markVisible = () => {
+      if (!chat || chatTab !== "chat" || document.visibilityState !== "visible" || !document.hasFocus()) return;
+      setReadIds((previous) => {
+        const retained = new Set(game.messages.map((m) => m.id));
+        const next = new Set(previous.filter((id) => retained.has(id)));
+        for (const m of game.messages)
+          if (inConversation(m, game.me, recipient)) next.add(m.id);
+        const ids = [...next];
+        if (ids.length === previous.length && ids.every((id, i) => id === previous[i])) return previous;
+        savePref(`read.${game.code}.${game.me}`, ids);
+        return ids;
+      });
+    };
+    markVisible();
+    window.addEventListener("focus", markVisible);
+    document.addEventListener("visibilitychange", markVisible);
+    return () => {
+      window.removeEventListener("focus", markVisible);
+      document.removeEventListener("visibilitychange", markVisible);
+    };
+  }, [chat, chatTab, recipient, game.messages, game.code, game.me]);
+  useEffect(() => { setAutoConfirm(false); }, [phase, game.active, me.reserve]);
+  useEffect(() => {
+    if (!autoConfirm) return;
+    const origin = autoTrigger.current;
+    return () => { if (origin?.isConnected) origin.focus(); };
+  }, [autoConfirm]);
 
   // ---------- Toasts from the journal, alliance answers ----------
   const lastLog = useRef(game.logs.at(-1)?.id ?? "");
@@ -206,12 +242,12 @@ export default function GameScreen(props: Props) {
         : null;
   const myCardLands = me.cards.flatMap((c) => (c.territory ? [c.territory] : []));
   const highlight = panel === "cards" ? (cards.length ? me.cards.filter((c) => cards.includes(c.id) && c.territory).map((c) => c.territory!) : myCardLands) : [];
-  const pad = narrow ? { top: 120, right: 12, bottom: 150, left: 12 } : { top: 70, right: 170, bottom: 150, left: 100 };
+  const pad = narrow ? { top: 150, right: 100, bottom: 210, left: 20 } : { top: 95, right: 170, bottom: 170, left: 100 };
   const options: BoardOptions = useMemo(
     // During the advance after a conquest the target is already ours: no red target tint.
-    () => ({ view, unitMode, showNames, interactive: true, selected, target: game.pending ? "" : target, legal, legalTone: fortifying ? "move" : "attack", highlight, arrow, lang, pad }),
+    () => ({ view, unitMode, showNames, interactive: true, selected, target: game.pending ? "" : target, legal, legalTone: fortifying ? "move" : "attack", highlight, arrow, lang, pad, waterMotion }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [view, unitMode, showNames, selected, target, !!game.pending, fortifying, legal.join(), highlight.join(), arrow?.from, arrow?.to, arrow?.ghost, lang, narrow],
+    [view, unitMode, showNames, selected, target, !!game.pending, fortifying, legal.join(), highlight.join(), arrow?.from, arrow?.to, arrow?.ghost, lang, narrow, waterMotion],
   );
   const battle = game.lastBattle ? { ...game.lastBattle } : null;
 
@@ -256,7 +292,8 @@ export default function GameScreen(props: Props) {
 
   function selectLand(id: string) {
     const l = land(id), own = l.owner === game.me;
-    if (!canAct || game.pending) {
+    if (busy || game.pending) return;
+    if (!canAct) {
       setSelected(id === selected ? "" : id);
       setTarget("");
       return;
@@ -423,7 +460,7 @@ export default function GameScreen(props: Props) {
         {quick}
         <div className="btns">
           <button className="btn go" disabled={busy} onClick={() => run({ type: "deploy", territory: selected, amount: value })}>{fmt(value > 1 ? h.placeN : h.place1, { n: value })}</button>
-          <button className="btn ghost" disabled={busy} onClick={() => run({ type: "auto" })}>{h.auto}</button>
+          <button className="btn ghost auto-place" disabled={busy} onClick={(e) => { autoTrigger.current = e.currentTarget; setAutoConfirm(true); }}>{h.auto}</button>
         </div>
       </>
     ) : (
@@ -431,7 +468,7 @@ export default function GameScreen(props: Props) {
         <div className="eyebrow">{phase === "setup" ? t.setup : t.reinforce}</div>
         <h2>{fmt(reserve > 1 ? h.placeYourN : h.placeYour1, { n: reserve })}</h2>
         <p>{phase === "setup" ? t.setupHint : h.deployHint}</p>
-        <div className="btns"><button className="btn ghost" disabled={busy} onClick={() => run({ type: "auto" })}>{h.auto}</button></div>
+        <div className="btns"><button className="btn ghost auto-place" disabled={busy} onClick={(e) => { autoTrigger.current = e.currentTarget; setAutoConfirm(true); }}>{h.auto}</button></div>
       </>
     );
   } else if (phase === "setup") {
@@ -492,17 +529,6 @@ export default function GameScreen(props: Props) {
     cardBody = (<><div className="eyebrow">{t.reinforce}</div><h2>{h.allPlaced}</h2><p>{h.goAttack}</p></>);
   } else if (selected && !canAct) {
     infoCard(selected);
-  } else if (!myTurn && active) {
-    cardKey = "waiting:" + active.id + phase;
-    cardBody = (
-      <div className="invite">
-        <Crest color={active.color} size={52} />
-        <div>
-          <div className="eyebrow">{phase === "reinforce" ? h.phaseReinforce : phase === "attack" ? h.phaseAttack : h.phaseFortify}</div>
-          <h2>{fmt(h.theirTurn, { name: active.name })}</h2>
-        </div>
-      </div>
-    );
   }
 
   // ---------- Turn bar ----------
@@ -511,7 +537,17 @@ export default function GameScreen(props: Props) {
   const nextLabel = phase === "reinforce" ? h.toAttack : phase === "attack" ? h.toFortify : h.endTurn;
   const nextDisabled = !myTurn || busy || game.paused || !!game.pending || reserve > 0 || phase === "setup" || phase === "finished" || (phase === "reinforce" && me.cards.length >= 5) || game.forcedTrade;
 
-  const unread = game.messages.length - readMessages;
+  const unread = unreadMessages(game.messages, game.me, readIds);
+  const privateUnread = unread.filter((m) => m.to === game.me);
+  const latestPrivate = privateUnread.at(-1);
+  const openConversation = (id: string) => {
+    setRecipient(id);
+    setChatTab("chat");
+    setChat(true);
+  };
+  const mandatoryCard = !!game.pending && myTurn || cardKey === "trade";
+  const showCard = !!cardBody && (mandatoryCard || closedCard !== cardKey);
+
   const togglePanel = (p: Panel) => setPanel(panel === p ? null : p);
   const stats = (id: string) => {
     const owned = WORLD.filter((w) => land(w.id).owner === id);
@@ -531,7 +567,7 @@ export default function GameScreen(props: Props) {
   const hoverOdds = hover && attacking && selected && legal.includes(hover.id) ? blitzOdds(land(selected).troops, land(hover.id).troops).win : null;
 
   return (
-    <div className="game" style={{ "--pc0": "#d9413a", "--pc1": "#36a159", "--pc2": "#8c55d6", "--pc3": "#e8b21f", "--pc4": "#2f6fd6", "--pc5": "#e0559a" } as CSSProperties}>
+    <div className={"game" + (compact ? " compact" : "")} style={{ "--pc0": "#d9413a", "--pc1": "#36a159", "--pc2": "#8c55d6", "--pc3": "#e8b21f", "--pc4": "#2f6fd6", "--pc5": "#e0559a" } as CSSProperties}>
       <Board3D
         lands={lands}
         options={options}
@@ -549,17 +585,29 @@ export default function GameScreen(props: Props) {
         <button className="orb" aria-label={t.rules} onClick={props.openRules}><BookOpen /></button>
         <button className="orb" aria-pressed={view === "continents"} aria-label={h.continentView} onClick={() => setView(view === "continents" ? "players" : "continents")}><Globe2 /></button>
         <button className="orb" aria-pressed={showNames} aria-label={h.names} onClick={() => { setShowNames(!showNames); savePref("names", !showNames); }}><Tag /></button>
-        <button className="orb" aria-pressed={chat} aria-label={t.chat} onClick={() => { setChat(!chat); setChatTab("chat"); }}>
+        <button className="orb" aria-pressed={chat} aria-label={unread.length ? fmt(h.unreadMessages, { n: unread.length }) : t.chat} onClick={() => { setChat(!chat); setChatTab("chat"); }}>
           <MessageCircle />
-          {unread > 0 && !chat && <span className="orb-badge">{unread}</span>}
+          {unread.length > 0 && <span className="orb-badge">{unread.length}</span>}
         </button>
       </div>
+      <button className="hud journal-shortcut" aria-expanded={chat && chatTab === "journal"} onClick={() => { setChat(true); setChatTab("journal"); }}><ScrollText size={17} /> {t.journal}</button>
+      {latestPrivate && (
+        <button className="hud message-alert" onClick={() => openConversation(latestPrivate.from)}>
+          <MessageCircle size={18} aria-hidden="true" />
+          <span role="status">{fmt(h.newPrivateMessage, { name: nameOf(latestPrivate.from), n: privateUnread.length })}</span>
+        </button>
+      )}
       {props.lost && <div className="hud lost"><WifiOff size={16} /> {t.connectionLost}</div>}
 
       {panel === "settings" && (
         <section className="hud panel drop" aria-label={h.settings}>
           <button className="x" aria-label={t.close} onClick={() => setPanel(null)}><X /></button>
           <h3>{h.settings}</h3>
+          <div className="row">{h.interfaceSize}<div className="seg" role="group" aria-label={h.interfaceSize}>
+            <button aria-pressed={!compact} onClick={() => { setCompact(false); savePref("compact", false); }}>{h.sizeNormal}</button>
+            <button aria-pressed={compact} onClick={() => { setCompact(true); savePref("compact", true); }}>{h.sizeCompact}</button>
+          </div></div>
+          <div className="row">{h.waterAnimation}<button className="switch" aria-pressed={waterMotion} aria-label={h.waterAnimation} onClick={() => { setWaterMotion(!waterMotion); savePref("waterMotion", !waterMotion); }} /></div>
           <div className="row">{h.armiesLook}<div className="seg">
             <button aria-pressed={unitMode === "army"} onClick={() => { setUnitMode("army"); savePref("units", "army"); }}>{h.soldiers}</button>
             <button aria-pressed={unitMode === "city"} onClick={() => { setUnitMode("city"); savePref("units", "city"); }}>{h.cities}</button>
@@ -721,13 +769,36 @@ export default function GameScreen(props: Props) {
       )}
 
       {/* Context card */}
-      {cardBody && closedCard !== cardKey && (
+      {showCard && (
         <div className="hud panel card" aria-live="polite">
-          <button className="x" aria-label={t.close} onClick={() => setClosedCard(cardKey)}><X /></button>
+          {!mandatoryCard && <button className="x" aria-label={t.close} onClick={() => setClosedCard(cardKey)}><X /></button>}
           <div className="card-body">{cardBody}</div>
         </div>
       )}
 
+      {cardBody && !showCard && <button className="hud reopen-action" onClick={() => setClosedCard("")}>{h.showAction}</button>}
+      {autoConfirm && deploying && (
+        <div className="modal-backdrop" onKeyDown={(e) => {
+          if (e.key === "Escape" && !busy) setAutoConfirm(false);
+          if (e.key === "Tab") {
+            const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+            const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+            if (buttons.length) {
+              e.preventDefault();
+              buttons[(index + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus();
+            }
+          }
+        }}>
+          <section className="panel confirm-modal auto-confirm" role="dialog" aria-modal="true" aria-labelledby="auto-title" aria-describedby="auto-description">
+            <h2 id="auto-title">{h.auto}</h2>
+            <p id="auto-description">{fmt(h.autoConfirm, { n: reserve })}</p>
+            <div className="btns">
+              <button className="btn ghost" autoFocus disabled={busy} onClick={() => setAutoConfirm(false)}>{t.cancel}</button>
+              <button className="btn go" disabled={busy} onClick={async () => { if (await run({ type: "auto" })) setAutoConfirm(false); }}>{t.confirm}</button>
+            </div>
+          </section>
+        </div>
+      )}
       {/* Toasts */}
       <div className="hud toasts" aria-live="polite">
         {toasts.map((x) =>
@@ -769,13 +840,13 @@ export default function GameScreen(props: Props) {
               <label className="to">
                 <LockKeyhole size={13} />
                 <select aria-label={t.privateTo} value={recipient} onChange={(e) => setRecipient(e.target.value)}>
-                  <option value="">{t.everyone}</option>
-                  {game.players.filter((p) => p.id !== game.me).map((p) => <option key={p.id} value={p.id}>{t.privateTo} {p.name}</option>)}
+                  <option value="">{t.everyone}{unread.some((m) => m.to === null) ? ` (${unread.filter((m) => m.to === null).length})` : ""}</option>
+                  {game.players.filter((p) => p.id !== game.me).map((p) => <option key={p.id} value={p.id}>{t.privateTo} {p.name}{unread.some((m) => m.from === p.id && m.to === game.me) ? ` (${unread.filter((m) => m.from === p.id && m.to === game.me).length})` : ""}</option>)}
                 </select>
               </label>
               <div className="msgs">
                 {game.messages
-                  .filter((m) => (recipient ? (m.from === game.me && m.to === recipient) || (m.from === recipient && m.to === game.me) : m.to === null))
+                  .filter((m) => inConversation(m, game.me, recipient))
                   .map((m) => {
                     const from = game.players.find((p) => p.id === m.from);
                     return (

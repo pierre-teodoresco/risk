@@ -407,3 +407,49 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Keep the map readable while making actions and messages easy to recover. */
+.game .turnbar .big-medal { width: 68px; height: 68px; border-width: 3px; }
+.game .turnbar .figure { width: 58px; height: 58px; }
+.game .turnbar .plate { min-width: 230px; padding: 6px 30px 8px; gap: 5px; }
+.game .phase-name { font-size: 22px; }
+.game .steps i { width: 52px; height: 5px; }
+.game .turnbar .plate .btn, .game .plate-note { min-width: 180px; font-size: 15px; padding: 7px 8px; }
+.game .big-medal .count { font-size: 14px; min-width: 36px; }
+.game .turn-no { width: 24px; height: 28px; font-size: 14px; line-height: 28px; }
+.game .card { bottom: calc(124px + env(safe-area-inset-bottom, 0px)); max-height: calc(100dvh - 280px); overflow-y: auto; }
+.game .auto-place { flex: 0 1 auto; font-size: 12px; padding: 8px; text-decoration: underline; }
+.game.compact .hud { zoom: .85; }
+.game.compact .drop, .game.compact .pop { max-height: calc(100dvh - 200px); }
+.board-tools { top: calc(86px + env(safe-area-inset-top, 0px)); left: 16px; display: flex; gap: 10px; align-items: center; }
+.board-tools .orb { width: 40px; height: 40px; }
+.board-tools .orb svg { width: 20px; height: 20px; }
+.board-tools select { width: 200px; max-width: calc(100vw - 170px); padding: 8px; font-size: 12px; }
+.journal-shortcut { top: calc(24px + env(safe-area-inset-top, 0px)); left: 360px; display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 999px; background: var(--navy-1); border: 2px solid var(--edge); font-weight: 800; }
+.journal-shortcut[aria-expanded="true"] { border-color: var(--gold); }
+.message-alert { top: calc(24px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-20%); max-width: min(320px, calc(100vw - 700px)); display: flex; align-items: center; gap: 8px; background: #fff6da; color: var(--navy-1); border: 2px solid var(--gold); border-radius: 14px; padding: 10px 14px; font-weight: 900; box-shadow: 0 5px 16px #0005; text-align: left; }
+.message-alert svg { flex-shrink: 0; }
+.game .toasts { top: calc(146px + env(safe-area-inset-top, 0px)); }
+.reopen-action { bottom: calc(126px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); border: 2px solid var(--edge); background: var(--navy-1); border-radius: 999px; padding: 10px 16px; font-weight: 800; }
+.game .chat-form input { width: 0; }
+.game .chat .seg button { white-space: normal; }
+@media (max-width: 1100px) {
+  .message-alert { top: calc(142px + env(safe-area-inset-top, 0px)); left: 16px; transform: none; max-width: calc(100vw - 130px); }
+  .game .toasts { top: calc(206px + env(safe-area-inset-top, 0px)); }
+}
+@media (max-width: 900px) {
+  .journal-shortcut { left: 280px; top: calc(18px + env(safe-area-inset-top, 0px)); padding: 8px 10px; font-size: 12px; }
+  .board-tools { top: calc(132px + env(safe-area-inset-top, 0px)); }
+  .message-alert { top: calc(184px + env(safe-area-inset-top, 0px)); }
+  .game .toasts { top: calc(246px + env(safe-area-inset-top, 0px)); }
+  .game .card { width: min(390px, calc(100vw - 24px)); left: 50%; right: auto; transform: translateX(-50%); max-height: calc(100dvh - 340px); }
+  .game .chat { width: min(360px, calc(100vw - 24px)); left: auto; }
+}
+@media (max-width: 480px) {
+  .journal-shortcut { left: 16px; top: calc(70px + env(safe-area-inset-top, 0px)); }
+  .game .tiles { left: 130px; }
+  .game .turnbar .big-medal:last-child { display: none; }
+  .game .turnbar .plate { min-width: 200px; }
+  .game .card .btns { flex-wrap: wrap; }
+  .game .btn { white-space: normal; }
+}

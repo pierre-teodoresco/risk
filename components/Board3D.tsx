@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
 import type { TroopChange } from "@/lib/game-feedback";
+import { LocateFixed } from "lucide-react";
+import { hudTexts } from "@/lib/i18n";
 import MAP from "@/lib/map-data.json";
 import { CONTINENTS, WORLD } from "@/lib/world";
 import {
@@ -125,6 +127,16 @@ export default function Board3D({
 
   return (
     <div className="board3d" ref={host}>
+      {options.interactive && (
+        <div className="hud board-tools">
+          <button className="orb" aria-label={hudTexts(options.lang).resetView} title={hudTexts(options.lang).resetView} onClick={() => engine.current?.resetView()}><LocateFixed /></button>
+          <select aria-label={hudTexts(options.lang).selectTerritory} aria-describedby="map-keyboard-help" value={options.selected} onChange={(e) => { if (e.target.value) onSelect(e.target.value); }}>
+            <option value="">{hudTexts(options.lang).selectTerritory}</option>
+            {WORLD.map((territory) => <option key={territory.id} value={territory.id}>{territory[options.lang]} · {lands[territory.id]?.troops ?? 0}</option>)}
+          </select>
+          <span id="map-keyboard-help" className="sr-only">{hudTexts(options.lang).mapKeyboard}</span>
+        </div>
+      )}
       <div className="tfloats" aria-hidden="true">
         {floats.map((f) => (
           <div
