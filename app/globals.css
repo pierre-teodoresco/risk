@@ -1599,6 +1599,130 @@ footer button {
   display: grid;
   place-items: center;
 }
+.game-announcement {
+  position: fixed;
+  z-index: 45;
+  top: 95px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(460px, calc(100vw - 32px));
+  padding: 16px 18px 20px;
+  border: 1px solid #bdcdb1;
+  border-left: 4px solid #52734b;
+  border-radius: 9px;
+  background: #fcfbf3;
+  color: #34513e;
+  box-shadow: 0 8px 35px #243e3026;
+  overflow: hidden;
+}
+.game-announcement > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.game-announcement > div {
+  min-width: 0;
+  flex: 1;
+}
+.announcement-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 650;
+  margin-bottom: 5px;
+}
+.announcement-heading > span {
+  padding: 2px 6px;
+  background: #e6ecdd;
+  border-radius: 4px;
+}
+.game-announcement p {
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.game-announcement button {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 4px;
+}
+.game-announcement button:hover {
+  background: #e6ecdd;
+}
+.announcement-lifetime {
+  position: absolute;
+  height: 3px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #789564;
+  transform-origin: left;
+  animation: announcement-lifetime 4s linear forwards;
+}
+@keyframes announcement-lifetime {
+  to {
+    transform: scaleX(0);
+  }
+}
+.troop-change-scale {
+  transform: scale(var(--troop-change-scale, 1))
+    translateY(var(--change-offset));
+}
+@media (max-width: 1150px) {
+  .troop-changes {
+    --troop-change-scale: 1.5;
+  }
+}
+@media (max-width: 650px) {
+  .troop-changes {
+    --troop-change-scale: 2.5;
+  }
+}
+.troop-change-badge {
+  animation: troop-change 2.6s ease-out both;
+}
+.troop-change rect {
+  stroke-width: 2;
+}
+.troop-gain rect {
+  fill: #e2f0d6;
+  stroke: #345d2f;
+}
+.troop-loss rect {
+  fill: #fbe4da;
+  stroke: #9e402e;
+}
+.troop-change text {
+  font-family: "DM Sans", sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  paint-order: stroke;
+}
+.troop-gain text {
+  fill: #294b24;
+}
+.troop-loss text {
+  fill: #8c3020;
+}
+@keyframes troop-change {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  12%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1662,6 +1786,68 @@ footer button {
   font-size: 11px;
   line-height: 1.85;
   color: #839075;
+}
+.rule-section > div {
+  min-width: 0;
+}
+.card-rules h4,
+.card-rewards caption {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--ink);
+  text-align: left;
+  margin: 16px 0 8px;
+}
+.card-symbols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  margin: 12px 0;
+  list-style: none;
+}
+.card-symbols li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #f5f0e4;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 11px;
+}
+.card-symbols li > span {
+  font-size: 22px;
+}
+.card-set-examples {
+  padding-left: 18px;
+  font-size: 11px;
+  line-height: 1.85;
+  color: #627154;
+}
+.card-set-examples li + li,
+.card-rules p {
+  margin-top: 9px;
+}
+.card-rewards {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  color: #526345;
+  margin-bottom: 12px;
+}
+.card-rewards th,
+.card-rewards td {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+.card-rewards thead {
+  background: #e9eddf;
+}
+.card-rewards td {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .rules-modal > .primary {
   margin-top: 24px;

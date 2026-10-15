@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Minus, Plus, LocateFixed, Globe2, Layers, X } from "lucide-react";
 import {
   WORLD,
@@ -10,6 +10,7 @@ import {
   type Lang,
 } from "@/lib/world";
 import type { PublicGame } from "@/lib/game";
+import type { TroopChange } from "@/lib/game-feedback";
 import { texts } from "@/lib/i18n";
 export default function Board({
   game,
@@ -18,6 +19,7 @@ export default function Board({
   target,
   onSelect,
   decorative = false,
+  troopChanges = [],
   cardTerritories = [],
   highlightedCardTerritories = [],
   highlightAllCards = false,
@@ -30,6 +32,7 @@ export default function Board({
   target?: string;
   onSelect?: (id: string) => void;
   decorative?: boolean;
+  troopChanges?: TroopChange[];
   cardTerritories?: string[];
   highlightedCardTerritories?: string[];
   highlightAllCards?: boolean;
@@ -54,6 +57,23 @@ export default function Board({
       setPan({ x: 0, y: 0 });
     }
   }, [highlightKey]);
+  // Rapid placements add up in one badge; gains and losses remain distinct.
+  const groupedChanges = new Map<string, TroopChange>();
+  for (const change of troopChanges) {
+    const key = `${change.territory}:${change.amount > 0 ? "gain" : "loss"}`;
+    const grouped = groupedChanges.get(key);
+    groupedChanges.set(
+      key,
+      grouped
+        ? {
+            ...grouped,
+            id: grouped.id + ":" + change.id,
+            amount: grouped.amount + change.amount,
+          }
+        : change,
+    );
+  }
+  const displayedTroopChanges = [...groupedChanges.values()];
   const t = texts(lang);
   const canAct =
     game && !game.paused && (game.active === game.me || game.phase === "setup");
@@ -335,6 +355,51 @@ export default function Board({
               </g>
             );
           })}
+          <g className="troop-changes" pointerEvents="none">
+            {displayedTroopChanges.map((change, i) => {
+              const territory = BY_ID[change.territory];
+              if (!territory) return null;
+              const offset = displayedTroopChanges
+                .slice(0, i)
+                .filter((other) => other.territory === change.territory).length;
+              const amount = `${change.amount > 0 ? "+" : "−"}${Math.abs(change.amount)}`;
+              return (
+                <g
+                  key={change.id}
+                  transform={`translate(${territory.x},${territory.y})`}
+                  style={
+                    {
+                      "--change-offset": `${(38 + offset * 30) * (territory.y < 210 ? 1 : -1)}px`,
+                    } as CSSProperties
+                  }
+                  className={
+                    "troop-change " +
+                    (change.amount > 0 ? "troop-gain" : "troop-loss")
+                  }
+                  data-testid="troop-change"
+                  data-territory={change.territory}
+                  data-amount={change.amount}
+                  role="img"
+                  aria-label={`${territory[lang]} : ${amount} ${t.armies}`}
+                >
+                  <g className="troop-change-scale">
+                    <g className="troop-change-badge">
+                      <rect
+                        x={-Math.max(27, amount.length * 7)}
+                        y="-14"
+                        width={Math.max(54, amount.length * 14)}
+                        height="28"
+                        rx="14"
+                      />
+                      <text textAnchor="middle" y="6">
+                        {amount}
+                      </text>
+                    </g>
+                  </g>
+                </g>
+              );
+            })}
+          </g>
           <g
             className="ocean-labels"
             fontFamily="Georgia, serif"

@@ -38,6 +38,8 @@ import {
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import Board from "./Board";
+import GameAnnouncements from "./GameAnnouncements";
+import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
 import {
   BY_ID,
   WORLD,
@@ -46,8 +48,15 @@ import {
   EMBLEMS,
   type Lang,
 } from "@/lib/world";
-import { connected, validSet, type PublicGame, type Action } from "@/lib/game";
+import {
+  connected,
+  validSet,
+  type PublicGame,
+  type Action,
+  type Log,
+} from "@/lib/game";
 import { texts, errorText, eventText, type TextKey } from "@/lib/i18n";
+type TimedTroopChange = TroopChange & { expiresAt: number };
 type Preview = {
   code: string;
   phase: string;
@@ -109,7 +118,9 @@ export default function Mappa() {
     [confirm, setConfirm] = useState<{ type: string; player?: string } | null>(
       null,
     ),
-    [recent, setRecent] = useState("");
+    [recent, setRecent] = useState(""),
+    [announcements, setAnnouncements] = useState<Log[]>([]),
+    [troopChanges, setTroopChanges] = useState<TimedTroopChange[]>([]);
   const token = useRef(""),
     gameRef = useRef<PublicGame | null>(null),
     busyRef = useRef(false),
@@ -129,9 +140,28 @@ export default function Mappa() {
     !!game && !game.paused && !me?.eliminated && (turn || phase === "setup");
   const accept = useCallback((next: PublicGame) => {
     const old = gameRef.current;
-    if (old && next.revision < old.revision) return;
+    const sameSession = old?.code === next.code && old?.me === next.me;
+    if (sameSession && next.revision < old.revision) return;
+    if (!sameSession) {
+      setAnnouncements([]);
+      setTroopChanges([]);
+    } else {
+      const feedback = gameFeedback(old, next);
+      if (feedback.events.length)
+        setAnnouncements((queue) => [...queue, ...feedback.events]);
+      if (feedback.troops.length) {
+        const at = Date.now();
+        setTroopChanges((changes) => [
+          ...changes.filter((change) => change.expiresAt > at),
+          ...feedback.troops.map((change) => ({
+            ...change,
+            expiresAt: at + 2600,
+          })),
+        ]);
+      }
+    }
     if (
-      old &&
+      sameSession &&
       audioRef.current &&
       (next.active !== old.active || next.lastBattle?.at !== old.lastBattle?.at)
     )
@@ -140,6 +170,24 @@ export default function Mappa() {
     setGame(next);
     setLost(false);
   }, []);
+  const dismissAnnouncement = useCallback((id: string) => {
+    setAnnouncements((queue) => (queue[0]?.id === id ? queue.slice(1) : queue));
+  }, []);
+  useEffect(() => {
+    if (!troopChanges.length) return;
+    const expiresAt = Math.min(
+      ...troopChanges.map((change) => change.expiresAt),
+    );
+    const timeout = setTimeout(
+      () => {
+        setTroopChanges((changes) =>
+          changes.filter((change) => change.expiresAt > Date.now()),
+        );
+      },
+      Math.max(0, expiresAt - Date.now()),
+    );
+    return () => clearTimeout(timeout);
+  }, [troopChanges]);
   const fetchState = useCallback(
     async (code: string, heartbeat = false) => {
       if (requestRunning.current) return;
@@ -406,6 +454,8 @@ export default function Mappa() {
     setError("");
     setRoom("");
     setChat(false);
+    setAnnouncements([]);
+    setTroopChanges([]);
     setFocusedCardTerritory("");
     setHighlightAllCards(false);
     history.pushState(null, "", "/");
@@ -879,6 +929,7 @@ export default function Mappa() {
             <div className="play-map-column" ref={mapColumn}>
               <Board
                 game={game}
+                troopChanges={troopChanges}
                 lang={lang}
                 selected={selected}
                 target={target}
@@ -1679,6 +1730,13 @@ export default function Mappa() {
           )}
         </main>
       )}
+      {game && (
+        <GameAnnouncements
+          events={announcements}
+          lang={lang}
+          onDismiss={dismissAnnouncement}
+        />
+      )}
       {error && (
         <div className="toast" role="alert">
           <HelpCircle size={16} />
@@ -1729,6 +1787,54 @@ export default function Mappa() {
                 <div>
                   <h3>{title}</h3>
                   <p>{body}</p>
+                  {n === "✦" && (
+                    <div className="card-rules">
+                      <ul className="card-symbols" aria-label={t.cards}>
+                        {[t.infantry, t.cavalry, t.artillery, t.wild].map(
+                          (name, i) => (
+                            <li key={name}>
+                              <span aria-hidden="true">
+                                {["♟", "♞", "♜", "✦"][i]}
+                              </span>
+                              {name}
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                      <h4>{t.ruleCardSetsTitle}</h4>
+                      <ul className="card-set-examples">
+                        {[
+                          t.ruleCardSetSame,
+                          t.ruleCardSetMixed,
+                          t.ruleCardSetWild,
+                        ].map((example) => (
+                          <li key={example}>{example}</li>
+                        ))}
+                      </ul>
+                      <p>{t.ruleCardSetInvalid}</p>
+                      <table className="card-rewards">
+                        <caption>{t.ruleCardRewardsTitle}</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">{t.ruleCardTradeNumber}</th>
+                            <th scope="col">{t.ruleCardTradeArmies}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[4, 6, 8, 10, 12, 15, 20, 25].map((armies, i) => (
+                            <tr key={armies}>
+                              <th scope="row">{i + 1}</th>
+                              <td>+{armies}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <p>{t.ruleCardRewardsNext}</p>
+                      <p>{t.ruleCardRewardsExample}</p>
+                      <p>{t.ruleCardLandBonus}</p>
+                      <p>{t.ruleCardMandatory}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
