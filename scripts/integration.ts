@@ -114,6 +114,25 @@ for (const count of [3, 6]) {
     requestId: rid,
   });
   assert.equal(g.lands[border.id].troops, troops);
+  const placements = g.logs.filter(
+    (entry: Any) =>
+      entry.key === "deployed" &&
+      entry.args[0] === g.players.find((p: Any) => p.id === active).name &&
+      entry.args[1] === border.id &&
+      entry.args[2] === String(reserve),
+  );
+  assert.equal(
+    placements.length,
+    1,
+    "Retried placement must not duplicate the journal event",
+  );
+  const observer = (
+    await req(
+      "/api/rooms/" + code,
+      members.get([...members.keys()].find((id) => id !== active)!),
+    )
+  ).game;
+  assert.ok(observer.logs.some((entry: Any) => entry.id === placements[0].id));
   await act(active, { type: "next" });
   const target = border.neighbors.find((id) => g.lands[id].owner !== active)!;
   await act(active, { type: "attack", from: border.id, to: target });

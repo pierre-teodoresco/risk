@@ -31,7 +31,7 @@ const fr = {
   cardTerritories: "Territoires de mes cartes",
   clearCardHighlight: "Effacer le repérage",
   cardMapHint:
-    "Cliquez sur une carte pour repérer son territoire et la sélectionner pour un échange. Un joker n’a pas de territoire.",
+    "Cliquez sur vos cartes pour les sélectionner pour un échange. Pour repérer leurs territoires, utilisez « Territoires de mes cartes » en haut de la carte.",
   activePlayer: "Joueur actif",
   playingNow: "En train de jouer",
   pauseLabel: "En pause",
@@ -120,6 +120,11 @@ const fr = {
   online: "En ligne",
   offline: "Absent",
   eliminated: "Éliminé",
+  playerEliminated: "Joueur éliminé",
+  defeatTitle: "Votre empire est tombé.",
+  defeatSpectator:
+    "Vous avez perdu votre dernier territoire. Vous pouvez continuer à suivre la partie.",
+  defeatFinished: "La conquête est terminée. Une nouvelle partie vous attend.",
   neutral: "Neutre",
   victoryTitle: "Un monde à son nom.",
   victoryText:
@@ -249,7 +254,7 @@ const en: typeof fr = {
   cardTerritories: "My card territories",
   clearCardHighlight: "Clear highlights",
   cardMapHint:
-    "Click a card to highlight its territory and select it for a trade. Wild cards have no territory.",
+    "Click your cards to select them for a trade. To highlight their territories, use “My card territories” at the top of the map.",
   activePlayer: "Active player",
   playingNow: "Playing now",
   pauseLabel: "Paused",
@@ -336,6 +341,11 @@ const en: typeof fr = {
   online: "Online",
   offline: "Away",
   eliminated: "Eliminated",
+  playerEliminated: "Player eliminated",
+  defeatTitle: "Your empire has fallen.",
+  defeatSpectator:
+    "You have lost your last territory. You can keep watching the game.",
+  defeatFinished: "The conquest is over. A new game awaits.",
   neutral: "Neutral",
   victoryTitle: "A world in their name.",
   victoryText: "has conquered all 42 territories. A new story can begin.",
@@ -558,6 +568,10 @@ export function eventText(key: string, args: string[], lang: Lang) {
     trade: [
       `${a[0]} échange ses cartes : +${a[1]} armées.`,
       `${a[0]} trades cards: +${a[1]} armies.`,
+    ],
+    deployed: [
+      `${a[0]} place ${a[2]} ${a[2] === "1" ? "armée" : "armées"} sur le territoire ${name(a[1])}.`,
+      `${a[0]} deploys ${a[2]} ${a[2] === "1" ? "army" : "armies"} to ${name(a[1])}.`,
     ],
     conquered: [
       `${a[0]} conquiert ${name(a[1])}. Pertes : ${a[2]} / ${a[3]}.`,

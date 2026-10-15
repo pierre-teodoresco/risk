@@ -22,6 +22,7 @@ import {
   Play,
   Send,
   Shield,
+  ShieldOff,
   Sparkles,
   Swords,
   Users,
@@ -39,6 +40,8 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import Board from "./Board";
 import GameAnnouncements from "./GameAnnouncements";
+import VictoryConfetti from "./VictoryConfetti";
+import DefeatAnimation from "./DefeatAnimation";
 import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
 import {
   BY_ID,
@@ -108,7 +111,6 @@ export default function Mappa() {
     [amount, setAmount] = useState<number | null>(null),
     [cards, setCards] = useState<string[]>([]),
     [showCards, setShowCards] = useState(false),
-    [focusedCardTerritory, setFocusedCardTerritory] = useState(""),
     [highlightAllCards, setHighlightAllCards] = useState(false),
     [chat, setChat] = useState(false),
     [chatTab, setChatTab] = useState<"chat" | "journal">("chat"),
@@ -126,7 +128,6 @@ export default function Mappa() {
     busyRef = useRef(false),
     audioRef = useRef(true),
     chatEnd = useRef<HTMLDivElement>(null),
-    mapColumn = useRef<HTMLDivElement>(null),
     requestRunning = useRef(false);
   const t = texts(lang);
   const me = game?.players.find((p) => p.id === game.me),
@@ -456,7 +457,6 @@ export default function Mappa() {
     setChat(false);
     setAnnouncements([]);
     setTroopChanges([]);
-    setFocusedCardTerritory("");
     setHighlightAllCards(false);
     history.pushState(null, "", "/");
   }
@@ -521,9 +521,7 @@ export default function Mappa() {
   const actualAmount = Math.max(min, Math.min(amount ?? max, max));
   const cardTerritories =
     me?.cards.flatMap((c) => (c.territory ? [c.territory] : [])) ?? [];
-  const highlightedCardTerritories = highlightAllCards
-    ? cardTerritories
-    : cardTerritories.filter((id) => id === focusedCardTerritory);
+  const highlightedCardTerritories = highlightAllCards ? cardTerritories : [];
   const selectedCards = me?.cards.filter((c) => cards.includes(c.id)) ?? [];
   const validCards = validSet(selectedCards);
   const canAttack =
@@ -926,7 +924,7 @@ export default function Mappa() {
             </div>
           )}
           <div className="play-layout">
-            <div className="play-map-column" ref={mapColumn}>
+            <div className="play-map-column">
               <Board
                 game={game}
                 troopChanges={troopChanges}
@@ -939,10 +937,8 @@ export default function Mappa() {
                 highlightAllCards={highlightAllCards}
                 onToggleCards={() => {
                   setHighlightAllCards(!highlightAllCards);
-                  setFocusedCardTerritory("");
                 }}
                 onClearCardHighlight={() => {
-                  setFocusedCardTerritory("");
                   setHighlightAllCards(false);
                 }}
               />
@@ -1203,7 +1199,11 @@ export default function Mappa() {
                       )}
                     </div>
                   ) : me?.eliminated ? (
-                    <p className="panel-note">{t.eliminated}</p>
+                    <div className="eliminated-panel" role="status">
+                      <ShieldOff size={28} aria-hidden="true" />
+                      <h3>{t.eliminated}</h3>
+                      <p>{t.defeatSpectator}</p>
+                    </div>
                   ) : !canAct ? (
                     <div className="waiting-panel">
                       <span className="orbit-dot" />
@@ -1494,15 +1494,6 @@ export default function Mappa() {
                             }
                             aria-pressed={cards.includes(c.id)}
                             onClick={() => {
-                              setFocusedCardTerritory(c.territory ?? "");
-                              setHighlightAllCards(false);
-                              if (
-                                c.territory &&
-                                window.matchMedia("(max-width: 950px)").matches
-                              )
-                                mapColumn.current?.scrollIntoView({
-                                  block: "start",
-                                });
                               setCards((prev) =>
                                 prev.includes(c.id)
                                   ? prev.filter((id) => id !== c.id)
@@ -1710,9 +1701,30 @@ export default function Mappa() {
               ) : (
                 <div className="chat-messages journal">
                   {[...game.logs].reverse().map((l) => (
-                    <div className="journal-item" key={l.id}>
-                      <span className="journal-dot" />
-                      <p>{eventText(l.key, l.args, lang)}</p>
+                    <div
+                      className={
+                        "journal-item" +
+                        (l.key === "eliminated" ? " journal-elimination" : "")
+                      }
+                      key={l.id}
+                    >
+                      {l.key === "eliminated" ? (
+                        <ShieldOff
+                          size={18}
+                          className="journal-event-icon"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <span className="journal-dot" />
+                      )}
+                      <p>
+                        {l.key === "eliminated" && (
+                          <span className="journal-event-label">
+                            {t.playerEliminated}
+                          </span>
+                        )}
+                        {eventText(l.key, l.args, lang)}
+                      </p>
                       <time>
                         {new Date(l.at).toLocaleTimeString(lang, {
                           hour: "2-digit",
@@ -1729,6 +1741,16 @@ export default function Mappa() {
             </section>
           )}
         </main>
+      )}
+      {game && me?.eliminated && game.winner !== me.id && (
+        <DefeatAnimation
+          key={`${game.code}:${me.id}`}
+          lang={lang}
+          finished={game.phase === "finished"}
+        />
+      )}
+      {game?.phase === "finished" && game.winner === game.me && (
+        <VictoryConfetti key={`${game.code}:${game.winner}`} />
       )}
       {game && (
         <GameAnnouncements

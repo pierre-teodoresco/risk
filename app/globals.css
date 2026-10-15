@@ -1380,6 +1380,175 @@ footer button {
   left: 0;
   top: 0;
 }
+.defeat-animation {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  pointer-events: none;
+  overflow: hidden;
+}
+.defeat-animation::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, #593b292b, #2f252c55);
+  opacity: 0;
+  animation: defeat-vignette 4.2s ease both;
+}
+.defeat-card {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 30px 28px;
+  text-align: center;
+  background: #fcf8ef;
+  color: #654535;
+  border: 1px solid #cdb29a;
+  border-radius: 12px;
+  box-shadow: 0 18px 70px #3c242340;
+  animation: defeat-card 4.2s ease both;
+}
+.defeat-card h2 {
+  font-family: var(--serif);
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 400;
+  line-height: 1.2;
+  margin: 18px 0 12px;
+}
+.defeat-card p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #7b6553;
+}
+.defeat-emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 90px;
+  height: 90px;
+  margin: auto;
+  border-radius: 50%;
+  background: #ead7c6;
+  color: #92664f;
+}
+.defeat-emblem > svg {
+  animation: defeated-shield 1.2s ease-out both;
+}
+.defeat-fragment {
+  position: absolute;
+  top: 57px;
+  left: 40px;
+  width: 9px;
+  height: 13px;
+  background: #b88969;
+  clip-path: polygon(0 0, 100% 20%, 65% 100%, 15% 75%);
+  opacity: 0;
+  animation: defeat-fragment 1.4s 0.3s ease-in both;
+}
+.fragment-left {
+  --fragment-x: -38px;
+  --fragment-spin: -100deg;
+}
+.fragment-right {
+  --fragment-x: 38px;
+  --fragment-spin: 120deg;
+}
+.eliminated-panel {
+  padding: 24px 4px;
+  text-align: center;
+  color: #92664f;
+}
+.eliminated-panel h3 {
+  font-family: var(--serif);
+  font-size: 27px;
+  font-weight: 400;
+  margin: 12px 0;
+}
+.eliminated-panel p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #7b715e;
+}
+@keyframes defeat-vignette {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  12%,
+  82% {
+    opacity: 1;
+  }
+}
+@keyframes defeat-card {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1.04);
+  }
+  14%,
+  82% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+@keyframes defeated-shield {
+  0% {
+    transform: translateY(-14px) rotate(0deg);
+  }
+  40% {
+    transform: translateY(0) rotate(-14deg);
+  }
+  100% {
+    transform: translateY(5px) rotate(-10deg);
+  }
+}
+@keyframes defeat-fragment {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fragment-x), 65px) rotate(var(--fragment-spin));
+  }
+}
+.victory-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;
+}
+.confetti-piece {
+  position: absolute;
+  top: -24px;
+  animation: confetti-fall var(--confetti-duration) var(--confetti-delay)
+    cubic-bezier(0.2, 0.65, 0.45, 1) both;
+}
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotateX(0) rotateZ(0);
+    opacity: 0;
+  }
+  6%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--confetti-drift), calc(100dvh + 48px), 0)
+      rotateX(720deg) rotateZ(var(--confetti-rotation));
+    opacity: 0;
+  }
+}
 .victory-panel {
   text-align: center;
   padding: 25px 0;
@@ -1574,6 +1743,37 @@ footer button {
   color: #a7b196;
   margin-top: 2px;
 }
+.journal-item.journal-elimination {
+  margin: 8px 0;
+  padding: 12px 10px;
+  border: 1px solid #d9b19e;
+  border-left: 4px solid #a0563b;
+  border-radius: 7px;
+  background: #f7e7da;
+  color: #753c2c;
+}
+.journal-event-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.journal-elimination p {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.journal-event-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.journal-elimination time {
+  color: #875b46;
+  flex-shrink: 0;
+}
 .toast {
   position: fixed;
   z-index: 60;
@@ -1654,6 +1854,26 @@ footer button {
 .game-announcement button:hover {
   background: #e6ecdd;
 }
+.game-announcement.announcement-elimination {
+  background: #fff0e4;
+  border-color: #d9b19e;
+  border-left-color: #a0563b;
+  color: #753c2c;
+  box-shadow: 0 10px 34px #71302030;
+}
+.announcement-elimination p {
+  font-size: 14px;
+  font-weight: 650;
+}
+.announcement-elimination .announcement-heading > span {
+  background: #ead0ba;
+}
+.announcement-elimination .announcement-lifetime {
+  background: #b66e46;
+}
+.announcement-elimination button:hover {
+  background: #ead0ba;
+}
 .announcement-lifetime {
   position: absolute;
   height: 3px;
@@ -1662,7 +1882,8 @@ footer button {
   right: 0;
   background: #789564;
   transform-origin: left;
-  animation: announcement-lifetime 4s linear forwards;
+  animation: announcement-lifetime var(--announcement-duration, 4000ms) linear
+    forwards;
 }
 @keyframes announcement-lifetime {
   to {
@@ -2530,6 +2751,9 @@ footer button {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .victory-confetti {
+    display: none;
+  }
   *,
   *:before,
   *:after {
