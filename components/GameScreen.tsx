@@ -19,9 +19,11 @@ import {
   Crown,
   Handshake,
   Link2,
+  ShieldOff,
 } from "lucide-react";
 import Crest from "./Crest";
 import type { ContinentBadge } from "./Board3D";
+import type { TroopChange } from "@/lib/game-feedback";
 import type { Arrow, BoardOptions, Lands } from "./board/engine";
 import { BY_ID, CONTINENTS, WORLD, type Lang } from "@/lib/world";
 import { connected, validSet, type Action, type PublicGame } from "@/lib/game";
@@ -49,9 +51,10 @@ type Props = {
   onLeave: () => void;
   onKick: (player: string) => void;
   onHome: () => void;
+  troopChanges: TroopChange[];
 };
 type Panel = "settings" | "stats" | "cards" | null;
-type Toast = { id: string; text: string };
+type Toast = { id: string; text: string; elimination?: boolean };
 
 const pref = <T,>(key: string, fallback: T): T => {
   try {
@@ -141,16 +144,19 @@ export default function GameScreen(props: Props) {
 
   // ---------- Toasts from the journal, alliance answers ----------
   const lastLog = useRef(game.logs.at(-1)?.id ?? "");
-  const pushToast = (text: string) => {
+  const pushToast = (text: string, elimination = false) => {
     const id = crypto.randomUUID();
-    setToasts((x) => [...x.slice(-2), { id, text }]);
-    setTimeout(() => setToasts((x) => x.filter((y) => y.id !== id)), 3800);
+    setToasts((x) => [...x.slice(-2), { id, text, elimination }]);
+    setTimeout(() => setToasts((x) => x.filter((y) => y.id !== id)), elimination ? 6500 : 3800);
   };
   useEffect(() => {
     const i = game.logs.findIndex((l) => l.id === lastLog.current);
     const fresh = i >= 0 ? game.logs.slice(i + 1) : [];
     lastLog.current = game.logs.at(-1)?.id ?? "";
-    for (const l of fresh) if (l.key !== "turn" || l.args[0] !== me.name) pushToast(eventText(l.key, l.args, lang));
+    // Your own turn start and placements are already visible on the board.
+    for (const l of fresh)
+      if (!((l.key === "turn" || l.key === "deployed") && l.args[0] === me.name))
+        pushToast(eventText(l.key, l.args, lang), l.key === "eliminated");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.logs.at(-1)?.id]);
   const outgoingRef = useRef<string[]>([]);
@@ -384,7 +390,7 @@ export default function GameScreen(props: Props) {
     );
   } else if (me.eliminated) {
     cardKey = "eliminated";
-    cardBody = (<><div className="eyebrow">{t.eliminated}</div><h2>{h.spectating}</h2><p>{t.eliminated}. {h.spectatingText}</p></>);
+    cardBody = (<><div className="eyebrow"><ShieldOff size={14} /> {t.eliminated}</div><h2>{t.defeatTitle}</h2><p>{t.defeatSpectator}</p></>);
   } else if (game.pending && myTurn) {
     const m = game.pending, total = land(m.from).troops;
     cardKey = "move:" + m.to;
@@ -532,6 +538,7 @@ export default function GameScreen(props: Props) {
         battle={battle}
         pulse={pulse}
         badges={badges}
+        changes={props.troopChanges}
         onSelect={selectLand}
         onHover={(id, x, y) => setHover(id ? { id, x, y } : null)}
       />
@@ -723,7 +730,16 @@ export default function GameScreen(props: Props) {
 
       {/* Toasts */}
       <div className="hud toasts" aria-live="polite">
-        {toasts.map((x) => <div key={x.id} className="toast-chip">{x.text}</div>)}
+        {toasts.map((x) =>
+          x.elimination ? (
+            <div key={x.id} className="toast-chip elimination">
+              <ShieldOff size={18} aria-hidden="true" />
+              <span><b>{t.playerEliminated}</b>{x.text}</span>
+            </div>
+          ) : (
+            <div key={x.id} className="toast-chip">{x.text}</div>
+          ),
+        )}
       </div>
 
       {/* Hover tooltip */}
@@ -786,8 +802,11 @@ export default function GameScreen(props: Props) {
           ) : (
             <div className="msgs journal">
               {[...game.logs].reverse().map((l) => (
-                <div key={l.id} className="log">
-                  <p>{eventText(l.key, l.args, lang)}</p>
+                <div key={l.id} className={"log" + (l.key === "eliminated" ? " out" : "")}>
+                  <p>
+                    {l.key === "eliminated" && <b><ShieldOff size={14} /> {t.playerEliminated}</b>}
+                    {eventText(l.key, l.args, lang)}
+                  </p>
                   <time>{new Date(l.at).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}</time>
                 </div>
               ))}

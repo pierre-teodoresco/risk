@@ -31,7 +31,7 @@ const fr = {
   cardTerritories: "Territoires de mes cartes",
   clearCardHighlight: "Effacer le repérage",
   cardMapHint:
-    "Cliquez sur une carte pour repérer son territoire et la sélectionner pour un échange. Un joker n’a pas de territoire.",
+    "Cliquez sur vos cartes pour les sélectionner pour un échange. Pour repérer leurs territoires, utilisez « Territoires de mes cartes » en haut de la carte.",
   activePlayer: "Joueur actif",
   playingNow: "En train de jouer",
   pauseLabel: "En pause",
@@ -108,6 +108,8 @@ const fr = {
   confirm: "Confirmer",
   chat: "La table",
   journal: "Journal",
+  pendingEvents: "événements en attente",
+  closeAnnouncement: "Fermer cette annonce",
   everyone: "Tout le monde",
   privateTo: "Message privé à",
   message: "Votre message…",
@@ -118,6 +120,11 @@ const fr = {
   online: "En ligne",
   offline: "Absent",
   eliminated: "Éliminé",
+  playerEliminated: "Joueur éliminé",
+  defeatTitle: "Votre empire est tombé.",
+  defeatSpectator:
+    "Vous avez perdu votre dernier territoire. Vous pouvez continuer à suivre la partie.",
+  defeatFinished: "La conquête est terminée. Une nouvelle partie vous attend.",
   neutral: "Neutre",
   victoryTitle: "Un monde à son nom.",
   victoryText:
@@ -184,7 +191,27 @@ const fr = {
   ruleFortify:
     "À la fin du tour, effectuez un seul déplacement entre deux territoires reliés par vos propres territoires, puis passez la main. Cette étape est facultative.",
   ruleCards:
-    "Une seule carte récompense un tour avec au moins une conquête. Échangez 3 symboles identiques ou différents, avec jokers possibles : 4, 6, 8, 10, 12, 15, puis +5 armées par échange global. À 5 cartes au début du tour, un échange est obligatoire. Une carte de la combinaison montrant un territoire possédé y ajoute 2 armées.",
+    "Vous recevez une carte à la fin de votre tour si vous avez conquis au moins un territoire : une seule carte, même après plusieurs conquêtes. Les cartes de territoire portent l’un des trois symboles ci-dessous. Le joker n’a pas de territoire.",
+  ruleCardSetsTitle: "Combinaisons valides : toujours 3 cartes",
+  ruleCardSetSame:
+    "Trois symboles identiques : ♟ + ♟ + ♟ (3 infanteries), ♞ + ♞ + ♞ (3 cavaleries) ou ♜ + ♜ + ♜ (3 artilleries).",
+  ruleCardSetMixed:
+    "Un symbole de chaque : ♟ + ♞ + ♜ (1 infanterie, 1 cavalerie et 1 artillerie).",
+  ruleCardSetWild:
+    "Le joker ✦ remplace le symbole de votre choix. Exemples valides : ♟ + ♟ + ✦ ou ♟ + ♞ + ✦.",
+  ruleCardSetInvalid:
+    "Exemple invalide : ♟ + ♟ + ♞. Deux infanteries et une cavalerie ne forment ni trois symboles identiques, ni trois symboles différents.",
+  ruleCardRewardsTitle: "Armées gagnées par échange",
+  ruleCardTradeNumber: "Échange dans la partie",
+  ruleCardTradeArmies: "Armées à placer",
+  ruleCardRewardsNext:
+    "Puis +5 armées à chaque nouvel échange : 30, 35, 40… Ces renforts s’ajoutent à votre réserve et sont à placer sur vos territoires.",
+  ruleCardRewardsExample:
+    "Le compteur est commun à tous les joueurs, et le type de combinaison ne change pas le gain. Exemple : Alice effectue le premier échange et reçoit 4 armées ; Bob effectue le deuxième et reçoit 6 ; le prochain échange rapportera 8 armées, quel que soit le joueur.",
+  ruleCardLandBonus:
+    "Bonus territorial : si une carte échangée montre un territoire que vous possédez, 2 armées y sont ajoutées immédiatement. Ce bonus concerne un seul territoire par échange, même si plusieurs cartes correspondent à vos territoires. Exemple : si vous possédez l’Alaska, le premier échange incluant sa carte vous donne 4 armées à placer librement et 2 armées directement en Alaska.",
+  ruleCardMandatory:
+    "Les échanges se font pendant la phase Renforcer. Avec 5 cartes ou plus au début du tour, un échange est obligatoire avant de placer vos armées ou d’attaquer. Les échanges après élimination sont détaillés ci-dessous.",
   ruleElimination:
     "Éliminer un joueur donne ses cartes. Avec 6 cartes ou plus après élimination, échangez immédiatement jusqu’à en avoir au plus 4, puis placez ces renforts avant de poursuivre.",
   ruleConnection:
@@ -227,7 +254,7 @@ const en: typeof fr = {
   cardTerritories: "My card territories",
   clearCardHighlight: "Clear highlights",
   cardMapHint:
-    "Click a card to highlight its territory and select it for a trade. Wild cards have no territory.",
+    "Click your cards to select them for a trade. To highlight their territories, use “My card territories” at the top of the map.",
   activePlayer: "Active player",
   playingNow: "Playing now",
   pauseLabel: "Paused",
@@ -302,6 +329,8 @@ const en: typeof fr = {
   confirm: "Confirm",
   chat: "The table",
   journal: "Journal",
+  pendingEvents: "pending events",
+  closeAnnouncement: "Dismiss announcement",
   everyone: "Everyone",
   privateTo: "Private message to",
   message: "Your message…",
@@ -312,6 +341,11 @@ const en: typeof fr = {
   online: "Online",
   offline: "Away",
   eliminated: "Eliminated",
+  playerEliminated: "Player eliminated",
+  defeatTitle: "Your empire has fallen.",
+  defeatSpectator:
+    "You have lost your last territory. You can keep watching the game.",
+  defeatFinished: "The conquest is over. A new game awaits.",
   neutral: "Neutral",
   victoryTitle: "A world in their name.",
   victoryText: "has conquered all 42 territories. A new story can begin.",
@@ -374,7 +408,27 @@ const en: typeof fr = {
   ruleFortify:
     "At the end of your turn, make one move between territories connected through your own empire, then pass. This step is optional.",
   ruleCards:
-    "Earn one card for a turn with at least one conquest. Trade 3 matching or different symbols, using wilds as needed: 4, 6, 8, 10, 12, 15, then +5 armies per global trade. At 5 cards at turn start, trading is mandatory. A set featuring an owned territory adds 2 armies there.",
+    "Receive one card at the end of your turn if you conquered at least one territory: just one card, even after several conquests. Territory cards show one of the three symbols below. Wild cards have no territory.",
+  ruleCardSetsTitle: "Valid sets: always 3 cards",
+  ruleCardSetSame:
+    "Three matching symbols: ♟ + ♟ + ♟ (3 infantry), ♞ + ♞ + ♞ (3 cavalry), or ♜ + ♜ + ♜ (3 artillery).",
+  ruleCardSetMixed:
+    "One of each symbol: ♟ + ♞ + ♜ (1 infantry, 1 cavalry, and 1 artillery).",
+  ruleCardSetWild:
+    "A wild card ✦ replaces any symbol. Valid examples: ♟ + ♟ + ✦ or ♟ + ♞ + ✦.",
+  ruleCardSetInvalid:
+    "Invalid example: ♟ + ♟ + ♞. Two infantry and one cavalry are neither three matching nor three different symbols.",
+  ruleCardRewardsTitle: "Armies earned per trade",
+  ruleCardTradeNumber: "Trade across all players",
+  ruleCardTradeArmies: "Armies to deploy",
+  ruleCardRewardsNext:
+    "Then add 5 armies for each further trade: 30, 35, 40… These reinforcements go into your reserve for deployment on your territories.",
+  ruleCardRewardsExample:
+    "All players share the same trade counter, and the type of set does not affect the reward. Example: Alice makes the first trade and receives 4 armies; Bob makes the second and receives 6; the next trade will award 8 armies, whoever makes it.",
+  ruleCardLandBonus:
+    "Territory bonus: if a traded card shows a territory you own, 2 armies are added there immediately. Only one territory receives this bonus per trade, even if several cards show territories you own. Example: if you own Alaska, the first trade including its card gives you 4 armies to deploy freely and 2 armies directly in Alaska.",
+  ruleCardMandatory:
+    "Trade during the Reinforce phase. With 5 or more cards at the start of your turn, you must trade before deploying armies or attacking. Trades after eliminating a player are explained below.",
   ruleElimination:
     "Eliminating a player gives you their cards. With 6 or more cards after elimination, trade immediately until at most 4 remain, then deploy these armies before continuing.",
   ruleConnection:
@@ -528,6 +582,10 @@ export function eventText(key: string, args: string[], lang: Lang) {
     trade: [
       `${a[0]} échange ses cartes : +${a[1]} armées.`,
       `${a[0]} trades cards: +${a[1]} armies.`,
+    ],
+    deployed: [
+      `${a[0]} place ${a[2]} ${a[2] === "1" ? "armée" : "armées"} sur le territoire ${name(a[1])}.`,
+      `${a[0]} deploys ${a[2]} ${a[2] === "1" ? "army" : "armies"} to ${name(a[1])}.`,
     ],
     conquered: [
       `${a[0]} conquiert ${name(a[1])}. Pertes : ${a[2]} / ${a[3]}.`,

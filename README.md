@@ -67,6 +67,10 @@ L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs,
 
 Projet Vercel dédié `mappa`, équipe `pierre-teodoresco's projects`, plan Hobby. Les cinq variables sont configurées en production et preview. Les fonctions sont en région `cdg1`.
 
+Le projet est connecté au dépôt GitHub `pierre-teodoresco/risk`. Chaque push sur `main` déclenche un déploiement en production ; les autres branches et les pull requests génèrent des déploiements de prévisualisation via l’intégration GitHub de Vercel.
+
+Pour inspecter le projet ou déclencher un déploiement manuel :
+
 ```sh
 npx vercel project inspect --non-interactive
 npx vercel deploy --prod

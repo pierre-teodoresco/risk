@@ -24,6 +24,9 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import Crest from "./Crest";
 import GameScreen from "./GameScreen";
+import VictoryConfetti from "./VictoryConfetti";
+import DefeatAnimation from "./DefeatAnimation";
+import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
 import type { BoardOptions, Lands } from "./board/engine";
 import { COLORS, WORLD, type Lang } from "@/lib/world";
 import { type PublicGame, type Action } from "@/lib/game";
@@ -33,6 +36,7 @@ const Board3D = dynamic(() => import("./Board3D"), {
   ssr: false,
   loading: () => <div className="board3d" />,
 });
+type TimedTroopChange = TroopChange & { expiresAt: number };
 type Preview = {
   code: string;
   phase: string;
@@ -85,6 +89,7 @@ export default function Mappa() {
     [lost, setLost] = useState(false),
     [loading, setLoading] = useState(true),
     [rules, setRules] = useState(false),
+    [troopChanges, setTroopChanges] = useState<TimedTroopChange[]>([]),
     [audio, setAudio] = useState(false),
     [copied, setCopied] = useState(false),
     [draft, setDraft] = useState(""),
@@ -103,9 +108,21 @@ export default function Mappa() {
   const isHost = game?.host === game?.me;
   const accept = useCallback((next: PublicGame) => {
     const old = gameRef.current;
-    if (old && next.revision < old.revision) return;
+    const sameSession = old?.code === next.code && old?.me === next.me;
+    if (sameSession && next.revision < old.revision) return;
+    if (!sameSession) setTroopChanges([]);
+    else {
+      const { troops } = gameFeedback(old, next);
+      if (troops.length) {
+        const at = Date.now();
+        setTroopChanges((changes) => [
+          ...changes.filter((c) => c.expiresAt > at),
+          ...troops.map((c) => ({ ...c, expiresAt: at + 2600 })),
+        ]);
+      }
+    }
     if (
-      old &&
+      sameSession &&
       audioRef.current &&
       (next.active !== old.active || next.lastBattle?.at !== old.lastBattle?.at)
     )
@@ -114,6 +131,15 @@ export default function Mappa() {
     setGame(next);
     setLost(false);
   }, []);
+  useEffect(() => {
+    if (!troopChanges.length) return;
+    const next = Math.min(...troopChanges.map((c) => c.expiresAt));
+    const timeout = setTimeout(
+      () => setTroopChanges((changes) => changes.filter((c) => c.expiresAt > Date.now())),
+      Math.max(0, next - Date.now()),
+    );
+    return () => clearTimeout(timeout);
+  }, [troopChanges]);
   const fetchState = useCallback(
     async (code: string, heartbeat = false) => {
       if (requestRunning.current) return;
@@ -469,6 +495,46 @@ export default function Mappa() {
                 <div>
                   <h3>{title}</h3>
                   <p>{body}</p>
+                  {n === "✦" && (
+                    <div className="card-rules">
+                      <ul className="card-symbols" aria-label={t.cards}>
+                        {[t.infantry, t.cavalry, t.artillery, t.wild].map((name, i) => (
+                          <li key={name}>
+                            <span aria-hidden="true">{["♟", "♞", "♜", "✦"][i]}</span>
+                            {name}
+                          </li>
+                        ))}
+                      </ul>
+                      <h4>{t.ruleCardSetsTitle}</h4>
+                      <ul className="card-set-examples">
+                        {[t.ruleCardSetSame, t.ruleCardSetMixed, t.ruleCardSetWild].map((example) => (
+                          <li key={example}>{example}</li>
+                        ))}
+                      </ul>
+                      <p>{t.ruleCardSetInvalid}</p>
+                      <table className="card-rewards">
+                        <caption>{t.ruleCardRewardsTitle}</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">{t.ruleCardTradeNumber}</th>
+                            <th scope="col">{t.ruleCardTradeArmies}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[4, 6, 8, 10, 12, 15, 20, 25].map((armies, i) => (
+                            <tr key={armies}>
+                              <th scope="row">{i + 1}</th>
+                              <td>+{armies}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <p>{t.ruleCardRewardsNext}</p>
+                      <p>{t.ruleCardRewardsExample}</p>
+                      <p>{t.ruleCardLandBonus}</p>
+                      <p>{t.ruleCardMandatory}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -535,7 +601,14 @@ export default function Mappa() {
           onLeave={() => setConfirm({ type: "leave" })}
           onKick={(player) => setConfirm({ type: "kick", player })}
           onHome={home}
+          troopChanges={troopChanges}
         />
+        {me?.eliminated && game.winner !== me.id && (
+          <DefeatAnimation key={`${game.code}:${me.id}`} lang={lang} finished={game.phase === "finished"} />
+        )}
+        {game.phase === "finished" && game.winner === game.me && (
+          <VictoryConfetti key={`${game.code}:${game.winner}`} />
+        )}
         {overlays}
       </>
     );

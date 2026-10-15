@@ -14,6 +14,7 @@ import {
   type Game,
 } from "../lib/game";
 import { WORLD, BY_ID } from "../lib/world";
+import { eventText } from "../lib/i18n";
 let seed = 12345;
 function rand() {
   seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
@@ -454,4 +455,127 @@ test("blitz odds are exact and agree with the engine's dice", async () => {
     if (after.lastBattle?.conquered) wins++;
   }
   assert.ok(Math.abs(wins / runs - blitzOdds(6, 4).win) < 0.03);
+});
+
+for (const phase of ["setup", "reinforce"] as const) {
+  test(`manual ${phase} placement logs its player, territory and exact amount`, () => {
+    const g = phase === "setup" ? started() : deployed();
+    const p = g.players.find((p) => p.id === g.active)!;
+    const territory = owned(g, p.id)[0].id;
+    const before = g.lands[territory].troops;
+    const next = applyAction(
+      g,
+      p.id,
+      { type: "deploy", territory, amount: 2 },
+      rand,
+      1004,
+    );
+    const entries = next.logs.slice(g.logs.length);
+    assert.deepEqual(
+      entries.map(({ key, args }) => ({ key, args })),
+      [{ key: "deployed", args: [p.name, territory, "2"] }],
+    );
+    assert.equal(next.lands[territory].troops, before + 2);
+    assert.equal(
+      next.players.find((nextPlayer) => nextPlayer.id === p.id)!.reserve,
+      p.reserve - 2,
+    );
+    assert.ok(
+      publicGame(
+        next,
+        g.players.find((other) => other.id !== p.id)!.id,
+      ).logs.some((entry) => entry.id === entries[0].id),
+    );
+    assert.equal(g.lands[territory].troops, before);
+  });
+  test(`automatic ${phase} placement logs one exact total per reinforced territory`, () => {
+    const g = phase === "setup" ? started() : deployed();
+    const p = g.players.find((p) => p.id === g.active)!;
+    const next = applyAction(g, p.id, { type: "auto" }, rand, 1004);
+    const entries = next.logs
+      .slice(g.logs.length)
+      .filter((entry) => entry.key === "deployed");
+    const changed = WORLD.filter(
+      (t) => next.lands[t.id].troops > g.lands[t.id].troops,
+    );
+    assert.equal(entries.length, changed.length);
+    assert.equal(
+      new Set(entries.map((entry) => entry.args[1])).size,
+      entries.length,
+    );
+    for (const territory of changed) {
+      const entry = entries.find((entry) => entry.args[1] === territory.id)!;
+      assert.deepEqual(entry.args, [
+        p.name,
+        territory.id,
+        String(next.lands[territory.id].troops - g.lands[territory.id].troops),
+      ]);
+    }
+    assert.equal(
+      entries.reduce((sum, entry) => sum + Number(entry.args[2]), 0),
+      p.reserve,
+    );
+  });
+}
+test("timer placements are journaled and omit territories receiving no troops", () => {
+  const g = deployed();
+  const p = g.players.find((p) => p.id === g.active)!;
+  p.reserve = 1;
+  g.deadline = 5001;
+  for (const player of g.players) player.lastSeen = 5000;
+  const count = g.logs.length;
+  maintenance(g, 5002, rand);
+  const entries = g.logs
+    .slice(count)
+    .filter((entry) => entry.key === "deployed");
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].args[0], p.name);
+  assert.equal(entries[0].args[2], "1");
+});
+test("a traded territory card logs its immediate two-army placement separately from reserve rewards", () => {
+  const g = deployed();
+  const p = g.players.find((p) => p.id === g.active)!;
+  const territory = owned(g, p.id)[0].id;
+  p.cards = [
+    { id: "bonus", symbol: 0, territory },
+    { id: "second", symbol: 0 },
+    { id: "third", symbol: 0 },
+  ];
+  const next = applyAction(
+    g,
+    p.id,
+    { type: "trade", cards: p.cards.map((card) => card.id) },
+    rand,
+    1004,
+  );
+  assert.deepEqual(
+    next.logs.slice(g.logs.length).map(({ key, args }) => ({ key, args })),
+    [
+      { key: "trade", args: [p.name, "4"] },
+      { key: "deployed", args: [p.name, territory, "2"] },
+    ],
+  );
+  assert.equal(next.lands[territory].troops, g.lands[territory].troops + 2);
+  assert.equal(
+    next.players.find((player) => player.id === p.id)!.reserve,
+    p.reserve + 4,
+  );
+});
+test("placement journal entries translate territories and singular or plural troop counts", () => {
+  assert.equal(
+    eventText("deployed", ["Alice", "northafrica", "1"], "fr"),
+    "Alice place 1 armée sur le territoire Afrique du Nord.",
+  );
+  assert.equal(
+    eventText("deployed", ["Alice", "northafrica", "5"], "fr"),
+    "Alice place 5 armées sur le territoire Afrique du Nord.",
+  );
+  assert.equal(
+    eventText("deployed", ["Alice", "northafrica", "1"], "en"),
+    "Alice deploys 1 army to North Africa.",
+  );
+  assert.equal(
+    eventText("deployed", ["Alice", "northafrica", "5"], "en"),
+    "Alice deploys 5 armies to North Africa.",
+  );
 });

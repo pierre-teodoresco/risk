@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import type { TroopChange } from "@/lib/game-feedback";
 import MAP from "@/lib/map-data.json";
 import { CONTINENTS, WORLD } from "@/lib/world";
 import {
@@ -29,12 +30,17 @@ const ANCHORS = CONTINENTS.map((c) => {
   return [pts.reduce((s, p, k) => s + p[0] * w[k], 0) / sum, pts.reduce((s, p, k) => s + p[1] * w[k], 0) / sum];
 });
 
+const CENTERS = Object.fromEntries(
+  Object.entries(TERR).map(([id, t]) => [id, toWorld(t.center[0], t.center[1])]),
+);
+
 export default function Board3D({
   lands,
   options,
   battle,
   pulse,
   badges,
+  changes = [],
   onSelect,
   onHover,
 }: {
@@ -43,12 +49,15 @@ export default function Board3D({
   battle?: (Battle & { at: number }) | null;
   pulse?: { id: string; at: number } | null;
   badges?: ContinentBadge[] | null;
+  /** Floating +N / −N over territories whose troops just changed. */
+  changes?: TroopChange[];
   onSelect: (id: string) => void;
   onHover: (id: string | null, x: number, y: number) => void;
 }) {
   const host = useRef<HTMLDivElement>(null),
     engine = useRef<BoardEngine | null>(null),
     badgeEls = useRef<(HTMLDivElement | null)[]>([]),
+    changeEls = useRef(new Map<string, HTMLDivElement>()),
     callbacks = useRef({ onSelect, onHover });
   callbacks.current = { onSelect, onHover };
 
@@ -63,6 +72,12 @@ export default function Board3D({
             if (!el) return;
             const p = project(ANCHORS[i][0], ANCHORS[i][1]);
             el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
+          });
+          changeEls.current.forEach((el) => {
+            const c = CENTERS[el.dataset.territory!];
+            if (!c) return;
+            const p = project(c[0], c[1]);
+            el.style.transform = `translate(${p.x}px, ${p.y}px)`;
           });
         },
       },
@@ -95,8 +110,43 @@ export default function Board3D({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pulse?.at]);
 
+  // Rapid placements add up in one float; gains and losses stay distinct.
+  const floats = useMemo(() => {
+    const grouped = new Map<string, TroopChange & { stack: number }>();
+    for (const c of changes) {
+      const key = `${c.territory}:${c.amount > 0 ? "gain" : "loss"}`;
+      const g = grouped.get(key);
+      grouped.set(key, g ? { ...g, amount: g.amount + c.amount } : { ...c, stack: 0 });
+    }
+    const list = [...grouped.values()];
+    list.forEach((f, i) => (f.stack = list.slice(0, i).filter((o) => o.territory === f.territory).length));
+    return list;
+  }, [changes]);
+
   return (
     <div className="board3d" ref={host}>
+      <div className="tfloats" aria-hidden="true">
+        {floats.map((f) => (
+          <div
+            key={f.id}
+            data-territory={f.territory}
+            className="tfloat-anchor"
+            ref={(el) => {
+              if (el) changeEls.current.set(f.id, el);
+              else changeEls.current.delete(f.id);
+            }}
+          >
+            <span
+              className={"tfloat outlined " + (f.amount > 0 ? "gain" : "loss")}
+              style={{ "--stack": f.stack } as React.CSSProperties}
+              data-testid="troop-change"
+            >
+              {f.amount > 0 ? "+" : "−"}
+              {Math.abs(f.amount)}
+            </span>
+          </div>
+        ))}
+      </div>
       {badges && (
         <div className="cbadges" aria-hidden="true">
           {badges.map((b, i) => (

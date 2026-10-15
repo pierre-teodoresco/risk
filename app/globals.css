@@ -82,6 +82,18 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 .cbadge .ring b { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: var(--navy-1); border: 3px solid var(--cc); font: 26px var(--f-display); font-weight: 400; }
 .cbadge .plate { background: var(--navy-1); border: 2px solid var(--cc); border-radius: 10px; padding: 3px 12px; font: 17px var(--f-display); white-space: nowrap; text-align: center; line-height: 1.2; }
 .cbadge .plate small { display: block; font: 800 12px var(--f-ui); color: var(--muted); }
+.tfloats { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+.tfloat-anchor { position: absolute; left: 0; top: 0; will-change: transform; }
+.tfloat { position: absolute; left: 0; bottom: calc(26px + var(--stack) * 30px); transform: translateX(-50%); font: 30px var(--f-display); white-space: nowrap; animation: tfloat 2.6s cubic-bezier(.2,.8,.2,1) both; }
+.tfloat.gain { color: #8df08a; }
+.tfloat.loss { color: #ff7a6b; }
+@keyframes tfloat {
+  0% { opacity: 0; translate: 0 10px; scale: .6; }
+  10% { opacity: 1; translate: 0 0; scale: 1.15; }
+  18% { scale: 1; }
+  78% { opacity: 1; }
+  100% { opacity: 0; translate: 0 -28px; }
+}
 
 /* ---------- In-game HUD ---------- */
 .game { position: fixed; inset: 0; }
@@ -206,6 +218,10 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 /* Toasts and tooltip */
 .toasts { top: calc(16px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; width: min(520px, calc(100vw - 340px)); }
 .toast-chip { background: #fff; color: var(--navy-1); border-radius: 999px; padding: 8px 16px; font-weight: 800; box-shadow: 0 6px 18px #0007; animation: drop-in .25s cubic-bezier(.2,.8,.2,1); text-align: center; }
+.toast-chip.elimination { display: flex; align-items: center; gap: 10px; text-align: left; border-radius: 16px; background: #3a1418; color: #ffd9d4; border: 2px solid #ff7a6b; }
+.toast-chip.elimination b { display: block; font: 800 11px var(--f-ui); letter-spacing: .1em; text-transform: uppercase; color: #ff9a8d; }
+.log.out p { color: #ffb4aa; }
+.log.out b { display: flex; align-items: center; gap: 5px; font: 800 11px var(--f-ui); letter-spacing: .08em; text-transform: uppercase; color: #ff7a6b; }
 @keyframes drop-in { from { transform: translateY(-10px); opacity: 0; } }
 .tip { position: fixed; z-index: 6; pointer-events: none; padding: 7px 12px; font-size: 13px; font-weight: 800; transform: translate(14px, 14px); white-space: nowrap; border-radius: 12px; }
 .tip small { display: block; font-weight: 700; color: var(--muted); }
@@ -306,6 +322,41 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 .rule-section h3 { font: 18px var(--f-display); font-weight: 400; margin-bottom: 4px; }
 .rule-section p { color: var(--muted); line-height: 1.6; font-size: 14.5px; }
 .rules-modal > .btn { margin-top: 16px; }
+.rule-section > div { min-width: 0; }
+.card-rules h4, .card-rewards caption { font: 16px var(--f-display); font-weight: 400; text-align: left; margin: 16px 0 8px; }
+.card-symbols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0; margin: 12px 0; list-style: none; }
+.card-symbols li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fff; color: var(--navy-1); border-radius: 10px; font-weight: 800; font-size: 14px; box-shadow: 0 3px 0 #cdbf9f; }
+.card-symbols li > span { font-size: 22px; }
+.card-set-examples { padding-left: 18px; color: var(--muted); line-height: 1.6; font-size: 14px; }
+.card-set-examples li + li, .card-rules p { margin-top: 9px; }
+.card-rewards { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 12px; }
+.card-rewards th, .card-rewards td { padding: 7px 12px; border: 1px solid #ffffff1f; text-align: left; }
+.card-rewards thead { background: #ffffff10; color: var(--muted); }
+.card-rewards td { font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+
+/* Defeat & victory overlays */
+.defeat-animation { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; padding: 20px; pointer-events: none; overflow: hidden; }
+.defeat-animation::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, #3a141855, #050b18cc); opacity: 0; animation: defeat-vignette 4.2s ease both; }
+.defeat-card { position: relative; width: min(420px, 100%); padding: 30px 28px; text-align: center; background: var(--navy-1); border: 3px solid #ff7a6b; border-radius: 22px; box-shadow: 0 18px 70px #000a; animation: defeat-card 4.2s ease both; }
+.defeat-card h2 { font: clamp(28px, 4vw, 36px) var(--f-display); font-weight: 400; line-height: 1.15; margin: 18px 0 10px; }
+.defeat-card p { color: var(--muted); line-height: 1.6; }
+.defeat-emblem { position: relative; display: grid; place-items: center; width: 90px; height: 90px; margin: auto; border-radius: 50%; background: #3a1418; color: #ff7a6b; border: 3px solid #ff7a6b; }
+.defeat-emblem > svg { animation: defeated-shield 1.2s ease-out both; }
+.defeat-fragment { position: absolute; top: 57px; left: 40px; width: 9px; height: 13px; background: #ff7a6b; clip-path: polygon(0 0, 100% 20%, 65% 100%, 15% 75%); opacity: 0; animation: defeat-fragment 1.4s .3s ease-in both; }
+.fragment-left { --fragment-x: -38px; --fragment-spin: -100deg; }
+.fragment-right { --fragment-x: 38px; --fragment-spin: 120deg; }
+@keyframes defeat-vignette { 0%, 100% { opacity: 0; } 12%, 82% { opacity: 1; } }
+@keyframes defeat-card { 0% { opacity: 0; transform: translateY(-18px) scale(1.04); } 14%, 82% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(12px) scale(.98); } }
+@keyframes defeated-shield { 0% { transform: translateY(-14px); } 40% { transform: rotate(-14deg); } 100% { transform: translateY(5px) rotate(-10deg); } }
+@keyframes defeat-fragment { 0% { opacity: 0; transform: none; } 12% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--fragment-x), 65px) rotate(var(--fragment-spin)); } }
+.victory-confetti { position: fixed; inset: 0; z-index: 55; pointer-events: none; overflow: hidden; contain: strict; }
+.confetti-piece { position: absolute; top: -24px; animation: confetti-fall var(--confetti-duration) var(--confetti-delay) cubic-bezier(.2,.65,.45,1) both; }
+@keyframes confetti-fall {
+  0% { transform: translate3d(0, -10vh, 0); opacity: 0; }
+  6%, 80% { opacity: 1; }
+  100% { transform: translate3d(var(--confetti-drift), calc(100dvh + 48px), 0) rotateX(720deg) rotateZ(var(--confetti-rotation)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .victory-confetti { display: none; } }
 .confirm-modal { width: min(400px, 100%); padding: 26px; display: flex; flex-direction: column; gap: 10px; }
 .confirm-modal > svg { color: #ff9c94; }
 .confirm-modal h2 { font: 28px var(--f-display); font-weight: 400; }

@@ -223,6 +223,7 @@ function trade(g: Game, p: Player, ids: string[]) {
   p.cards = p.cards.filter((c) => !ids.includes(c.id));
   g.discard.push(...set);
   log(g, "trade", p.name, String(value));
+  if (bonus?.territory) log(g, "deployed", p.name, bonus.territory, "2");
   if (g.forcedTrade && p.cards.length <= 4) g.forcedTrade = false;
 }
 export function allied(g: Pick<Game, "alliances">, a: string, b: string) {
@@ -277,11 +278,16 @@ function autoDeploy(g: Game, p: Player) {
     return;
   }
   lands.sort((a, b) => g.lands[a.id].troops - g.lands[b.id].troops);
+  const placements = new Map<string, number>();
   let i = 0;
   while (p.reserve > 0) {
-    g.lands[lands[i++ % lands.length].id].troops++;
+    const id = lands[i++ % lands.length].id;
+    g.lands[id].troops++;
     p.reserve--;
+    placements.set(id, (placements.get(id) ?? 0) + 1);
   }
+  for (const [id, amount] of placements)
+    log(g, "deployed", p.name, id, String(amount));
 }
 function pause(g: Game, reason: string, now: number) {
   g.paused = true;
@@ -590,6 +596,7 @@ export function applyAction(
       const n = integer(action.amount, 1, p.reserve);
       g.lands[t].troops += n;
       p.reserve -= n;
+      log(g, "deployed", p.name, t, String(n));
     } else if (type === "auto") autoDeploy(g, p);
     else fail("invalidPhase");
     if (g.players.every((x) => x.reserve === 0)) {
@@ -627,6 +634,7 @@ export function applyAction(
       const n = integer(action.amount, 1, p.reserve);
       g.lands[id].troops += n;
       p.reserve -= n;
+      log(g, "deployed", p.name, id, String(n));
     }
     return g;
   }
