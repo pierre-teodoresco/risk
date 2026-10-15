@@ -4,21 +4,16 @@ export type Territory = {
   fr: string;
   en: string;
   continent: string;
-  x: number;
-  y: number;
-  points: string;
   neighbors: string[];
 };
-const rows: [string, string, string, string, number, number, string, string][] =
+// Shapes and label positions live in map-data.json (see scripts/build-map.mjs).
+const rows: [string, string, string, string, string][] =
   [
     [
       "alaska",
       "Alaska",
       "Alaska",
       "na",
-      108,
-      125,
-      "40,95 145,70 166,121 134,166 52,158",
       "nw alberta kamchatka",
     ],
     [
@@ -26,9 +21,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Territoires du Nord-Ouest",
       "Northwest Territory",
       "na",
-      220,
-      112,
-      "145,70 295,62 307,123 245,153 166,121",
       "alaska alberta ontario greenland",
     ],
     [
@@ -36,9 +28,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Groenland",
       "Greenland",
       "na",
-      416,
-      88,
-      "357,38 440,26 475,70 446,143 395,151 367,111",
       "nw ontario quebec iceland",
     ],
     [
@@ -46,9 +35,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Alberta",
       "Alberta",
       "na",
-      182,
-      185,
-      "134,166 166,121 245,153 245,218 163,233 110,207",
       "alaska nw ontario westus",
     ],
     [
@@ -56,9 +42,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Ontario",
       "Ontario",
       "na",
-      282,
-      184,
-      "245,153 307,123 332,173 318,233 245,218",
       "nw alberta greenland quebec westus eastus",
     ],
     [
@@ -66,9 +49,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Québec",
       "Quebec",
       "na",
-      356,
-      199,
-      "332,173 395,151 416,207 377,251 318,233",
       "greenland ontario eastus",
     ],
     [
@@ -76,9 +56,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "États-Unis occidentaux",
       "Western US",
       "na",
-      197,
-      267,
-      "110,207 163,233 245,218 255,287 211,315 151,297",
       "alberta ontario eastus central",
     ],
     [
@@ -86,9 +63,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "États-Unis orientaux",
       "Eastern US",
       "na",
-      298,
-      275,
-      "245,218 318,233 377,251 319,310 277,337 255,287",
       "ontario quebec westus central",
     ],
     [
@@ -96,9 +70,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Amérique centrale",
       "Central America",
       "na",
-      249,
-      355,
-      "151,297 211,315 255,287 277,337 302,375 278,394 242,371 209,349",
       "westus eastus venezuela",
     ],
     [
@@ -106,9 +77,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Venezuela",
       "Venezuela",
       "sa",
-      331,
-      393,
-      "278,394 302,375 369,371 403,408 365,433 312,426",
       "central peru brazil",
     ],
     [
@@ -116,9 +84,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Pérou",
       "Peru",
       "sa",
-      329,
-      473,
-      "312,426 365,433 370,485 400,518 357,532 318,488 296,448",
       "venezuela brazil argentina",
     ],
     [
@@ -126,9 +91,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Brésil",
       "Brazil",
       "sa",
-      415,
-      455,
-      "369,371 443,389 479,433 454,481 400,518 370,485 365,433 403,408",
       "venezuela peru argentina northafrica",
     ],
     [
@@ -136,9 +98,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Argentine",
       "Argentina",
       "sa",
-      385,
-      566,
-      "357,532 400,518 428,545 401,596 377,635 351,592",
       "peru brazil",
     ],
     [
@@ -146,9 +105,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Islande",
       "Iceland",
       "eu",
-      540,
-      126,
-      "509,107 554,100 574,127 545,150 518,143",
       "greenland britain scandinavia",
     ],
     [
@@ -156,9 +112,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Scandinavie",
       "Scandinavia",
       "eu",
-      648,
-      131,
-      "611,168 619,101 656,63 688,76 671,150 656,177",
       "iceland britain northeu ukraine",
     ],
     [
@@ -166,9 +119,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Ukraine",
       "Ukraine",
       "eu",
-      736,
-      192,
-      "688,76 751,78 787,139 795,219 762,258 713,244 683,199 656,177 671,150",
       "scandinavia northeu southeu ural afghanistan middleeast",
     ],
     [
@@ -176,9 +126,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Grande-Bretagne",
       "Great Britain",
       "eu",
-      550,
-      206,
-      "522,168 553,157 574,181 571,230 540,247 521,217",
       "iceland scandinavia northeu westeu",
     ],
     [
@@ -186,9 +133,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Europe du Nord",
       "Northern Europe",
       "eu",
-      629,
-      218,
-      "592,195 611,168 656,177 683,199 675,239 632,250 591,232",
       "britain scandinavia ukraine westeu southeu",
     ],
     [
@@ -196,9 +140,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Europe occidentale",
       "Western Europe",
       "eu",
-      566,
-      288,
-      "591,232 632,250 609,290 583,326 532,326 528,291 540,247",
       "britain northeu southeu northafrica",
     ],
     [
@@ -206,9 +147,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Europe du Sud",
       "Southern Europe",
       "eu",
-      667,
-      284,
-      "632,250 675,239 683,199 713,244 708,296 673,326 645,303 609,290",
       "westeu northeu ukraine middleeast egypt northafrica",
     ],
     [
@@ -216,9 +154,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Afrique du Nord",
       "North Africa",
       "af",
-      571,
-      391,
-      "532,326 583,326 609,345 637,391 624,439 568,454 518,421 498,371",
       "brazil westeu southeu egypt eastafrica congo",
     ],
     [
@@ -226,9 +161,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Égypte",
       "Egypt",
       "af",
-      672,
-      363,
-      "609,345 645,328 695,333 715,381 685,403 637,391",
       "southeu northafrica eastafrica middleeast",
     ],
     [
@@ -236,9 +168,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Afrique de l’Est",
       "East Africa",
       "af",
-      701,
-      441,
-      "637,391 685,403 715,381 741,410 745,453 709,496 665,475 648,444 624,439",
       "egypt northafrica congo southafrica madagascar middleeast",
     ],
     [
@@ -246,9 +175,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Congo",
       "Congo",
       "af",
-      621,
-      477,
-      "568,454 624,439 648,444 665,475 652,518 601,525 581,491",
       "northafrica eastafrica southafrica",
     ],
     [
@@ -256,9 +182,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Afrique du Sud",
       "South Africa",
       "af",
-      659,
-      561,
-      "601,525 652,518 665,475 709,496 707,546 669,599 633,591",
       "congo eastafrica madagascar",
     ],
     [
@@ -266,9 +189,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Madagascar",
       "Madagascar",
       "af",
-      756,
-      558,
-      "756,520 775,509 787,541 769,594 749,604 742,574",
       "eastafrica southafrica",
     ],
     [
@@ -276,9 +196,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Oural",
       "Ural",
       "as",
-      824,
-      153,
-      "751,78 805,55 851,81 865,154 839,211 795,219 787,139",
       "ukraine afghanistan china siberia",
     ],
     [
@@ -286,9 +203,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Sibérie",
       "Siberia",
       "as",
-      904,
-      114,
-      "805,55 887,36 934,61 951,119 940,176 865,154 851,81",
       "ural china mongolia irkutsk yakutsk",
     ],
     [
@@ -296,9 +210,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Iakoutie",
       "Yakutsk",
       "as",
-      1014,
-      83,
-      "887,36 1031,28 1080,65 1054,121 995,132 951,119 934,61",
       "siberia irkutsk kamchatka",
     ],
     [
@@ -306,9 +217,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Kamtchatka",
       "Kamchatka",
       "as",
-      1125,
-      127,
-      "1031,28 1147,48 1184,105 1162,158 1139,198 1086,181 1054,121 1080,65",
       "yakutsk irkutsk mongolia japan alaska",
     ],
     [
@@ -316,9 +224,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Irkoutsk",
       "Irkutsk",
       "as",
-      998,
-      176,
-      "951,119 995,132 1054,121 1086,181 1054,218 992,220 940,176",
       "siberia yakutsk kamchatka mongolia",
     ],
     [
@@ -326,9 +231,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Mongolie",
       "Mongolia",
       "as",
-      1001,
-      250,
-      "940,176 992,220 1054,218 1086,181 1090,258 1052,281 981,292 933,255",
       "siberia irkutsk kamchatka japan china",
     ],
     [
@@ -336,9 +238,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Japon",
       "Japan",
       "as",
-      1142,
-      279,
-      "1154,215 1171,234 1163,282 1128,326 1113,316 1130,278",
       "kamchatka mongolia",
     ],
     [
@@ -346,9 +245,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Afghanistan",
       "Afghanistan",
       "as",
-      810,
-      264,
-      "795,219 839,211 878,246 867,302 825,318 762,295 762,258",
       "ukraine ural china india middleeast",
     ],
     [
@@ -356,9 +252,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Chine",
       "China",
       "as",
-      943,
-      313,
-      "865,154 940,176 933,255 981,292 1052,281 1065,335 1021,365 960,367 908,349 867,302 878,246 839,211",
       "ural siberia mongolia siam india afghanistan",
     ],
     [
@@ -366,9 +259,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Moyen-Orient",
       "Middle East",
       "as",
-      760,
-      352,
-      "713,244 762,258 762,295 825,318 812,366 839,401 801,427 757,398 715,381 695,333 708,296",
       "ukraine afghanistan india eastafrica egypt southeu",
     ],
     [
@@ -376,9 +266,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Inde",
       "India",
       "as",
-      884,
-      386,
-      "825,318 867,302 908,349 925,396 891,453 873,460 848,399 812,366",
       "middleeast afghanistan china siam",
     ],
     [
@@ -386,9 +273,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Siam",
       "Siam",
       "as",
-      982,
-      406,
-      "908,349 960,367 1021,365 1039,405 1024,443 1043,467 1026,482 998,447 971,433 925,396",
       "india china indonesia",
     ],
     [
@@ -396,9 +280,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Indonésie",
       "Indonesia",
       "oc",
-      993,
-      503,
-      "945,472 976,473 1000,493 1035,494 1060,523 1039,538 1004,520 969,520 942,503",
       "siam newguinea westaus",
     ],
     [
@@ -406,9 +287,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Nouvelle-Guinée",
       "New Guinea",
       "oc",
-      1117,
-      477,
-      "1065,454 1111,450 1163,472 1180,500 1151,515 1103,493 1076,492",
       "indonesia westaus eastaus",
     ],
     [
@@ -416,9 +294,6 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Australie occidentale",
       "Western Australia",
       "oc",
-      1049,
-      582,
-      "1040,547 1084,534 1097,578 1091,627 1024,638 989,613 997,574",
       "indonesia newguinea eastaus",
     ],
     [
@@ -426,24 +301,16 @@ const rows: [string, string, string, string, number, number, string, string][] =
       "Australie orientale",
       "Eastern Australia",
       "oc",
-      1136,
-      579,
-      "1084,534 1122,524 1157,548 1175,596 1142,634 1091,627 1097,578",
       "westaus newguinea",
     ],
   ];
-export const WORLD: Territory[] = rows.map(
-  ([id, fr, en, continent, x, y, points, n]) => ({
-    id,
-    fr,
-    en,
-    continent,
-    x,
-    y,
-    points,
-    neighbors: n.split(" "),
-  }),
-);
+export const WORLD: Territory[] = rows.map(([id, fr, en, continent, n]) => ({
+  id,
+  fr,
+  en,
+  continent,
+  neighbors: n.split(" "),
+}));
 export const BY_ID = Object.fromEntries(WORLD.map((t) => [t.id, t]));
 export const CONTINENTS = [
   {
@@ -451,26 +318,26 @@ export const CONTINENTS = [
     fr: "Amérique du Nord",
     en: "North America",
     bonus: 5,
-    color: "#e8b19d",
+    color: "#f0a07a",
   },
   {
     id: "sa",
     fr: "Amérique du Sud",
     en: "South America",
     bonus: 2,
-    color: "#dabd7d",
+    color: "#f0cd5e",
   },
-  { id: "eu", fr: "Europe", en: "Europe", bonus: 5, color: "#b4a6d0" },
-  { id: "af", fr: "Afrique", en: "Africa", bonus: 3, color: "#a6c5a7" },
-  { id: "as", fr: "Asie", en: "Asia", bonus: 7, color: "#a3bdcc" },
+  { id: "eu", fr: "Europe", en: "Europe", bonus: 5, color: "#a99be6" },
+  { id: "af", fr: "Afrique", en: "Africa", bonus: 3, color: "#97cc76" },
+  { id: "as", fr: "Asie", en: "Asia", bonus: 7, color: "#ef9cc0" },
   { id: "oc", fr: "Océanie", en: "Oceania", bonus: 2, color: "#e3a8b4" },
 ];
+// Player colours, same hue order as before: red, green, purple, yellow, blue, pink.
 export const COLORS = [
-  "#d9947c",
-  "#9bbba6",
-  "#b6a3cc",
-  "#e2bc70",
-  "#88b5c8",
-  "#dba2b4",
+  "#d9413a",
+  "#36a159",
+  "#8c55d6",
+  "#e8b21f",
+  "#2f6fd6",
+  "#e0559a",
 ];
-export const EMBLEMS = ["✳", "◆", "✦", "☀", "◈", "❋"];
