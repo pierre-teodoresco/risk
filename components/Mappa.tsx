@@ -40,7 +40,7 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import Board from "./Board";
 import GameAnnouncements from "./GameAnnouncements";
-import VictoryConfetti from "./VictoryConfetti";
+import VictoryCelebration from "./VictoryCelebration";
 import DefeatAnimation from "./DefeatAnimation";
 import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
 import {
@@ -131,7 +131,8 @@ export default function Mappa() {
     requestRunning = useRef(false);
   const t = texts(lang);
   const me = game?.players.find((p) => p.id === game.me),
-    active = game?.players.find((p) => p.id === game.active);
+    active = game?.players.find((p) => p.id === game.active),
+    winner = game?.players.find((p) => p.id === game.winner);
   const isHost = game?.host === game?.me,
     turn = game?.active === game?.me && !me?.eliminated;
   const phase = game?.phase;
@@ -1135,19 +1136,12 @@ export default function Mappa() {
                   <span
                     className="victory-emblem"
                     style={{
-                      background:
-                        COLORS[
-                          game.players.find((p) => p.id === game.winner)
-                            ?.color ?? 0
-                        ],
+                      background: COLORS[winner?.color ?? 0],
                     }}
                   >
                     <Crown size={40} />
                   </span>
-                  <h2>
-                    {game.players.find((p) => p.id === game.winner)?.name ??
-                      "Mappa"}
-                  </h2>
+                  <h2>{winner?.name ?? "Mappa"}</h2>
                   <p>{t.victoryText}</p>
                   <button className="primary full" onClick={home}>
                     {t.newGame}
@@ -1742,15 +1736,15 @@ export default function Mappa() {
           )}
         </main>
       )}
-      {game && me?.eliminated && game.winner !== me.id && (
-        <DefeatAnimation
-          key={`${game.code}:${me.id}`}
-          lang={lang}
-          finished={game.phase === "finished"}
-        />
+      {game && me?.eliminated && game.phase !== "finished" && (
+        <DefeatAnimation key={`${game.code}:${me.id}`} lang={lang} />
       )}
-      {game?.phase === "finished" && game.winner === game.me && (
-        <VictoryConfetti key={`${game.code}:${game.winner}`} />
+      {game?.phase === "finished" && winner && (
+        <VictoryCelebration
+          key={`${game.code}:${winner.id}`}
+          winner={winner}
+          lang={lang}
+        />
       )}
       {game && (
         <GameAnnouncements

@@ -4,13 +4,7 @@ import { ShieldOff } from "lucide-react";
 import type { Lang } from "@/lib/world";
 import { texts } from "@/lib/i18n";
 
-export default function DefeatAnimation({
-  lang,
-  finished,
-}: {
-  lang: Lang;
-  finished: boolean;
-}) {
+export default function DefeatAnimation({ lang }: { lang: Lang }) {
   const [visible, setVisible] = useState(true);
   useEffect(() => {
     const timeout = setTimeout(() => setVisible(false), 4200);
@@ -31,7 +25,7 @@ export default function DefeatAnimation({
           <span className="defeat-fragment fragment-right" />
         </span>
         <h2>{t.defeatTitle}</h2>
-        <p>{finished ? t.defeatFinished : t.defeatSpectator}</p>
+        <p>{t.defeatSpectator}</p>
       </div>
     </div>
   );
