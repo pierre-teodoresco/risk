@@ -1,5 +1,11 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -89,9 +95,12 @@ export default function Mappa() {
     [copied, setCopied] = useState(false),
     [selected, setSelected] = useState(""),
     [target, setTarget] = useState(""),
-    [amount, setAmount] = useState(1),
+    // A fresh choice uses the current legal maximum; explicit values survive polling.
+    [amount, setAmount] = useState<number | null>(null),
     [cards, setCards] = useState<string[]>([]),
     [showCards, setShowCards] = useState(false),
+    [focusedCardTerritory, setFocusedCardTerritory] = useState(""),
+    [highlightAllCards, setHighlightAllCards] = useState(false),
     [chat, setChat] = useState(false),
     [chatTab, setChatTab] = useState<"chat" | "journal">("chat"),
     [recipient, setRecipient] = useState(""),
@@ -106,6 +115,7 @@ export default function Mappa() {
     busyRef = useRef(false),
     audioRef = useRef(true),
     chatEnd = useRef<HTMLDivElement>(null),
+    mapColumn = useRef<HTMLDivElement>(null),
     requestRunning = useRef(false);
   const t = texts(lang);
   const me = game?.players.find((p) => p.id === game.me),
@@ -113,6 +123,8 @@ export default function Mappa() {
   const isHost = game?.host === game?.me,
     turn = game?.active === game?.me && !me?.eliminated;
   const phase = game?.phase;
+  const hasActiveTurn =
+    !!phase && phase !== "lobby" && phase !== "setup" && phase !== "finished";
   const canAct =
     !!game && !game.paused && !me?.eliminated && (turn || phase === "setup");
   const accept = useCallback((next: PublicGame) => {
@@ -237,15 +249,20 @@ export default function Mappa() {
     setSelected("");
     setTarget("");
     setCards([]);
-    setAmount(1);
+    setAmount(null);
   }, [phase, game?.active]);
   useEffect(() => {
     if (game?.pending) {
-      setAmount(game.pending.min);
+      setAmount(null);
       setSelected(game.pending.from);
       setTarget(game.pending.to);
     }
-  }, [game?.pending?.from, game?.pending?.to, game?.pending?.min]);
+  }, [
+    game?.pending?.from,
+    game?.pending?.to,
+    game?.pending?.min,
+    game?.pending?.max,
+  ]);
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [game?.messages.length, chat, recipient]);
@@ -361,13 +378,13 @@ export default function Mappa() {
       if (["next", "fortify", "move", "attack"].includes(action.type)) {
         setSelected("");
         setTarget("");
-        setAmount(1);
+        setAmount(null);
         if (d.game.pending) {
           setSelected(d.game.pending.from);
           setTarget(d.game.pending.to);
-          setAmount(d.game.pending.min);
         }
       }
+      if (action.type === "deploy" || action.type === "trade") setAmount(null);
       if (action.type === "trade") setCards([]);
       if (action.type === "leave") {
         localStorage.removeItem(sessionKey(g.code));
@@ -389,6 +406,8 @@ export default function Mappa() {
     setError("");
     setRoom("");
     setChat(false);
+    setFocusedCardTerritory("");
+    setHighlightAllCards(false);
     history.pushState(null, "", "/");
   }
   function selectLand(id: string) {
@@ -397,17 +416,16 @@ export default function Mappa() {
       setSelected(id);
       return;
     }
+    setAmount(null);
     const own = game.lands[id].owner === game.me;
     if (phase === "setup" || phase === "reinforce" || me!.reserve > 0) {
       setSelected(id);
       setTarget("");
-      setAmount(1);
       return;
     }
     if (!selected || game.lands[selected]?.owner !== game.me) {
       setSelected(id);
       setTarget("");
-      setAmount(1);
     } else if (selected === id) {
       setSelected("");
       setTarget("");
@@ -450,7 +468,12 @@ export default function Mappa() {
       ? (me?.reserve ?? 1)
       : Math.max(1, (land?.troops ?? 1) - 1);
   const min = game?.pending?.min ?? 1;
-  const actualAmount = Math.max(min, Math.min(amount, max));
+  const actualAmount = Math.max(min, Math.min(amount ?? max, max));
+  const cardTerritories =
+    me?.cards.flatMap((c) => (c.territory ? [c.territory] : [])) ?? [];
+  const highlightedCardTerritories = highlightAllCards
+    ? cardTerritories
+    : cardTerritories.filter((id) => id === focusedCardTerritory);
   const selectedCards = me?.cards.filter((c) => cards.includes(c.id)) ?? [];
   const validCards = validSet(selectedCards);
   const canAttack =
@@ -819,13 +842,29 @@ export default function Mappa() {
                   </div>
                 ))}
               </div>
-              <div className="turn-label">
+              <div
+                className={"turn-label " + (turn ? "my-turn" : "")}
+                role="status"
+                style={
+                  {
+                    "--player-color": active ? COLORS[active.color] : undefined,
+                  } as CSSProperties
+                }
+              >
                 <span
                   className="dot"
                   style={{ background: active ? COLORS[active.color] : "" }}
                 />
-                {active?.name}
-                {turn && <span className="muted">({t.you})</span>}
+                <span className="turn-status">
+                  {game.paused
+                    ? t.paused
+                    : phase === "setup"
+                      ? t.simultaneousSetup
+                      : turn
+                        ? t.yourTurn
+                        : t.activePlayer}
+                </span>
+                {phase !== "setup" && <strong>{active?.name}</strong>}
                 {remaining !== null && (
                   <span className={"timer " + (remaining < 30 ? "urgent" : "")}>
                     <Clock size={13} />
@@ -837,16 +876,28 @@ export default function Mappa() {
             </div>
           )}
           <div className="play-layout">
-            <div className="play-map-column">
+            <div className="play-map-column" ref={mapColumn}>
               <Board
                 game={game}
                 lang={lang}
                 selected={selected}
                 target={target}
                 onSelect={phase === "lobby" ? undefined : selectLand}
+                cardTerritories={cardTerritories}
+                highlightedCardTerritories={highlightedCardTerritories}
+                highlightAllCards={highlightAllCards}
+                onToggleCards={() => {
+                  setHighlightAllCards(!highlightAllCards);
+                  setFocusedCardTerritory("");
+                }}
+                onClearCardHighlight={() => {
+                  setFocusedCardTerritory("");
+                  setHighlightAllCards(false);
+                }}
               />
               <div className="empire-strip">
                 {game.players.map((p) => {
+                  const isPlaying = hasActiveTurn && p.id === game.active;
                   const territoryCount = Object.values(game.lands).filter(
                     (l) => l.owner === p.id,
                   ).length;
@@ -856,9 +907,13 @@ export default function Mappa() {
                   return (
                     <div
                       key={p.id}
+                      aria-current={isPlaying ? "true" : undefined}
+                      style={
+                        { "--player-color": COLORS[p.color] } as CSSProperties
+                      }
                       className={
                         "empire " +
-                        (p.id === game.active ? "active" : "") +
+                        (isPlaying ? "active" : "") +
                         (p.eliminated ? " out" : "")
                       }
                     >
@@ -873,6 +928,11 @@ export default function Mappa() {
                           {p.name}
                           {p.id === game.me && <small> · {t.you}</small>}
                         </b>
+                        {isPlaying && (
+                          <span className="empire-playing">
+                            {game.paused ? t.pauseLabel : t.playingNow}
+                          </span>
+                        )}
                         <span>
                           {phase === "lobby"
                             ? p.ready
@@ -903,7 +963,14 @@ export default function Mappa() {
                 </button>
               </div>
             </div>
-            <aside className="game-panel">
+            <aside
+              className={
+                "game-panel " +
+                (canAct && phase !== "lobby" && phase !== "finished"
+                  ? "can-play"
+                  : "")
+              }
+            >
               {phase === "lobby" ? (
                 <>
                   <div className="panel-label">
@@ -1348,6 +1415,8 @@ export default function Mappa() {
                   )}
                   <button
                     className="cards-toggle"
+                    aria-expanded={showCards}
+                    aria-controls="player-cards"
                     onClick={() => setShowCards(!showCards)}
                   >
                     <span>
@@ -1361,7 +1430,8 @@ export default function Mappa() {
                     />
                   </button>
                   {showCards && (
-                    <div className="cards-panel">
+                    <div className="cards-panel" id="player-cards">
+                      <p>{t.cardMapHint}</p>
                       <p>{t.tradeHint}</p>
                       <div className="hand">
                         {me?.cards.map((c) => (
@@ -1372,15 +1442,24 @@ export default function Mappa() {
                               (cards.includes(c.id) ? "chosen" : "")
                             }
                             aria-pressed={cards.includes(c.id)}
-                            onClick={() =>
+                            onClick={() => {
+                              setFocusedCardTerritory(c.territory ?? "");
+                              setHighlightAllCards(false);
+                              if (
+                                c.territory &&
+                                window.matchMedia("(max-width: 950px)").matches
+                              )
+                                mapColumn.current?.scrollIntoView({
+                                  block: "start",
+                                });
                               setCards((prev) =>
                                 prev.includes(c.id)
                                   ? prev.filter((id) => id !== c.id)
                                   : prev.length < 3
                                     ? [...prev, c.id]
                                     : prev,
-                              )
-                            }
+                              );
+                            }}
                           >
                             <span>{["♟", "♞", "♜", "✦"][c.symbol]}</span>
                             <small>

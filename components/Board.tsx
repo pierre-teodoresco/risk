@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { Minus, Plus, LocateFixed } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Minus, Plus, LocateFixed, Globe2, Layers, X } from "lucide-react";
 import {
   WORLD,
   BY_ID,
@@ -18,6 +18,11 @@ export default function Board({
   target,
   onSelect,
   decorative = false,
+  cardTerritories = [],
+  highlightedCardTerritories = [],
+  highlightAllCards = false,
+  onToggleCards,
+  onClearCardHighlight,
 }: {
   game?: PublicGame;
   lang: Lang;
@@ -25,6 +30,11 @@ export default function Board({
   target?: string;
   onSelect?: (id: string) => void;
   decorative?: boolean;
+  cardTerritories?: string[];
+  highlightedCardTerritories?: string[];
+  highlightAllCards?: boolean;
+  onToggleCards?: () => void;
+  onClearCardHighlight?: () => void;
 }) {
   const [zoom, setZoom] = useState(1),
     [pan, setPan] = useState({ x: 0, y: 0 }),
@@ -34,13 +44,29 @@ export default function Board({
       px: number;
       py: number;
     } | null>(null),
-    [hover, setHover] = useState("");
+    [hover, setHover] = useState(""),
+    [showContinents, setShowContinents] = useState(false),
+    [focusedContinent, setFocusedContinent] = useState("");
+  const highlightKey = highlightedCardTerritories.join(",");
+  useEffect(() => {
+    if (highlightKey) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+  }, [highlightKey]);
   const t = texts(lang);
   const canAct =
     game && !game.paused && (game.active === game.me || game.phase === "setup");
   const neighbors = selected ? BY_ID[selected].neighbors : [];
-  const label = hover || target || selected;
+  const label =
+    hover ||
+    (highlightedCardTerritories.length === 1
+      ? highlightedCardTerritories[0]
+      : "") ||
+    target ||
+    selected;
   const territory = label ? BY_ID[label] : undefined;
+  const continent = CONTINENTS.find((c) => c.id === territory?.continent);
   const land = label ? game?.lands[label] : undefined;
   const owner = game?.players.find((p) => p.id === land?.owner);
   return (
@@ -54,6 +80,66 @@ export default function Board({
           42 {t.territories} <span>·</span> 6 {t.continents}
         </span>
       </div>
+      {!decorative && (
+        <div className="map-tools" role="group" aria-label={t.mapName}>
+          <button
+            className={showContinents ? "enabled" : ""}
+            aria-pressed={showContinents}
+            aria-expanded={showContinents}
+            aria-controls="continent-legend"
+            onClick={() => {
+              setShowContinents(!showContinents);
+              setFocusedContinent("");
+            }}
+          >
+            <Globe2 size={15} /> {t.continentView}
+          </button>
+          {cardTerritories.length > 0 && onToggleCards && (
+            <button
+              className={highlightAllCards ? "enabled" : ""}
+              aria-pressed={highlightAllCards}
+              onClick={onToggleCards}
+            >
+              <Layers size={15} /> {t.cardTerritories}
+              <span>{cardTerritories.length}</span>
+            </button>
+          )}
+          {highlightedCardTerritories.length > 0 && onClearCardHighlight && (
+            <button onClick={onClearCardHighlight}>
+              <X size={14} /> {t.clearCardHighlight}
+            </button>
+          )}
+        </div>
+      )}
+      {showContinents && (
+        <div className="continent-legend" id="continent-legend">
+          <div
+            className="continent-options"
+            role="group"
+            aria-label={t.continents}
+          >
+            <button
+              aria-pressed={!focusedContinent}
+              onClick={() => setFocusedContinent("")}
+            >
+              {t.continentFilter}
+            </button>
+            {CONTINENTS.map((c) => (
+              <button
+                key={c.id}
+                aria-pressed={focusedContinent === c.id}
+                onClick={() =>
+                  setFocusedContinent(focusedContinent === c.id ? "" : c.id)
+                }
+              >
+                <span className="dot" style={{ background: c.color }} />
+                {c[lang]} <strong>+{c.bonus}</strong>
+              </button>
+            ))}
+          </div>
+          <p>{t.continentBonusHint}</p>
+        </div>
+      )}
       <svg
         className="world-map"
         viewBox="0 0 1220 680"
@@ -121,12 +207,19 @@ export default function Board({
           {WORLD.map((ter, i) => {
             const l = game?.lands[ter.id],
               pl = game?.players.find((p) => p.id === l?.owner);
+            const continent = CONTINENTS.find((c) => c.id === ter.continent)!;
+            const cardHighlighted = highlightedCardTerritories.includes(ter.id);
+            const dimmed =
+              (showContinents &&
+                focusedContinent &&
+                focusedContinent !== ter.continent) ||
+              (highlightedCardTerritories.length > 0 && !cardHighlighted);
             const fill =
-              game && Object.keys(game.lands).length
+              !showContinents && game && Object.keys(game.lands).length
                 ? pl
                   ? COLORS[pl.color]
                   : "#c6cbc7"
-                : CONTINENTS.find((c) => c.id === ter.continent)!.color;
+                : continent.color;
             const sel = selected === ter.id,
               tar = target === ter.id,
               legal =
@@ -143,12 +236,15 @@ export default function Board({
                   "territory " +
                   (sel ? "selected " : "") +
                   (tar ? "target " : "") +
-                  (legal ? "legal" : "")
+                  (legal ? "legal " : "") +
+                  (cardHighlighted ? "card-highlighted " : "") +
+                  (dimmed ? "dimmed " : "")
                 }
                 data-testid={"territory-" + ter.id}
                 role={onSelect ? "button" : undefined}
                 tabIndex={onSelect ? 0 : undefined}
-                aria-label={`${ter[lang]}${l ? `, ${pl?.name ?? t.neutral}, ${troops} ${t.armies}` : ""}`}
+                aria-label={`${ter[lang]}, ${continent[lang]}, ${t.bonus} +${continent.bonus}${l ? `, ${pl?.name ?? t.neutral}, ${troops} ${t.armies}` : ""}`}
+                data-continent={ter.continent}
                 aria-pressed={sel || tar}
                 onClick={() => onSelect?.(ter.id)}
                 onKeyDown={(e) => {
@@ -173,8 +269,8 @@ export default function Board({
                   points={ter.points}
                   fill="none"
                   stroke={sel || tar ? "#30493e" : "#597369"}
-                  strokeWidth={sel || tar ? 3 : 1}
-                  strokeOpacity={sel || tar ? 1 : 0.32}
+                  strokeWidth={sel || tar ? 3 : showContinents ? 2 : 1}
+                  strokeOpacity={sel || tar || showContinents ? 1 : 0.32}
                   strokeLinejoin="round"
                 />
                 {legal && (
@@ -186,6 +282,18 @@ export default function Board({
                     strokeDasharray="3 4"
                   />
                 )}
+                {cardHighlighted && (
+                  <polygon
+                    className="card-territory-outline"
+                    points={ter.points}
+                    fill="none"
+                    stroke="#80500b"
+                    strokeWidth="5"
+                    strokeDasharray="9 4"
+                    strokeLinejoin="round"
+                    pointerEvents="none"
+                  />
+                )}
                 {troops > 0 && (
                   <g
                     className="troop-token"
@@ -194,8 +302,14 @@ export default function Board({
                     <circle
                       r="14"
                       fill="#faf9f1"
-                      stroke={sel || tar ? "#2b493a" : "#ffffff"}
-                      strokeWidth="2"
+                      stroke={
+                        sel || tar
+                          ? "#2b493a"
+                          : pl
+                            ? COLORS[pl.color]
+                            : "#ffffff"
+                      }
+                      strokeWidth={showContinents ? 5 : 2}
                     />
                     <text
                       textAnchor="middle"
@@ -276,6 +390,11 @@ export default function Board({
               />
               {territory[lang]}{" "}
               {owner && <span className="muted">· {owner.name}</span>}
+              {continent && (
+                <span className="territory-bonus">
+                  {continent[lang]} · +{continent.bonus}
+                </span>
+              )}
             </>
           ) : (
             <>

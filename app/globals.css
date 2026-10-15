@@ -719,6 +719,10 @@ footer button {
   gap: 24px;
   align-items: start;
 }
+.play-map-column,
+.game-panel {
+  min-width: 0;
+}
 .game-panel {
   background: var(--cream);
   border: 1px solid var(--line);
@@ -891,6 +895,10 @@ footer button {
 .empire:last-child {
   border-right: 0;
 }
+.empire.active {
+  background: color-mix(in srgb, var(--player-color) 22%, #fffdf5);
+  box-shadow: inset 0 0 0 2px var(--player-color);
+}
 .empire.active:after {
   content: "";
   position: absolute;
@@ -898,7 +906,12 @@ footer button {
   left: 10px;
   right: 10px;
   height: 2px;
-  background: #728c60;
+  background: var(--player-color);
+}
+.empire > div > .empire-playing {
+  font-weight: 750;
+  color: #344c40;
+  font-size: 9px;
 }
 .empire.out {
   opacity: 0.45;
@@ -967,6 +980,7 @@ footer button {
   padding: 12px 1px;
   margin: 0 0 22px;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .phase-steps {
   display: flex;
@@ -1003,8 +1017,30 @@ footer button {
 .turn-label {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 10px;
+  gap: 8px;
+  font-size: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--player-color, var(--line));
+  border-left: 5px solid var(--player-color, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--player-color, #dce4d2) 18%, #fffdf5);
+  max-width: 100%;
+}
+.turn-label strong {
+  overflow-wrap: anywhere;
+}
+.turn-status {
+  font-weight: 650;
+}
+.turn-label.my-turn .turn-status {
+  color: #fffdf5;
+  background: #34513e;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+.game-panel.can-play {
+  border-top: 4px solid #52734b;
 }
 .timer {
   display: flex;
@@ -1263,9 +1299,10 @@ footer button {
 }
 .risk-card > small {
   display: block;
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.4;
   margin-top: 6px;
+  overflow-wrap: anywhere;
 }
 .mandatory {
   font-size: 10px;
@@ -1286,6 +1323,8 @@ footer button {
   text-decoration: underline;
 }
 .host-controls {
+  display: grid;
+  gap: 8px;
   margin-top: 10px;
 }
 .host-controls button {
@@ -1684,6 +1723,110 @@ footer button {
     transform: rotate(360deg);
   }
 }
+
+.map-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #cbd8cd88;
+  position: relative;
+  z-index: 1;
+}
+.map-tools button,
+.continent-options button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #bdcdbd;
+  border-radius: 5px;
+  background: #fafbf2;
+  color: #425e49;
+  font-size: 11px;
+}
+.map-tools button.enabled,
+.continent-options button[aria-pressed="true"] {
+  background: #dbe7d3;
+  border-color: #52734b;
+  box-shadow: inset 0 0 0 1px #52734b;
+}
+.map-tools button:hover,
+.continent-options button:hover {
+  background: #e5ecdc;
+}
+.map-tools button:focus-visible,
+.continent-options button:focus-visible,
+.risk-card:focus-visible {
+  outline: 2px solid #34513e;
+  outline-offset: 3px;
+}
+.map-tools button > span {
+  font-weight: 700;
+}
+.continent-legend {
+  padding: 12px 16px;
+  background: #f6f8ec;
+  border-bottom: 1px solid #cbd8cd88;
+}
+.continent-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.continent-options strong {
+  color: #344c40;
+}
+.continent-legend p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #62715e;
+  margin-top: 9px;
+}
+.territory.dimmed {
+  opacity: 0.27;
+}
+.territory.card-highlighted .troop-token circle {
+  stroke: #80500b;
+  stroke-width: 4;
+}
+.territory-bonus {
+  font-size: 10px;
+  font-weight: 650;
+  color: #425e49;
+}
+.board-bottom {
+  height: auto;
+  min-height: 46px;
+  gap: 10px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.map-tip {
+  flex-wrap: wrap;
+}
+.zoom-controls {
+  flex-shrink: 0;
+}
+.empire {
+  flex-basis: 165px;
+}
+.empire > div > span {
+  white-space: normal;
+}
+@media (min-width: 951px) {
+  .game-panel {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+  }
+}
 @media (min-width: 1500px) {
   .hero-heading {
     padding-top: 48px;
@@ -1716,8 +1859,22 @@ footer button {
   .home-page {
     padding: 0 4%;
   }
+  .room-page {
+    max-width: 2200px;
+    padding: 0 clamp(28px, 3vw, 72px);
+  }
   .play-layout {
-    grid-template-columns: minmax(0, 1fr) 318px;
+    grid-template-columns: minmax(0, 1fr) clamp(330px, 23vw, 400px);
+  }
+  .room-page .world-map {
+    max-height: max(400px, calc(100dvh - 360px));
+  }
+  .game-panel {
+    padding: 26px;
+  }
+  .empire b,
+  .empire > div > span {
+    font-size: 11px;
   }
 }
 @media (max-width: 1150px) {
