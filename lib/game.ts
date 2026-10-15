@@ -23,8 +23,12 @@ export type Message = {
   text: string;
   at: number;
 };
+export type Proposal = { from: string; to: string; at: number };
 export type Game = {
   requests?: Record<string, string[]>;
+  // Diplomacy. Optional so games saved before alliances existed still load.
+  alliances?: [string, string][];
+  proposals?: Proposal[];
   channel: string;
   code: string;
   revision: number;
@@ -221,6 +225,16 @@ function trade(g: Game, p: Player, ids: string[]) {
   log(g, "trade", p.name, String(value));
   if (bonus?.territory) log(g, "deployed", p.name, bonus.territory, "2");
   if (g.forcedTrade && p.cards.length <= 4) g.forcedTrade = false;
+}
+export function allied(g: Pick<Game, "alliances">, a: string, b: string) {
+  return !!g.alliances?.some(
+    ([x, y]) => (x === a && y === b) || (x === b && y === a),
+  );
+}
+function dropDiplomacy(g: Game, id: string) {
+  if (g.alliances) g.alliances = g.alliances.filter((pair) => !pair.includes(id));
+  if (g.proposals)
+    g.proposals = g.proposals.filter((x) => x.from !== id && x.to !== id);
 }
 function checkVictory(g: Game, p: string) {
   if (WORLD.every((t) => g.lands[t.id].owner === p)) {
@@ -477,6 +491,7 @@ export function applyAction(
     target.cards = [];
     target.reserve = 0;
     target.eliminated = true;
+    dropDiplomacy(g, target.id);
     log(g, "left", target.name);
     if (
       g.pending &&
@@ -518,6 +533,57 @@ export function applyAction(
     if (g.paused && target.id === input.active) {
       g.pausedRemaining = g.timer ? g.timer * 60000 : null;
       g.deadline = null;
+    }
+    return g;
+  }
+  if (
+    type === "ally" ||
+    type === "allyAnswer" ||
+    type === "allyCancel" ||
+    type === "allyBreak"
+  ) {
+    // The receiver of a proposal decides; anyone in a pact can end it.
+    if (g.phase === "lobby" || g.phase === "finished") fail("invalidPhase");
+    if (p.eliminated) fail("eliminated");
+    const other =
+      g.players.find(
+        (x) => x.id === action.player && x.id !== actor && !x.eliminated,
+      ) ?? fail("invalidRecipient");
+    g.alliances ??= [];
+    g.proposals ??= [];
+    const fromOther = g.proposals.findIndex(
+      (x) => x.from === other.id && x.to === actor,
+    );
+    const mine = g.proposals.findIndex(
+      (x) => x.from === actor && x.to === other.id,
+    );
+    const seal = () => {
+      g.proposals = g.proposals!.filter(
+        (x) =>
+          !(x.from === other.id && x.to === actor) &&
+          !(x.from === actor && x.to === other.id),
+      );
+      g.alliances!.push([actor, other.id]);
+      log(g, "allied", p.name, other.name);
+    };
+    if (type === "ally") {
+      if (allied(g, actor, other.id)) fail("alreadyAllied");
+      if (fromOther >= 0) seal();
+      else if (mine < 0) g.proposals.push({ from: actor, to: other.id, at: now });
+    } else if (type === "allyAnswer") {
+      if (fromOther < 0) fail("noProposal");
+      if (action.accept === true) seal();
+      else g.proposals.splice(fromOther, 1);
+    } else if (type === "allyCancel") {
+      if (mine < 0) fail("noProposal");
+      g.proposals.splice(mine, 1);
+    } else {
+      if (!allied(g, actor, other.id)) fail("notAllied");
+      g.alliances = g.alliances.filter(
+        ([x, y]) =>
+          !((x === actor && y === other.id) || (x === other.id && y === actor)),
+      );
+      log(g, "allyBroken", p.name, other.name);
     }
     return g;
   }
@@ -593,6 +659,7 @@ export function applyAction(
       d = g.lands[to];
     if (a.owner !== actor) fail("notOwned");
     if (d.owner === actor) fail("ownTarget");
+    if (d.owner && allied(g, actor, d.owner)) fail("allied");
     if (!BY_ID[from].neighbors.includes(to)) fail("notAdjacent");
     if (a.troops < 2) fail("notEnoughTroops");
     let al = 0,
@@ -635,6 +702,7 @@ export function applyAction(
       if (previous && owned(g, previous).length === 0) {
         const dead = g.players.find((x) => x.id === previous)!;
         dead.eliminated = true;
+        dropDiplomacy(g, dead.id);
         p.cards.push(...dead.cards);
         dead.cards = [];
         g.forcedTrade = p.cards.length >= 6;
@@ -701,11 +769,21 @@ export function publicGame(g: Game, actor: string) {
     messages: g.messages.filter(
       (m) => m.to === null || m.from === actor || m.to === actor,
     ),
+    alliances: g.alliances ?? [],
+    // Pending proposals are only visible to the two players involved.
+    proposals: (g.proposals ?? []).filter(
+      (x) => x.from === actor || x.to === actor,
+    ),
     me: actor,
     serverTime: Date.now(),
   };
 }
-export type PublicGame = Omit<Game, "deck" | "discard" | "players"> & {
+export type PublicGame = Omit<
+  Game,
+  "deck" | "discard" | "players" | "alliances" | "proposals"
+> & {
+  alliances: [string, string][];
+  proposals: Proposal[];
   players: (Omit<Player, "tokenHash"> & { cardCount: number })[];
   me: string;
   serverTime: number;

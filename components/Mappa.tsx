@@ -1,64 +1,41 @@
 "use client";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
+  ArrowDownUp,
+  BookOpen,
   Check,
-  ChevronRight,
   Clock,
   Copy,
-  Flag,
-  Globe2,
+  Crown,
   HelpCircle,
   LockKeyhole,
-  MessageCircle,
-  Pause,
-  Play,
+  LogOut,
   Send,
-  Shield,
-  ShieldOff,
-  Sparkles,
   Swords,
   Users,
   Volume2,
   VolumeX,
-  X,
-  LogOut,
-  Crown,
   Wifi,
-  BookOpen,
-  ArrowDownUp,
-  Layers,
-  Compass,
+  X,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
-import Board from "./Board";
-import GameAnnouncements from "./GameAnnouncements";
+import Crest from "./Crest";
+import GameScreen from "./GameScreen";
 import VictoryCelebration from "./VictoryCelebration";
 import DefeatAnimation from "./DefeatAnimation";
 import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
-import {
-  BY_ID,
-  WORLD,
-  CONTINENTS,
-  COLORS,
-  EMBLEMS,
-  type Lang,
-} from "@/lib/world";
-import {
-  connected,
-  validSet,
-  type PublicGame,
-  type Action,
-  type Log,
-} from "@/lib/game";
-import { texts, errorText, eventText, type TextKey } from "@/lib/i18n";
+import type { BoardOptions, Lands } from "./board/engine";
+import { COLORS, WORLD, type Lang } from "@/lib/world";
+import { type PublicGame, type Action } from "@/lib/game";
+import { texts, errorText } from "@/lib/i18n";
+
+const Board3D = dynamic(() => import("./Board3D"), {
+  ssr: false,
+  loading: () => <div className="board3d" />,
+});
 type TimedTroopChange = TroopChange & { expiresAt: number };
 type Preview = {
   code: string;
@@ -91,6 +68,15 @@ function sound(kind = "click") {
     o.onended = () => void ctx.close();
   } catch {}
 }
+// Decorative board for the home page and the lobby: continents in player colours.
+const DEMO_COLORS: Record<string, number> = { na: 0, sa: 3, eu: 4, af: 1, as: 2, oc: 5 };
+const DEMO_LANDS: Lands = Object.fromEntries(
+  WORLD.map((w, i) => [
+    w.id,
+    { color: DEMO_COLORS[w.continent], troops: 1 + ((i * 7 + 3) % 6) },
+  ]),
+);
+
 export default function Mappa() {
   const [lang, setLang] = useState<Lang>("fr"),
     [game, setGame] = useState<PublicGame | null>(null),
@@ -103,62 +89,36 @@ export default function Mappa() {
     [lost, setLost] = useState(false),
     [loading, setLoading] = useState(true),
     [rules, setRules] = useState(false),
-    [audio, setAudio] = useState(true),
+    [troopChanges, setTroopChanges] = useState<TimedTroopChange[]>([]),
+    [audio, setAudio] = useState(false),
     [copied, setCopied] = useState(false),
-    [selected, setSelected] = useState(""),
-    [target, setTarget] = useState(""),
-    // A fresh choice uses the current legal maximum; explicit values survive polling.
-    [amount, setAmount] = useState<number | null>(null),
-    [cards, setCards] = useState<string[]>([]),
-    [showCards, setShowCards] = useState(false),
-    [highlightAllCards, setHighlightAllCards] = useState(false),
-    [chat, setChat] = useState(false),
-    [chatTab, setChatTab] = useState<"chat" | "journal">("chat"),
-    [recipient, setRecipient] = useState(""),
     [draft, setDraft] = useState(""),
     [now, setNow] = useState(Date.now()),
     [confirm, setConfirm] = useState<{ type: string; player?: string } | null>(
       null,
     ),
-    [recent, setRecent] = useState(""),
-    [announcements, setAnnouncements] = useState<Log[]>([]),
-    [troopChanges, setTroopChanges] = useState<TimedTroopChange[]>([]);
+    [recent, setRecent] = useState("");
   const token = useRef(""),
     gameRef = useRef<PublicGame | null>(null),
     busyRef = useRef(false),
-    audioRef = useRef(true),
-    chatEnd = useRef<HTMLDivElement>(null),
+    audioRef = useRef(false),
     requestRunning = useRef(false);
   const t = texts(lang);
   const me = game?.players.find((p) => p.id === game.me),
-    active = game?.players.find((p) => p.id === game.active),
-    winner = game?.players.find((p) => p.id === game.winner);
-  const isHost = game?.host === game?.me,
-    turn = game?.active === game?.me && !me?.eliminated;
-  const phase = game?.phase;
-  const hasActiveTurn =
-    !!phase && phase !== "lobby" && phase !== "setup" && phase !== "finished";
-  const canAct =
-    !!game && !game.paused && !me?.eliminated && (turn || phase === "setup");
+    winner = game?.players.find((p) => p.id === game?.winner);
+  const isHost = game?.host === game?.me;
   const accept = useCallback((next: PublicGame) => {
     const old = gameRef.current;
     const sameSession = old?.code === next.code && old?.me === next.me;
     if (sameSession && next.revision < old.revision) return;
-    if (!sameSession) {
-      setAnnouncements([]);
-      setTroopChanges([]);
-    } else {
-      const feedback = gameFeedback(old, next);
-      if (feedback.events.length)
-        setAnnouncements((queue) => [...queue, ...feedback.events]);
-      if (feedback.troops.length) {
+    if (!sameSession) setTroopChanges([]);
+    else {
+      const { troops } = gameFeedback(old, next);
+      if (troops.length) {
         const at = Date.now();
         setTroopChanges((changes) => [
-          ...changes.filter((change) => change.expiresAt > at),
-          ...feedback.troops.map((change) => ({
-            ...change,
-            expiresAt: at + 2600,
-          })),
+          ...changes.filter((c) => c.expiresAt > at),
+          ...troops.map((c) => ({ ...c, expiresAt: at + 2600 })),
         ]);
       }
     }
@@ -172,21 +132,12 @@ export default function Mappa() {
     setGame(next);
     setLost(false);
   }, []);
-  const dismissAnnouncement = useCallback((id: string) => {
-    setAnnouncements((queue) => (queue[0]?.id === id ? queue.slice(1) : queue));
-  }, []);
   useEffect(() => {
     if (!troopChanges.length) return;
-    const expiresAt = Math.min(
-      ...troopChanges.map((change) => change.expiresAt),
-    );
+    const next = Math.min(...troopChanges.map((c) => c.expiresAt));
     const timeout = setTimeout(
-      () => {
-        setTroopChanges((changes) =>
-          changes.filter((change) => change.expiresAt > Date.now()),
-        );
-      },
-      Math.max(0, expiresAt - Date.now()),
+      () => setTroopChanges((changes) => changes.filter((c) => c.expiresAt > Date.now())),
+      Math.max(0, next - Date.now()),
     );
     return () => clearTimeout(timeout);
   }, [troopChanges]);
@@ -219,17 +170,16 @@ export default function Mappa() {
   useEffect(() => {
     const savedLang = localStorage.getItem("mappa.lang");
     if (savedLang === "fr" || savedLang === "en") setLang(savedLang);
-    const savedAudio = localStorage.getItem("mappa.audio");
-    if (savedAudio === "off") {
-      setAudio(false);
-      audioRef.current = false;
+    // Sound stays off unless the player turned it on.
+    if (localStorage.getItem("mappa.audio") === "on") {
+      setAudio(true);
+      audioRef.current = true;
     }
     setName(localStorage.getItem("mappa.name") ?? "");
     const code =
       new URLSearchParams(location.search).get("room")?.toUpperCase() ?? "";
     setRoom(code);
-    const last = localStorage.getItem("mappa.recent") ?? "";
-    setRecent(last);
+    setRecent(localStorage.getItem("mappa.recent") ?? "");
     if (code) {
       const saved = localStorage.getItem(sessionKey(code));
       if (saved) {
@@ -295,27 +245,6 @@ export default function Mappa() {
     )
       void fetchState(game.code, true);
   }, [now, game?.deadline, game?.paused, game?.code, fetchState]);
-  useEffect(() => {
-    setSelected("");
-    setTarget("");
-    setCards([]);
-    setAmount(null);
-  }, [phase, game?.active]);
-  useEffect(() => {
-    if (game?.pending) {
-      setAmount(null);
-      setSelected(game.pending.from);
-      setTarget(game.pending.to);
-    }
-  }, [
-    game?.pending?.from,
-    game?.pending?.to,
-    game?.pending?.min,
-    game?.pending?.max,
-  ]);
-  useEffect(() => {
-    chatEnd.current?.scrollIntoView({ behavior: "smooth" });
-  }, [game?.messages.length, chat, recipient]);
   useEffect(() => {
     document.documentElement.lang = lang;
     localStorage.setItem("mappa.lang", lang);
@@ -401,9 +330,10 @@ export default function Mappa() {
       busyRef.current = false;
     }
   }
+  /** Sends one command; resolves to true when the server accepted it. */
   async function act(action: Action) {
     const g = gameRef.current;
-    if (!g || busyRef.current) return;
+    if (!g || busyRef.current) return false;
     busyRef.current = true;
     setBusy(true);
     setError("");
@@ -425,23 +355,14 @@ export default function Mappa() {
       if (!res.ok) throw new Error(d.error);
       accept(d.game);
       if (action.type === "message") setDraft("");
-      if (["next", "fortify", "move", "attack"].includes(action.type)) {
-        setSelected("");
-        setTarget("");
-        setAmount(null);
-        if (d.game.pending) {
-          setSelected(d.game.pending.from);
-          setTarget(d.game.pending.to);
-        }
-      }
-      if (action.type === "deploy" || action.type === "trade") setAmount(null);
-      if (action.type === "trade") setCards([]);
       if (action.type === "leave") {
         localStorage.removeItem(sessionKey(g.code));
         home();
       }
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "serverError");
+      return false;
     } finally {
       setBusy(false);
       busyRef.current = false;
@@ -451,47 +372,9 @@ export default function Mappa() {
     setGame(null);
     gameRef.current = null;
     setPreview(null);
-    setSelected("");
-    setTarget("");
     setError("");
     setRoom("");
-    setChat(false);
-    setAnnouncements([]);
-    setTroopChanges([]);
-    setHighlightAllCards(false);
     history.pushState(null, "", "/");
-  }
-  function selectLand(id: string) {
-    if (!game) return;
-    if (!canAct || game.pending) {
-      setSelected(id);
-      return;
-    }
-    setAmount(null);
-    const own = game.lands[id].owner === game.me;
-    if (phase === "setup" || phase === "reinforce" || me!.reserve > 0) {
-      setSelected(id);
-      setTarget("");
-      return;
-    }
-    if (!selected || game.lands[selected]?.owner !== game.me) {
-      setSelected(id);
-      setTarget("");
-    } else if (selected === id) {
-      setSelected("");
-      setTarget("");
-    } else if (phase === "attack") {
-      if (own) {
-        setSelected(id);
-        setTarget("");
-      } else setTarget(id);
-    } else if (phase === "fortify") {
-      if (own && id !== selected) setTarget(id);
-      else {
-        setSelected(id);
-        setTarget("");
-      }
-    }
   }
   async function copy() {
     try {
@@ -511,38 +394,23 @@ export default function Mappa() {
       return !v;
     });
   }
-  const land = selected ? game?.lands[selected] : null;
-  const ownLand = land?.owner === game?.me;
-  const max = game?.pending
-    ? game.pending.max
-    : phase === "setup" || phase === "reinforce" || (me?.reserve ?? 0) > 0
-      ? (me?.reserve ?? 1)
-      : Math.max(1, (land?.troops ?? 1) - 1);
-  const min = game?.pending?.min ?? 1;
-  const actualAmount = Math.max(min, Math.min(amount ?? max, max));
-  const cardTerritories =
-    me?.cards.flatMap((c) => (c.territory ? [c.territory] : [])) ?? [];
-  const highlightedCardTerritories = highlightAllCards ? cardTerritories : [];
-  const selectedCards = me?.cards.filter((c) => cards.includes(c.id)) ?? [];
-  const validCards = validSet(selectedCards);
-  const canAttack =
-    canAct &&
-    ownLand &&
-    !!target &&
-    BY_ID[selected]?.neighbors.includes(target) &&
-    game?.lands[target].owner !== game?.me &&
-    (land?.troops ?? 0) > 1;
-  const canFortify =
-    canAct &&
-    ownLand &&
-    !!target &&
-    game &&
-    connected(game, selected, target, game.me) &&
-    (land?.troops ?? 0) > 1;
-  const remaining = game?.deadline
-    ? Math.max(0, Math.ceil((game.deadline - now) / 1000))
-    : null;
-  const phaseText = phase ? t[phase as TextKey] : "";
+  const decorOptions: BoardOptions = useMemo(
+    () => ({
+      view: "players",
+      unitMode: "army",
+      showNames: false,
+      interactive: false,
+      selected: "",
+      target: "",
+      legal: [],
+      legalTone: "attack",
+      highlight: [],
+      arrow: null,
+      lang,
+      pad: { top: 40, right: 40, bottom: 40, left: 40 },
+    }),
+    [lang],
+  );
   const palette = (
     <div className="palette" role="group" aria-label={t.color}>
       {COLORS.map((c, i) => {
@@ -556,1203 +424,28 @@ export default function Mappa() {
             type="button"
             key={c}
             aria-label={`${t.color} ${i + 1}`}
-            aria-pressed={color === i}
+            aria-pressed={(game ? me?.color : color) === i}
             disabled={taken || busy}
-            className={"color-choice " + (color === i ? "chosen" : "")}
-            style={{ background: c }}
+            className="crest-choice"
             onClick={() => {
               setColor(i);
               if (game) void act({ type: "profile", color: i });
             }}
           >
-            {color === i ? <Check size={16} /> : EMBLEMS[i]}
+            <Crest color={i} />
+            {(game ? me?.color : color) === i && (
+              <span className="crest-check">
+                <Check size={14} />
+              </span>
+            )}
           </button>
         );
       })}
     </div>
   );
-  return (
+
+  const overlays = (
     <>
-      <header className="site-header">
-        <button className="brand" onClick={home} aria-label="Mappa — accueil">
-          <span className="brand-icon">
-            <Compass size={25} strokeWidth={1.3} />
-          </span>
-          <span>
-            mappa<span className="brand-period">.</span>
-          </span>
-        </button>
-        <div className="header-center">
-          {game ? (
-            <>
-              <span className="header-room">
-                <LockKeyhole size={12} />
-                {game.code}
-              </span>
-              <span className="header-divider" />
-              {phase === "lobby" ? (
-                t.waiting
-              ) : (
-                <span>
-                  {t.round} <b>{game.round.toString().padStart(2, "0")}</b>
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="header-motto">{t.tagline}</span>
-          )}
-        </div>
-        <nav>
-          <button
-            className="text-button rules-link"
-            onClick={() => setRules(true)}
-          >
-            <BookOpen size={15} />
-            {t.rules}
-          </button>
-          <button
-            className="icon-button audio-toggle"
-            aria-label={t.sound}
-            aria-pressed={audio}
-            onClick={changeAudio}
-          >
-            {audio ? <Volume2 size={17} /> : <VolumeX size={17} />}
-          </button>
-          <div className="language">
-            <button
-              className={lang === "fr" ? "active" : ""}
-              onClick={() => setLang("fr")}
-            >
-              FR
-            </button>
-            <button
-              className={lang === "en" ? "active" : ""}
-              onClick={() => setLang("en")}
-            >
-              EN
-            </button>
-          </div>
-        </nav>
-      </header>
-      {loading ? (
-        <main className="loading">
-          <Compass className="spin" size={36} />
-          <p>{t.reconnect}</p>
-        </main>
-      ) : !game ? (
-        <main className="home-page">
-          <section className="hero-heading">
-            <div>
-              <div className="eyebrow">
-                <span className="status-dot" />
-                {t.private}
-              </div>
-              <h1>
-                {t.hero1} <em>{t.hero2}</em>
-              </h1>
-              <p>{t.intro}</p>
-            </div>
-            <div className="hero-stamp">
-              <Globe2 size={20} strokeWidth={1.2} />
-              <span>EST. 2026</span>
-              <strong>PLAY TOGETHER</strong>
-            </div>
-          </section>
-          <section className="home-main">
-            <div className="home-atlas">
-              <Board lang={lang} decorative />
-              <div className="atlas-legend">
-                {CONTINENTS.map((c) => (
-                  <span key={c.id}>
-                    <i style={{ background: c.color }} />
-                    {c[lang]} <b>+{c.bonus}</b>
-                  </span>
-                ))}
-              </div>
-            </div>
-            <aside className="entry-panel">
-              <div className="entry-top">
-                <span className="eyebrow">
-                  {preview
-                    ? t.privateRoom
-                    : lang === "fr"
-                      ? "PRENEZ PLACE"
-                      : "TAKE A SEAT"}
-                </span>
-                <span className="entry-icon">✳</span>
-              </div>
-              <h2>
-                {preview
-                  ? lang === "fr"
-                    ? "Votre table vous attend."
-                    : "Your table awaits."
-                  : lang === "fr"
-                    ? "On joue ?"
-                    : "Shall we play?"}
-              </h2>
-              <div className="entry-facts">
-                <span>
-                  <Users size={13} />
-                  {t.players}
-                </span>
-                <span>
-                  <Wifi size={13} />
-                  {t.live}
-                </span>
-              </div>
-              {preview && (
-                <div className="preview-players">
-                  {preview.players.map((p) => (
-                    <span
-                      key={p.color}
-                      style={{ background: COLORS[p.color] }}
-                      title={p.name}
-                    >
-                      {EMBLEMS[p.color]}
-                    </span>
-                  ))}
-                  <small>
-                    {preview.players.length}/6 · {preview.code}
-                  </small>
-                </div>
-              )}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void enter(!!preview);
-                }}
-              >
-                <label htmlFor="nickname">{t.nickname}</label>
-                <input
-                  id="nickname"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  minLength={2}
-                  maxLength={20}
-                  required
-                  placeholder={t.nicknamePlaceholder}
-                  autoComplete="nickname"
-                />
-                <label className="color-label">{t.color}</label>
-                {palette}
-                <button
-                  className="primary full"
-                  disabled={busy || name.trim().length < 2}
-                  type="submit"
-                >
-                  {busy ? t.loading : preview ? t.join : t.create}
-                  <ArrowRight size={17} />
-                </button>
-              </form>
-              <div className="entry-separator">
-                <span>{t.or}</span>
-              </div>
-              <form
-                className="join-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void enter(true);
-                }}
-              >
-                <label className="sr-only" htmlFor="roomCode">
-                  {t.code}
-                </label>
-                <input
-                  id="roomCode"
-                  placeholder="ABC123"
-                  maxLength={6}
-                  value={room}
-                  onChange={(e) => {
-                    setRoom(
-                      e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ""),
-                    );
-                    setPreview(null);
-                  }}
-                  aria-label={t.code}
-                />
-                <button
-                  className="secondary"
-                  disabled={busy || room.length !== 6 || name.trim().length < 2}
-                >
-                  {t.join}
-                  <ArrowUpRight size={15} />
-                </button>
-              </form>
-              {recent && localStorageSafe(recent) && (
-                <button
-                  className="restore"
-                  onClick={() => {
-                    location.href = "/?room=" + recent;
-                  }}
-                >
-                  <ArrowDownUp size={13} />
-                  {t.restore} · {recent}
-                </button>
-              )}
-              <div className="entry-note">
-                <LockKeyhole size={11} />
-                {t.privacy}
-              </div>
-            </aside>
-          </section>
-          <section className="feature-strip">
-            {[
-              [Swords, t.strategy, t.strategyText],
-              [Users, t.friends, t.friendsText],
-              [Clock, t.pace, t.paceText],
-            ].map(([Icon, title, body], i) => {
-              const I = Icon as typeof Swords;
-              return (
-                <div key={i} className="feature">
-                  <span className="feature-number">0{i + 1}</span>
-                  <I size={19} strokeWidth={1.3} />
-                  <div>
-                    <h3>{String(title)}</h3>
-                    <p>{String(body)}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
-          <footer>
-            <span>
-              mappa. <span className="muted">© 2026</span>
-            </span>
-            <span>{t.footer}</span>
-            <button onClick={() => setRules(true)}>
-              {t.rules}
-              <ArrowUpRight size={12} />
-            </button>
-          </footer>
-        </main>
-      ) : (
-        <main className="room-page">
-          <div className="room-heading">
-            <div>
-              <div className="eyebrow">
-                {phase === "lobby"
-                  ? t.privateRoom
-                  : game.paused
-                    ? t.paused
-                    : turn
-                      ? t.yourTurn
-                      : active?.name}
-              </div>
-              <h1>
-                {phase === "lobby"
-                  ? lang === "fr"
-                    ? "Une place pour chacun."
-                    : "A seat for everyone."
-                  : phase === "finished"
-                    ? t.victoryTitle
-                    : t.classic}
-                <span className="small-globe">✧</span>
-              </h1>
-            </div>
-            <div className="room-actions">
-              <button className="secondary invite" onClick={copy}>
-                <Copy size={14} />
-                {copied ? t.copied : t.invite}
-                <span>{game.code}</span>
-              </button>
-              {phase !== "lobby" && phase !== "finished" && isHost && (
-                <button
-                  className="icon-button"
-                  aria-label={game.paused ? t.resume : t.pause}
-                  onClick={() => void act({ type: "pause" })}
-                  disabled={busy}
-                >
-                  {game.paused ? <Play size={17} /> : <Pause size={17} />}
-                </button>
-              )}
-              <button
-                className="icon-button leave"
-                aria-label={t.leave}
-                onClick={() => setConfirm({ type: "leave" })}
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          </div>
-          {lost && (
-            <div className="connection-alert" role="status">
-              <Wifi size={15} />
-              {t.connectionLost}
-            </div>
-          )}
-          {phase !== "lobby" && phase !== "finished" && (
-            <div className="phase-bar">
-              <div className="phase-steps">
-                {(["reinforce", "attack", "fortify"] as const).map((p, i) => (
-                  <div key={p} className={phase === p ? "current" : ""}>
-                    <span>{i + 1}</span>
-                    {t[p]}
-                    {i < 2 && <ChevronRight size={14} />}
-                  </div>
-                ))}
-              </div>
-              <div
-                className={"turn-label " + (turn ? "my-turn" : "")}
-                role="status"
-                style={
-                  {
-                    "--player-color": active ? COLORS[active.color] : undefined,
-                  } as CSSProperties
-                }
-              >
-                <span
-                  className="dot"
-                  style={{ background: active ? COLORS[active.color] : "" }}
-                />
-                <span className="turn-status">
-                  {game.paused
-                    ? t.paused
-                    : phase === "setup"
-                      ? t.simultaneousSetup
-                      : turn
-                        ? t.yourTurn
-                        : t.activePlayer}
-                </span>
-                {phase !== "setup" && <strong>{active?.name}</strong>}
-                {remaining !== null && (
-                  <span className={"timer " + (remaining < 30 ? "urgent" : "")}>
-                    <Clock size={13} />
-                    {Math.floor(remaining / 60)}:
-                    {String(remaining % 60).padStart(2, "0")}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-          <div className="play-layout">
-            <div className="play-map-column">
-              <Board
-                game={game}
-                troopChanges={troopChanges}
-                lang={lang}
-                selected={selected}
-                target={target}
-                onSelect={phase === "lobby" ? undefined : selectLand}
-                cardTerritories={cardTerritories}
-                highlightedCardTerritories={highlightedCardTerritories}
-                highlightAllCards={highlightAllCards}
-                onToggleCards={() => {
-                  setHighlightAllCards(!highlightAllCards);
-                }}
-                onClearCardHighlight={() => {
-                  setHighlightAllCards(false);
-                }}
-              />
-              <div className="empire-strip">
-                {game.players.map((p) => {
-                  const isPlaying = hasActiveTurn && p.id === game.active;
-                  const territoryCount = Object.values(game.lands).filter(
-                    (l) => l.owner === p.id,
-                  ).length;
-                  const armies = Object.values(game.lands)
-                    .filter((l) => l.owner === p.id)
-                    .reduce((a, l) => a + l.troops, 0);
-                  return (
-                    <div
-                      key={p.id}
-                      aria-current={isPlaying ? "true" : undefined}
-                      style={
-                        { "--player-color": COLORS[p.color] } as CSSProperties
-                      }
-                      className={
-                        "empire " +
-                        (isPlaying ? "active" : "") +
-                        (p.eliminated ? " out" : "")
-                      }
-                    >
-                      <span
-                        className="empire-emblem"
-                        style={{ background: COLORS[p.color] }}
-                      >
-                        {EMBLEMS[p.color]}
-                      </span>
-                      <div>
-                        <b>
-                          {p.name}
-                          {p.id === game.me && <small> · {t.you}</small>}
-                        </b>
-                        {isPlaying && (
-                          <span className="empire-playing">
-                            {game.paused ? t.pauseLabel : t.playingNow}
-                          </span>
-                        )}
-                        <span>
-                          {phase === "lobby"
-                            ? p.ready
-                              ? t.isReady
-                              : t.notReadyYet
-                            : `${territoryCount} ${t.territories} · ${armies} ${t.armies}`}
-                        </span>
-                      </div>
-                      {p.id === game.host && <Crown size={12} />}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="map-footnote">
-                <span>
-                  <Flag size={12} />
-                  {t.victoryGoal}
-                </span>
-                <button
-                  onClick={() => {
-                    setChatTab("journal");
-                    setChat(true);
-                  }}
-                >
-                  <Layers size={12} />
-                  {t.journal}
-                  <ArrowUpRight size={12} />
-                </button>
-              </div>
-            </div>
-            <aside
-              className={
-                "game-panel " +
-                (canAct && phase !== "lobby" && phase !== "finished"
-                  ? "can-play"
-                  : "")
-              }
-            >
-              {phase === "lobby" ? (
-                <>
-                  <div className="panel-label">
-                    <span className="eyebrow">
-                      {lang === "fr" ? "LA TABLÉE" : "YOUR TABLE"}
-                    </span>
-                    <span>
-                      {game.players.length}
-                      <span className="muted"> / 6</span>
-                    </span>
-                  </div>
-                  <h2>{t.waiting}</h2>
-                  <div className="seat-list">
-                    {Array.from({ length: 6 }, (_, i) => {
-                      const p = game.players[i];
-                      return p ? (
-                        <div className="seat" key={p.id}>
-                          <span
-                            className="seat-avatar"
-                            style={{ background: COLORS[p.color] }}
-                          >
-                            {EMBLEMS[p.color]}
-                          </span>
-                          <div>
-                            <b>
-                              {p.name}
-                              {p.id === game.me && <small> · {t.you}</small>}
-                            </b>
-                            <span>
-                              {p.id === game.host
-                                ? t.host
-                                : p.ready
-                                  ? t.isReady
-                                  : t.notReadyYet}
-                            </span>
-                          </div>
-                          {p.ready ? (
-                            <Check size={16} className="ready-check" />
-                          ) : (
-                            <span className="seat-wait">···</span>
-                          )}
-                          {isHost && p.id !== game.me && (
-                            <button
-                              className="mini-icon"
-                              aria-label={`${t.kick} ${p.name}`}
-                              onClick={() =>
-                                setConfirm({ type: "kick", player: p.id })
-                              }
-                            >
-                              <X size={12} />
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="seat empty" key={i}>
-                          <span className="seat-avatar">
-                            {String(i + 1).padStart(2, "0")}
-                          </span>
-                          <span>{t.openSeat}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="timer-setting">
-                    <label htmlFor="timer">{t.timer}</label>
-                    <select
-                      id="timer"
-                      value={game.timer}
-                      disabled={!isHost || busy}
-                      onChange={(e) =>
-                        void act({
-                          type: "timer",
-                          minutes: Number(e.target.value),
-                        })
-                      }
-                    >
-                      {[0, 2, 3, 5].map((n) => (
-                        <option key={n} value={n}>
-                          {n ? `${n} ${t.minutes}` : t.noTimer}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    className={
-                      "secondary full ready-button " +
-                      (me?.ready ? "is-ready" : "")
-                    }
-                    disabled={busy}
-                    onClick={() => void act({ type: "ready" })}
-                  >
-                    <Check size={16} />
-                    {me?.ready ? t.notReady : t.ready}
-                  </button>
-                  {isHost && (
-                    <button
-                      className="primary full"
-                      disabled={
-                        busy ||
-                        game.players.length < 3 ||
-                        game.players.some((p) => !p.ready)
-                      }
-                      onClick={() => void act({ type: "start" })}
-                    >
-                      {t.start}
-                      <ArrowRight size={16} />
-                    </button>
-                  )}
-                  <p className="panel-note">
-                    {game.players.length < 3 ? t.needThree : t.allReady}
-                  </p>
-                </>
-              ) : phase === "finished" ? (
-                <div className="victory-panel">
-                  <span
-                    className="victory-emblem"
-                    style={{
-                      background: COLORS[winner?.color ?? 0],
-                    }}
-                  >
-                    <Crown size={40} />
-                  </span>
-                  <h2>{winner?.name ?? "Mappa"}</h2>
-                  <p>{t.victoryText}</p>
-                  <button className="primary full" onClick={home}>
-                    {t.newGame}
-                    <ArrowRight size={16} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="panel-label">
-                    <span className="eyebrow">
-                      {t.phase}{" "}
-                      {phase === "setup"
-                        ? "00"
-                        : String(
-                            ["reinforce", "attack", "fortify"].indexOf(
-                              phase ?? "",
-                            ) + 1,
-                          ).padStart(2, "0")}
-                    </span>
-                    <span className="phase-symbol">
-                      {phase === "attack" ? (
-                        <Swords size={19} />
-                      ) : phase === "fortify" ? (
-                        <Shield size={19} />
-                      ) : (
-                        <Flag size={19} />
-                      )}
-                    </span>
-                  </div>
-                  <h2>{phaseText}</h2>
-                  {game.paused ? (
-                    <div className="pause-panel">
-                      <Pause size={28} />
-                      <h3>{t.paused}</h3>
-                      <p>
-                        {game.pauseReason === "offline"
-                          ? t.offlinePause
-                          : t.hostPause}
-                      </p>
-                      {isHost && (
-                        <button
-                          className="primary full"
-                          disabled={busy}
-                          onClick={() => void act({ type: "pause" })}
-                        >
-                          <Play size={15} />
-                          {t.resume}
-                        </button>
-                      )}
-                    </div>
-                  ) : me?.eliminated ? (
-                    <div className="eliminated-panel" role="status">
-                      <ShieldOff size={28} aria-hidden="true" />
-                      <h3>{t.eliminated}</h3>
-                      <p>{t.defeatSpectator}</p>
-                    </div>
-                  ) : !canAct ? (
-                    <div className="waiting-panel">
-                      <span className="orbit-dot" />
-                      <p>
-                        {active?.name}{" "}
-                        {lang === "fr"
-                          ? "prépare son prochain coup."
-                          : "is planning their next move."}
-                      </p>
-                      <small>
-                        {lang === "fr"
-                          ? "Le monde peut attendre un instant."
-                          : "The world can wait a moment."}
-                      </small>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="action-hint">
-                        {game.pending
-                          ? t.moveHint
-                          : phase === "setup"
-                            ? me!.reserve > 0
-                              ? t.setupHint
-                              : t.setupDone
-                            : phase === "reinforce"
-                              ? t.reinforceHint
-                              : phase === "attack"
-                                ? t.attackHint
-                                : t.fortifyHint}
-                      </p>
-                      {(me!.reserve > 0 ||
-                        phase === "setup" ||
-                        phase === "reinforce") &&
-                        !game.pending && (
-                          <>
-                            <div className="reserve-box">
-                              <strong>
-                                {me!.reserve.toString().padStart(2, "0")}
-                              </strong>
-                              <span>{t.reserve}</span>
-                              <Flag size={27} strokeWidth={1} />
-                            </div>
-                            {me!.reserve > 0 &&
-                              !(
-                                phase === "reinforce" && me!.cards.length >= 5
-                              ) &&
-                              !game.forcedTrade && (
-                                <>
-                                  <div className="selected-land">
-                                    <span className="micro">
-                                      {t.territoryInfo}
-                                    </span>
-                                    <b>
-                                      {selected
-                                        ? BY_ID[selected][lang]
-                                        : t.select}
-                                    </b>
-                                  </div>
-                                  {ownLand && (
-                                    <Amount
-                                      min={1}
-                                      max={me!.reserve}
-                                      value={actualAmount}
-                                      set={setAmount}
-                                      lang={lang}
-                                    />
-                                  )}
-                                  <button
-                                    className="primary full"
-                                    disabled={busy || !ownLand}
-                                    onClick={() =>
-                                      void act({
-                                        type: "deploy",
-                                        territory: selected,
-                                        amount: actualAmount,
-                                      })
-                                    }
-                                  >
-                                    {t.place}
-                                    <ArrowRight size={16} />
-                                  </button>
-                                  <button
-                                    className="text-button auto-button"
-                                    disabled={busy}
-                                    onClick={() => void act({ type: "auto" })}
-                                  >
-                                    <Sparkles size={13} />
-                                    {t.auto}
-                                  </button>
-                                </>
-                              )}
-                            {phase === "reinforce" &&
-                              me!.reserve === 0 &&
-                              me!.cards.length < 5 && (
-                                <button
-                                  className="primary full"
-                                  disabled={busy}
-                                  onClick={() => void act({ type: "next" })}
-                                >
-                                  {t.nextAttack}
-                                  <ArrowRight size={16} />
-                                </button>
-                              )}
-                          </>
-                        )}
-                      {game.pending ? (
-                        <>
-                          <div className="route-box">
-                            <span>{BY_ID[game.pending.from][lang]}</span>
-                            <ArrowRight size={14} />
-                            <b>{BY_ID[game.pending.to][lang]}</b>
-                          </div>
-                          <Amount
-                            min={min}
-                            max={max}
-                            value={actualAmount}
-                            set={setAmount}
-                            lang={lang}
-                          />
-                          <button
-                            className="primary full"
-                            disabled={busy}
-                            onClick={() =>
-                              void act({ type: "move", amount: actualAmount })
-                            }
-                          >
-                            {t.move}
-                            <ArrowRight size={16} />
-                          </button>
-                        </>
-                      ) : phase === "attack" &&
-                        me!.reserve === 0 &&
-                        !game.forcedTrade ? (
-                        <>
-                          <div className="route-selection">
-                            <div>
-                              <span>{t.source}</span>
-                              <b>
-                                {selected ? BY_ID[selected][lang] : t.select}
-                              </b>
-                            </div>
-                            <ArrowRight size={16} />
-                            <div>
-                              <span>{t.target}</span>
-                              <b>{target ? BY_ID[target][lang] : t.select}</b>
-                            </div>
-                          </div>
-                          <button
-                            className="primary full blitz-button"
-                            disabled={busy || !canAttack}
-                            onClick={() =>
-                              void act({
-                                type: "attack",
-                                from: selected,
-                                to: target,
-                              })
-                            }
-                          >
-                            <Swords size={17} />
-                            {t.blitz}
-                            <span>↗</span>
-                          </button>
-                          <small className="blitz-note">{t.blitzHint}</small>
-                          <button
-                            className="secondary full"
-                            disabled={busy}
-                            onClick={() => void act({ type: "next" })}
-                          >
-                            {t.nextFortify}
-                            <ChevronRight size={15} />
-                          </button>
-                        </>
-                      ) : phase === "fortify" ? (
-                        <>
-                          <div className="route-selection">
-                            <div>
-                              <span>{t.source}</span>
-                              <b>
-                                {selected ? BY_ID[selected][lang] : t.select}
-                              </b>
-                            </div>
-                            <ArrowRight size={16} />
-                            <div>
-                              <span>{t.target}</span>
-                              <b>{target ? BY_ID[target][lang] : t.select}</b>
-                            </div>
-                          </div>
-                          {ownLand && target && (
-                            <Amount
-                              min={1}
-                              max={max}
-                              value={actualAmount}
-                              set={setAmount}
-                              lang={lang}
-                            />
-                          )}
-                          <button
-                            className="primary full"
-                            disabled={busy || !canFortify}
-                            onClick={() =>
-                              void act({
-                                type: "fortify",
-                                from: selected,
-                                to: target,
-                                amount: actualAmount,
-                              })
-                            }
-                          >
-                            {t.fortifyAction}
-                            <Shield size={15} />
-                          </button>
-                          <button
-                            className="secondary full"
-                            disabled={busy}
-                            onClick={() => void act({ type: "next" })}
-                          >
-                            {t.endTurn}
-                            <ArrowRight size={15} />
-                          </button>
-                        </>
-                      ) : null}
-                      {((phase === "reinforce" && me!.cards.length >= 5) ||
-                        game.forcedTrade) && (
-                        <div className="mandatory">
-                          <Layers size={16} />
-                          {t.mustTradeHint}
-                          <button onClick={() => setShowCards(true)}>
-                            {t.cards}
-                            <ArrowRight size={13} />
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {game.lastBattle && (
-                    <div
-                      className={
-                        "battle-result " +
-                        (game.lastBattle.conquered ? "won" : "")
-                      }
-                    >
-                      <span>
-                        {game.lastBattle.conquered ? (
-                          <Flag size={14} />
-                        ) : (
-                          <Shield size={14} />
-                        )}
-                        <b>
-                          {game.lastBattle.conquered
-                            ? t.battleWon
-                            : t.battleLost}
-                        </b>
-                      </span>
-                      <small>
-                        {BY_ID[game.lastBattle.to][lang]} · {t.losses}{" "}
-                        {game.lastBattle.attackerLoss} /{" "}
-                        {game.lastBattle.defenderLoss}
-                      </small>
-                    </div>
-                  )}
-                  <button
-                    className="cards-toggle"
-                    aria-expanded={showCards}
-                    aria-controls="player-cards"
-                    onClick={() => setShowCards(!showCards)}
-                  >
-                    <span>
-                      <Layers size={17} />
-                      {t.cards}
-                    </span>
-                    <b>{me?.cards.length ?? 0}</b>
-                    <ChevronRight
-                      size={14}
-                      className={showCards ? "rotated" : ""}
-                    />
-                  </button>
-                  {showCards && (
-                    <div className="cards-panel" id="player-cards">
-                      <p>{t.cardMapHint}</p>
-                      <p>{t.tradeHint}</p>
-                      <div className="hand">
-                        {me?.cards.map((c) => (
-                          <button
-                            key={c.id}
-                            className={
-                              "risk-card " +
-                              (cards.includes(c.id) ? "chosen" : "")
-                            }
-                            aria-pressed={cards.includes(c.id)}
-                            onClick={() => {
-                              setCards((prev) =>
-                                prev.includes(c.id)
-                                  ? prev.filter((id) => id !== c.id)
-                                  : prev.length < 3
-                                    ? [...prev, c.id]
-                                    : prev,
-                              );
-                            }}
-                          >
-                            <span>{["♟", "♞", "♜", "✦"][c.symbol]}</span>
-                            <small>
-                              {c.territory ? BY_ID[c.territory][lang] : t.wild}
-                            </small>
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        className="secondary full"
-                        disabled={
-                          busy ||
-                          !canAct ||
-                          !validCards ||
-                          (phase !== "reinforce" && !game.forcedTrade)
-                        }
-                        onClick={() => void act({ type: "trade", cards })}
-                      >
-                        {t.trade}
-                      </button>
-                      <small>
-                        {t.tradeValue} : +
-                        {game.exchange < 5
-                          ? 4 + 2 * game.exchange
-                          : game.exchange === 5
-                            ? 15
-                            : 15 + (game.exchange - 5) * 5}
-                      </small>
-                    </div>
-                  )}
-                  {isHost && (
-                    <div className="host-controls">
-                      {game.players
-                        .filter(
-                          (p) =>
-                            p.id !== game.me &&
-                            !p.eliminated &&
-                            now - p.lastSeen >= 60000,
-                        )
-                        .map((p) => (
-                          <button
-                            key={p.id}
-                            className="text-button"
-                            onClick={() =>
-                              setConfirm({ type: "kick", player: p.id })
-                            }
-                          >
-                            <LogOut size={12} />
-                            {t.kick} {p.name}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </>
-              )}
-              <button
-                className="panel-chat"
-                onClick={() => {
-                  setChat(true);
-                  setChatTab("chat");
-                }}
-              >
-                <MessageCircle size={17} />
-                <span>{t.chat}</span>
-                <span className="chat-count">{game.messages.length}</span>
-                <ArrowUpRight size={15} />
-              </button>
-            </aside>
-          </div>
-          {chat && (
-            <section className="chat-drawer" aria-label={t.chat}>
-              <div className="chat-header">
-                <div className="chat-tabs">
-                  <button
-                    className={chatTab === "chat" ? "active" : ""}
-                    onClick={() => setChatTab("chat")}
-                  >
-                    <MessageCircle size={14} />
-                    {t.chat}
-                  </button>
-                  <button
-                    className={chatTab === "journal" ? "active" : ""}
-                    onClick={() => setChatTab("journal")}
-                  >
-                    {t.journal}
-                  </button>
-                </div>
-                <button
-                  className="icon-button"
-                  aria-label={t.close}
-                  onClick={() => setChat(false)}
-                >
-                  <X size={17} />
-                </button>
-              </div>
-              {chatTab === "chat" ? (
-                <>
-                  <div className="chat-recipient">
-                    <LockKeyhole size={12} />
-                    <select
-                      aria-label={t.privateTo}
-                      value={recipient}
-                      onChange={(e) => setRecipient(e.target.value)}
-                    >
-                      <option value="">{t.everyone}</option>
-                      {game.players
-                        .filter((p) => p.id !== game.me)
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {t.privateTo} {p.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <div className="chat-messages">
-                    {game.messages
-                      .filter((m) =>
-                        recipient
-                          ? (m.from === game.me && m.to === recipient) ||
-                            (m.from === recipient && m.to === game.me)
-                          : m.to === null,
-                      )
-                      .map((m) => {
-                        const sender = game.players.find(
-                          (p) => p.id === m.from,
-                        );
-                        return (
-                          <div
-                            key={m.id}
-                            className={
-                              "chat-message " +
-                              (m.from === game.me ? "mine" : "")
-                            }
-                          >
-                            <div>
-                              <span
-                                className="dot"
-                                style={{
-                                  background: COLORS[sender?.color ?? 0],
-                                }}
-                              />
-                              <b>{sender?.name}</b>
-                              {m.to && (
-                                <span className="private-badge">
-                                  <LockKeyhole size={9} />
-                                  {t.privateMessage}
-                                </span>
-                              )}
-                              <time>
-                                {new Date(m.at).toLocaleTimeString(lang, {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </time>
-                            </div>
-                            <p>{m.text}</p>
-                          </div>
-                        );
-                      })}
-                    {!game.messages.some((m) =>
-                      recipient
-                        ? m.to === recipient || m.from === recipient
-                        : m.to === null,
-                    ) && <p className="chat-empty">{t.noMessages}</p>}
-                    <div ref={chatEnd} />
-                  </div>
-                  <form
-                    className="chat-form"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void act({
-                        type: "message",
-                        text: draft,
-                        to: recipient || null,
-                      });
-                    }}
-                  >
-                    <input
-                      aria-label={t.message}
-                      placeholder={t.message}
-                      value={draft}
-                      maxLength={500}
-                      onChange={(e) => setDraft(e.target.value)}
-                    />
-                    <button
-                      className="primary icon-button"
-                      aria-label={t.send}
-                      disabled={busy || !draft.trim()}
-                    >
-                      <Send size={17} />
-                    </button>
-                  </form>
-                  <small className="chat-privacy">
-                    {recipient ? t.chatNotice : t.chatLimit}
-                  </small>
-                </>
-              ) : (
-                <div className="chat-messages journal">
-                  {[...game.logs].reverse().map((l) => (
-                    <div
-                      className={
-                        "journal-item" +
-                        (l.key === "eliminated" ? " journal-elimination" : "")
-                      }
-                      key={l.id}
-                    >
-                      {l.key === "eliminated" ? (
-                        <ShieldOff
-                          size={18}
-                          className="journal-event-icon"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <span className="journal-dot" />
-                      )}
-                      <p>
-                        {l.key === "eliminated" && (
-                          <span className="journal-event-label">
-                            {t.playerEliminated}
-                          </span>
-                        )}
-                        {eventText(l.key, l.args, lang)}
-                      </p>
-                      <time>
-                        {new Date(l.at).toLocaleTimeString(lang, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                    </div>
-                  ))}
-                  {!game.logs.length && (
-                    <p className="chat-empty">{t.noEvents}</p>
-                  )}
-                </div>
-              )}
-            </section>
-          )}
-        </main>
-      )}
-      {game && me?.eliminated && game.phase !== "finished" && (
-        <DefeatAnimation key={`${game.code}:${me.id}`} lang={lang} />
-      )}
-      {game?.phase === "finished" && winner && (
-        <VictoryCelebration
-          key={`${game.code}:${winner.id}`}
-          winner={winner}
-          lang={lang}
-        />
-      )}
-      {game && (
-        <GameAnnouncements
-          events={announcements}
-          lang={lang}
-          onDismiss={dismissAnnouncement}
-        />
-      )}
       {error && (
         <div className="toast" role="alert">
           <HelpCircle size={16} />
@@ -1767,19 +460,19 @@ export default function Mappa() {
       {rules && (
         <div className="modal-backdrop" onClick={() => setRules(false)}>
           <section
-            className="rules-modal"
+            className="rules-modal panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="rules-title"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="modal-close icon-button"
+              className="x"
               aria-label={t.close}
               onClick={() => setRules(false)}
               autoFocus
             >
-              <X size={20} />
+              <X size={18} />
             </button>
             <span className="eyebrow">MAPPA · {t.rules}</span>
             <h2 id="rules-title">{t.rulesTitle}</h2>
@@ -1806,24 +499,16 @@ export default function Mappa() {
                   {n === "✦" && (
                     <div className="card-rules">
                       <ul className="card-symbols" aria-label={t.cards}>
-                        {[t.infantry, t.cavalry, t.artillery, t.wild].map(
-                          (name, i) => (
-                            <li key={name}>
-                              <span aria-hidden="true">
-                                {["♟", "♞", "♜", "✦"][i]}
-                              </span>
-                              {name}
-                            </li>
-                          ),
-                        )}
+                        {[t.infantry, t.cavalry, t.artillery, t.wild].map((name, i) => (
+                          <li key={name}>
+                            <span aria-hidden="true">{["♟", "♞", "♜", "✦"][i]}</span>
+                            {name}
+                          </li>
+                        ))}
                       </ul>
                       <h4>{t.ruleCardSetsTitle}</h4>
                       <ul className="card-set-examples">
-                        {[
-                          t.ruleCardSetSame,
-                          t.ruleCardSetMixed,
-                          t.ruleCardSetWild,
-                        ].map((example) => (
+                        {[t.ruleCardSetSame, t.ruleCardSetMixed, t.ruleCardSetWild].map((example) => (
                           <li key={example}>{example}</li>
                         ))}
                       </ul>
@@ -1854,9 +539,8 @@ export default function Mappa() {
                 </div>
               </div>
             ))}
-            <button className="primary" onClick={() => setRules(false)}>
+            <button className="btn go" onClick={() => setRules(false)}>
               {lang === "fr" ? "À la conquête" : "Let’s conquer"}
-              <ArrowRight size={16} />
             </button>
           </section>
         </div>
@@ -1864,7 +548,7 @@ export default function Mappa() {
       {confirm && (
         <div className="modal-backdrop">
           <section
-            className="confirm-modal"
+            className="confirm-modal panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-title"
@@ -1874,16 +558,16 @@ export default function Mappa() {
               {confirm.type === "leave" ? t.leave : t.kick}
             </h2>
             <p>{confirm.type === "leave" ? t.leaveConfirm : t.kickConfirm}</p>
-            <div>
+            <div className="btns">
               <button
-                className="secondary"
+                className="btn ghost"
                 onClick={() => setConfirm(null)}
                 autoFocus
               >
                 {t.cancel}
               </button>
               <button
-                className="primary"
+                className="btn red"
                 disabled={busy}
                 onClick={() => {
                   void act(confirm);
@@ -1891,7 +575,6 @@ export default function Mappa() {
                 }}
               >
                 {t.confirm}
-                <ArrowRight size={14} />
               </button>
             </div>
           </section>
@@ -1899,54 +582,354 @@ export default function Mappa() {
       )}
     </>
   );
-}
-function Amount({
-  min,
-  max,
-  value,
-  set,
-  lang,
-}: {
-  min: number;
-  max: number;
-  value: number;
-  set: (n: number) => void;
-  lang: Lang;
-}) {
-  return (
-    <div className="amount-control">
-      <label htmlFor="armyAmount">
-        {texts(lang).armies}
-        <strong>{value}</strong>
-      </label>
-      <input
-        id="armyAmount"
-        aria-label={texts(lang).armies}
-        type="range"
-        min={min}
-        max={Math.max(min, max)}
-        value={value}
-        onChange={(e) => set(Number(e.target.value))}
-      />
-      <div>
-        <span>{min}</span>
-        <input
-          aria-label={lang === "fr" ? "Nombre d’armées" : "Number of armies"}
-          type="number"
-          min={min}
-          max={Math.max(min, max)}
-          value={value}
-          onChange={(e) =>
-            set(Math.max(min, Math.min(max, Number(e.target.value))))
-          }
+
+  if (game && game.phase !== "lobby")
+    return (
+      <>
+        <GameScreen
+          game={game}
+          lang={lang}
+          setLang={setLang}
+          busy={busy}
+          act={act}
+          lost={lost}
+          now={now}
+          audio={audio}
+          toggleAudio={changeAudio}
+          copyInvite={copy}
+          copied={copied}
+          openRules={() => setRules(true)}
+          onLeave={() => setConfirm({ type: "leave" })}
+          onKick={(player) => setConfirm({ type: "kick", player })}
+          onHome={home}
+          troopChanges={troopChanges}
         />
-        <span>{max}</span>
-      </div>
-    </div>
-  );
-}
-function localStorageSafe(code: string) {
+        {me?.eliminated && game.phase !== "finished" && (
+          <DefeatAnimation key={`${game.code}:${me.id}`} lang={lang} />
+        )}
+        {game.phase === "finished" && winner && (
+          <VictoryCelebration key={`${game.code}:${winner.id}`} winner={winner} lang={lang} />
+        )}
+        {overlays}
+      </>
+    );
+
   return (
-    typeof window !== "undefined" && !!localStorage.getItem(sessionKey(code))
+    <div className="stage">
+      <div className="stage-board">
+        <Board3D
+          lands={DEMO_LANDS}
+          options={decorOptions}
+          onSelect={() => {}}
+          onHover={() => {}}
+        />
+      </div>
+      <header className="topbar">
+        <button className="brand" onClick={home} aria-label="Mappa">
+          mappa<span>.</span>
+        </button>
+        <nav>
+          <button className="orb small" aria-label={t.rules} onClick={() => setRules(true)}>
+            <BookOpen />
+          </button>
+          <button
+            className="orb small"
+            aria-label={t.sound}
+            aria-pressed={audio}
+            onClick={changeAudio}
+          >
+            {audio ? <Volume2 /> : <VolumeX />}
+          </button>
+          <div className="seg">
+            <button aria-pressed={lang === "fr"} onClick={() => setLang("fr")}>
+              FR
+            </button>
+            <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>
+              EN
+            </button>
+          </div>
+        </nav>
+      </header>
+
+      {loading ? (
+        <main className="center-note">
+          <div className="spinner" />
+          <p>{t.reconnect}</p>
+        </main>
+      ) : !game ? (
+        <main className="home">
+          <section className="hero">
+            <div className="eyebrow">{t.private}</div>
+            <h1 className="outlined">
+              {t.hero1} <em>{t.hero2}</em>
+            </h1>
+            <p>{t.intro}</p>
+            <ul className="hero-facts">
+              <li><Users size={16} /> {t.players}</li>
+              <li><Swords size={16} /> {t.strategy}</li>
+              <li><Wifi size={16} /> {t.live}</li>
+            </ul>
+          </section>
+          <aside className="panel entry">
+            <h2>
+              {preview
+                ? lang === "fr"
+                  ? "Votre table vous attend."
+                  : "Your table awaits."
+                : lang === "fr"
+                  ? "On joue ?"
+                  : "Shall we play?"}
+            </h2>
+            {preview && (
+              <div className="preview-players">
+                {preview.players.map((p) => (
+                  <span key={p.color} title={p.name}>
+                    <Crest color={p.color} size={30} />
+                  </span>
+                ))}
+                <small>
+                  {preview.players.length}/6 · {preview.code}
+                </small>
+              </div>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void enter(!!preview);
+              }}
+            >
+              <label htmlFor="nickname">{t.nickname}</label>
+              <input
+                id="nickname"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                minLength={2}
+                maxLength={20}
+                required
+                placeholder={t.nicknamePlaceholder}
+                autoComplete="nickname"
+              />
+              <label>{t.color}</label>
+              {palette}
+              <button
+                className="btn go wide"
+                disabled={busy || name.trim().length < 2}
+                type="submit"
+              >
+                {busy ? t.loading : preview ? t.join : t.create}
+                <ArrowRight size={18} />
+              </button>
+            </form>
+            <div className="sep">
+              <span>{t.or}</span>
+            </div>
+            <form
+              className="join"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void enter(true);
+              }}
+            >
+              <input
+                id="roomCode"
+                placeholder="ABC123"
+                maxLength={6}
+                value={room}
+                onChange={(e) => {
+                  setRoom(
+                    e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ""),
+                  );
+                  setPreview(null);
+                }}
+                aria-label={t.code}
+              />
+              <button
+                className="btn ghost"
+                disabled={busy || room.length !== 6 || name.trim().length < 2}
+              >
+                {t.join}
+                <ArrowUpRight size={16} />
+              </button>
+            </form>
+            {recent && !!localStorage.getItem(sessionKey(recent)) && (
+              <button
+                className="restore"
+                onClick={() => {
+                  location.href = "/?room=" + recent;
+                }}
+              >
+                <ArrowDownUp size={14} />
+                {t.restore} · {recent}
+              </button>
+            )}
+            <div className="note">
+              <LockKeyhole size={12} />
+              {t.privacy}
+            </div>
+          </aside>
+        </main>
+      ) : (
+        <main className="lobby">
+          <section className="panel lobby-card">
+            <div className="lobby-head">
+              <div>
+                <div className="eyebrow">{t.privateRoom}</div>
+                <h1>
+                  {lang === "fr" ? "Une place pour chacun." : "A seat for everyone."}
+                </h1>
+              </div>
+              <div className="lobby-actions">
+                <button className="btn ghost" onClick={copy}>
+                  <Copy size={16} /> {copied ? t.copied : t.invite}
+                  <span className="code">{game.code}</span>
+                </button>
+                <button
+                  className="orb small"
+                  aria-label={t.leave}
+                  onClick={() => setConfirm({ type: "leave" })}
+                >
+                  <LogOut />
+                </button>
+              </div>
+            </div>
+            {lost && (
+              <div className="lost inline">
+                <Wifi size={15} /> {t.connectionLost}
+              </div>
+            )}
+            <div className="seat-grid">
+              {Array.from({ length: 6 }, (_, i) => {
+                const p = game.players[i];
+                return p ? (
+                  <div className={"lseat" + (p.ready ? " ready" : "")} key={p.id}>
+                    <Crest color={p.color} size={52} />
+                    <div>
+                      <b>
+                        {p.name}
+                        {p.id === game.me && <small> · {t.you}</small>}
+                      </b>
+                      <span>
+                        {p.id === game.host && <Crown size={12} />}{" "}
+                        {p.id === game.host ? t.host : ""}
+                        {p.id === game.host ? " · " : ""}
+                        {p.ready ? t.isReady : t.notReadyYet}
+                      </span>
+                    </div>
+                    {p.ready ? <Check className="ok" size={18} /> : <span className="dots">···</span>}
+                    {isHost && p.id !== game.me && (
+                      <button
+                        className="x static"
+                        aria-label={`${t.kick} ${p.name}`}
+                        onClick={() => setConfirm({ type: "kick", player: p.id })}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="lseat empty" key={i}>
+                    <span className="slot">{String(i + 1).padStart(2, "0")}</span>
+                    <span>{t.openSeat}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="lobby-foot">
+              <div className="row">
+                {t.color}
+                {palette}
+              </div>
+              <div className="row">
+                <span>
+                  <Clock size={15} /> {t.timer}
+                </span>
+                <select
+                  id="timer"
+                  value={game.timer}
+                  disabled={!isHost || busy}
+                  onChange={(e) =>
+                    void act({ type: "timer", minutes: Number(e.target.value) })
+                  }
+                >
+                  {[0, 2, 3, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n ? `${n} ${t.minutes}` : t.noTimer}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="btns">
+                <button
+                  className={"btn " + (me?.ready ? "ghost" : "go")}
+                  disabled={busy}
+                  onClick={() => void act({ type: "ready" })}
+                >
+                  <Check size={16} />
+                  {me?.ready ? t.notReady : t.ready}
+                </button>
+                {isHost && (
+                  <button
+                    className="btn red"
+                    disabled={
+                      busy ||
+                      game.players.length < 3 ||
+                      game.players.some((p) => !p.ready)
+                    }
+                    onClick={() => void act({ type: "start" })}
+                  >
+                    {t.start}
+                    <ArrowRight size={16} />
+                  </button>
+                )}
+              </div>
+              <p className="note">
+                {game.players.length < 3 ? t.needThree : t.allReady}
+              </p>
+            </div>
+          </section>
+          <section className="panel lobby-chat" aria-label={t.chat}>
+            <h3>{t.chat}</h3>
+            <div className="msgs">
+              {game.messages
+                .filter((m) => m.to === null)
+                .map((m) => {
+                  const from = game.players.find((p) => p.id === m.from);
+                  return (
+                    <div key={m.id} className={"msg" + (m.from === game.me ? " mine" : "")}>
+                      <div className="msg-head">
+                        {from && <Crest color={from.color} size={18} />}
+                        <b>{from?.name}</b>
+                      </div>
+                      <p>{m.text}</p>
+                    </div>
+                  );
+                })}
+              {!game.messages.some((m) => m.to === null) && (
+                <p className="empty">{t.noMessages}</p>
+              )}
+            </div>
+            <form
+              className="chat-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void act({ type: "message", text: draft, to: null });
+              }}
+            >
+              <input
+                aria-label={t.message}
+                placeholder={t.message}
+                value={draft}
+                maxLength={500}
+                onChange={(e) => setDraft(e.target.value)}
+              />
+              <button className="btn go" aria-label={t.send} disabled={busy || !draft.trim()}>
+                <Send size={16} />
+              </button>
+            </form>
+          </section>
+        </main>
+      )}
+      {overlays}
+    </div>
   );
 }

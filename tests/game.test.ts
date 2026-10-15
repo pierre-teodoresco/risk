@@ -382,6 +382,80 @@ test("hosting transfers by arrival time rather than randomized turn order", () =
   maintenance(g, 70001, rand);
   assert.equal(g.host, expected);
 });
+test("alliances need the receiver's answer and block attacks between allies", () => {
+  let g = attackFixture();
+  const me = g.active,
+    other = g.players[1].id,
+    third = g.players[2].id;
+  g = applyAction(g, me, { type: "ally", player: other }, rand, 2000);
+  assert.deepEqual(g.alliances, []);
+  assert.equal(g.proposals?.length, 1);
+  // Only the two players involved see the pending proposal.
+  assert.equal(publicGame(g, other).proposals.length, 1);
+  assert.equal(publicGame(g, third).proposals.length, 0);
+  assert.throws(
+    () => applyAction(g, me, { type: "allyAnswer", player: other, accept: true }, rand, 2001),
+    /noProposal/,
+  );
+  g = applyAction(g, other, { type: "allyAnswer", player: me, accept: true }, rand, 2002);
+  assert.deepEqual(g.proposals, []);
+  assert.ok(publicGame(g, third).alliances.some((pair) => pair.includes(me) && pair.includes(other)));
+  assert.throws(
+    () => applyAction(g, me, { type: "attack", from: "alaska", to: "kamchatka" }, rand, 2003),
+    /allied/,
+  );
+  g = applyAction(g, other, { type: "allyBreak", player: me }, rand, 2004);
+  assert.deepEqual(g.alliances, []);
+  g = applyAction(g, me, { type: "attack", from: "alaska", to: "kamchatka" }, rand, 2005);
+  assert.ok(g.lastBattle);
+});
+test("refusal, cancellation and crossed proposals", () => {
+  let g = attackFixture();
+  const me = g.active,
+    other = g.players[1].id;
+  g = applyAction(g, me, { type: "ally", player: other }, rand, 2000);
+  g = applyAction(g, other, { type: "allyAnswer", player: me, accept: false }, rand, 2001);
+  assert.deepEqual(g.proposals, []);
+  assert.deepEqual(g.alliances, []);
+  g = applyAction(g, me, { type: "ally", player: other }, rand, 2002);
+  g = applyAction(g, me, { type: "allyCancel", player: other }, rand, 2003);
+  assert.deepEqual(g.proposals, []);
+  g = applyAction(g, me, { type: "ally", player: other }, rand, 2004);
+  g = applyAction(g, other, { type: "ally", player: me }, rand, 2005);
+  assert.equal(g.alliances?.length, 1);
+  assert.throws(() => applyAction(g, me, { type: "ally", player: other }, rand, 2006), /alreadyAllied/);
+  assert.throws(() => applyAction(g, me, { type: "ally", player: me }, rand, 2007), /invalidRecipient/);
+});
+test("leaving the game ends that player's alliances and proposals", () => {
+  let g = attackFixture();
+  const me = g.active,
+    other = g.players[1].id,
+    third = g.players[2].id;
+  g = applyAction(g, me, { type: "ally", player: other }, rand, 2000);
+  g = applyAction(g, other, { type: "allyAnswer", player: me, accept: true }, rand, 2001);
+  g = applyAction(g, third, { type: "ally", player: other }, rand, 2002);
+  g = applyAction(g, other, { type: "leave" }, rand, 2003);
+  assert.deepEqual(g.alliances, []);
+  assert.deepEqual(g.proposals, []);
+});
+test("blitz odds are exact and agree with the engine's dice", async () => {
+  const { blitzOdds } = await import("../lib/odds");
+  // One die each: the attacker needs a strictly higher roll, 15/36.
+  assert.ok(Math.abs(blitzOdds(2, 1).win - 15 / 36) < 1e-12);
+  assert.equal(blitzOdds(1, 3).win, 0);
+  assert.equal(blitzOdds(5, 0).win, 1);
+  // Compare with the engine itself over many seeded battles.
+  const runs = 4000;
+  let wins = 0;
+  for (let i = 0; i < runs; i++) {
+    const g = attackFixture();
+    g.lands.alaska.troops = 6;
+    g.lands.kamchatka.troops = 4;
+    const after = applyAction(g, g.active, { type: "attack", from: "alaska", to: "kamchatka" }, rand, 3000);
+    if (after.lastBattle?.conquered) wins++;
+  }
+  assert.ok(Math.abs(wins / runs - blitzOdds(6, 4).win) < 0.03);
+});
 
 for (const phase of ["setup", "reinforce"] as const) {
   test(`manual ${phase} placement logs its player, territory and exact amount`, () => {
