@@ -2195,3 +2195,29 @@ footer button {
     scroll-behavior: auto !important;
   }
 }
+
+@media (min-width: 651px) and (max-width: 950px) {
+  .play-layout {
+    grid-template-columns: 1fr;
+  }
+  .game-panel {
+    width: 100%;
+  }
+  .game-panel .seat-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+  }
+  .game-panel .waiting-panel {
+    padding: 15px 4px 23px;
+  }
+  .game-panel .waiting-panel p {
+    margin: 12px 0 9px;
+  }
+  .game-panel .pause-panel {
+    padding: 10px 0;
+  }
+  .game-panel .panel-chat {
+    margin-top: 16px;
+  }
+}
