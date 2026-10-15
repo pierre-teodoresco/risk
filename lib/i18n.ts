@@ -124,9 +124,10 @@ const fr = {
   defeatTitle: "Votre empire est tombé.",
   defeatSpectator:
     "Vous avez perdu votre dernier territoire. Vous pouvez continuer à suivre la partie.",
-  defeatFinished: "La conquête est terminée. Une nouvelle partie vous attend.",
   neutral: "Neutre",
   victoryTitle: "Un monde à son nom.",
+  victoryOf: "Victoire de",
+  victoryComplete: "Les 42 territoires sont conquis. La partie est terminée.",
   victoryText:
     "a conquis les 42 territoires. Une nouvelle histoire peut commencer.",
   newGame: "Nouvelle partie",
@@ -345,9 +346,10 @@ const en: typeof fr = {
   defeatTitle: "Your empire has fallen.",
   defeatSpectator:
     "You have lost your last territory. You can keep watching the game.",
-  defeatFinished: "The conquest is over. A new game awaits.",
   neutral: "Neutral",
   victoryTitle: "A world in their name.",
+  victoryOf: "Victory for",
+  victoryComplete: "All 42 territories have been conquered. The game is over.",
   victoryText: "has conquered all 42 territories. A new story can begin.",
   newGame: "New game",
   reconnect: "Returning to your table…",

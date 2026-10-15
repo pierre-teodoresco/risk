@@ -24,7 +24,7 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import Crest from "./Crest";
 import GameScreen from "./GameScreen";
-import VictoryConfetti from "./VictoryConfetti";
+import VictoryCelebration from "./VictoryCelebration";
 import DefeatAnimation from "./DefeatAnimation";
 import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
 import type { BoardOptions, Lands } from "./board/engine";
@@ -104,7 +104,8 @@ export default function Mappa() {
     audioRef = useRef(false),
     requestRunning = useRef(false);
   const t = texts(lang);
-  const me = game?.players.find((p) => p.id === game.me);
+  const me = game?.players.find((p) => p.id === game.me),
+    winner = game?.players.find((p) => p.id === game?.winner);
   const isHost = game?.host === game?.me;
   const accept = useCallback((next: PublicGame) => {
     const old = gameRef.current;
@@ -603,11 +604,11 @@ export default function Mappa() {
           onHome={home}
           troopChanges={troopChanges}
         />
-        {me?.eliminated && game.winner !== me.id && (
-          <DefeatAnimation key={`${game.code}:${me.id}`} lang={lang} finished={game.phase === "finished"} />
+        {me?.eliminated && game.phase !== "finished" && (
+          <DefeatAnimation key={`${game.code}:${me.id}`} lang={lang} />
         )}
-        {game.phase === "finished" && game.winner === game.me && (
-          <VictoryConfetti key={`${game.code}:${game.winner}`} />
+        {game.phase === "finished" && winner && (
+          <VictoryCelebration key={`${game.code}:${winner.id}`} winner={winner} lang={lang} />
         )}
         {overlays}
       </>
