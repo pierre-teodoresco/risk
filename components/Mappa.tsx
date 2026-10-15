@@ -274,10 +274,46 @@ export default function Mappa() {
     setBusy(true);
     setError("");
     try {
+      let entryColor = color;
+      if (joining) {
+        const saved = localStorage.getItem(sessionKey(room));
+        if (saved) {
+          const restored = await fetch("/api/rooms/" + room, {
+            headers: { Authorization: "Bearer " + saved },
+            cache: "no-store",
+            signal: AbortSignal.timeout(15000),
+          });
+          if (restored.ok) {
+            const data = await restored.json();
+            token.current = saved;
+            accept(data.game);
+            setPreview(null);
+            history.replaceState(null, "", "?room=" + room);
+            return;
+          }
+        }
+        const response = await fetch("/api/rooms/" + room, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(15000),
+        });
+        const details = await response.json();
+        if (!response.ok) throw new Error(details.error);
+        if (details.phase !== "lobby") throw new Error("alreadyStarted");
+        setPreview(details);
+        const used = new Set(
+          details.players.map((p: { color: number }) => p.color),
+        );
+        if (used.has(entryColor)) {
+          const available = [0, 1, 2, 3, 4, 5].find((c) => !used.has(c));
+          if (available === undefined) throw new Error("roomFull");
+          entryColor = available;
+          setColor(entryColor);
+        }
+      }
       const res = await fetch(joining ? "/api/rooms/" + room : "/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "join", name, color }),
+        body: JSON.stringify({ type: "join", name, color: entryColor }),
         signal: AbortSignal.timeout(20000),
       });
       const d = await res.json();

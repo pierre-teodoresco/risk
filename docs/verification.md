@@ -6,7 +6,9 @@ Vérifié le 15 octobre 2026.
 - **21 tests moteur réussis** : carte réciproque à 42 territoires, installation à 3/4/5/6 joueurs, cartes, renforts, dés et égalités, transfert après conquête, fortification, confidentialité, chronomètres, pause, exclusion, transfert d’hôte et reconnexion après absence totale. Des parties simulées à 3 et 6 joueurs atteignent la conquête mondiale, avec contrôle des invariants de troupes.
 - **Intégration réelle à 3 et 6 joueurs réussie**, en local puis sur la production : API → Supabase → API, arrivées et actions concurrentes, idempotence, autorisations, messages privés invisibles au troisième joueur, Blitz, phases, reprise de l’identité, pause et neutralisation.
 - **Interface vérifiée dans deux navigateurs** : création et invitation, français et anglais indépendants, préparation, lancement, installation manuelle et automatique, renforts, Blitz, déplacement après conquête, fin de tour et messages privés. L’état est synchronisé en temps réel.
-- **Affichage :** ordinateur à 1440 px et tablette à 1024/768 px ; les petits téléphones restent secondaires. La carte dispose d’un zoom et d’un déplacement.
+- **Affichage :** ordinateur à 1440 px et tablette à 1024/768 px, sans débordement horizontal ; carte pleine largeur sur tablette portrait. Les petits téléphones restent secondaires. La carte dispose d’un zoom et d’un déplacement.
+- **Entrée par code :** une couleur occupée est remplacée par une couleur libre, vérification réelle dans l’interface ; une identité existante est restaurée.
+- **Journaux Vercel :** aucune erreur runtime de production dans la fenêtre de cinq minutes contrôlée après les tests.
 - **Build de production et TypeScript :** réussis localement et chez Vercel.
 - **Dépendances :** `npm audit` sans vulnérabilité connue lors de la livraison.
 - **Coût :** Vercel Hobby et organisation Supabase Free confirmés. Aucun plan payant activé.
