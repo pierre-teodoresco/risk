@@ -367,3 +367,17 @@ test("exclusion of active player during pause resets next turn timer correctly",
   assert.equal(g.pausedRemaining, 180000);
   assert.equal(g.players.find((p) => p.id === oldActive)!.cards.length, 0);
 });
+
+test("hosting transfers by arrival time rather than randomized turn order", () => {
+  const g = deployed();
+  g.players.forEach((p, i) => {
+    p.joined = 10 + i;
+    p.lastSeen = 70000;
+  });
+  g.host = g.players[0].id;
+  g.players[0].lastSeen = 1000;
+  const expected = g.players[1].id;
+  g.players.reverse();
+  maintenance(g, 70001, rand);
+  assert.equal(g.host, expected);
+});
