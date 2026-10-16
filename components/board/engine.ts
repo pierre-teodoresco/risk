@@ -7,7 +7,8 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import MAP from "@/lib/map-data.json";
-import { CONTINENTS, COLORS, WORLD, type Lang } from "@/lib/world";
+import { CONTINENTS, WORLD, type Lang } from "@/lib/world";
+import { EMBLEM_INK, EMBLEM_OUTLINE, STROKE_EMBLEM_WIDTHS, emblemOf } from "@/lib/emblems";
 
 export type LandView = { color: number | null; troops: number };
 export type Lands = Record<string, LandView>;
@@ -25,6 +26,10 @@ export type BoardOptions = {
   highlight: string[];
   arrow: Arrow;
   lang: Lang;
+  /** Player colours, indexed by player colour slot. */
+  palette: readonly string[];
+  /** Adds the owner's crest emblem to troop coins so players differ by shape, not only by colour. */
+  emblems: boolean;
   /** Screen space kept free for the HUD, in CSS pixels. */
   waterMotion?: boolean;
   pad: { top: number; right: number; bottom: number; left: number };
@@ -38,6 +43,11 @@ type Callbacks = {
 
 const NEUTRAL = "#9aa3ad";
 const DEPTH = 0.4;
+// Troop coins are drawn on a canvas wider than the coin itself to leave room for the emblem medallion.
+const COIN_PX = 160;
+const COIN_PAD = 16;
+const COIN_SIZE = 1;
+const MEDAL = { x: 128, y: 32, r: 29, emblemScale: 0.88 };
 const IDS = WORLD.map((t) => t.id);
 const N = IDS.length;
 const [VX, VY, VW, VH] = MAP.viewBox;
@@ -48,7 +58,6 @@ const rand = (s: number) => {
   const x = Math.sin(s * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 };
-const colorOf = (c: number | null) => (c === null ? NEUTRAL : COLORS[c]);
 
 // ---------- Plastic army figures (shared with the HUD phase icons) ----------
 function at(geo: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) {
@@ -145,9 +154,9 @@ export class BoardEngine {
   private shake = 0;
   private shakeOffset = new THREE.Vector3();
   private arc: { key: string; group: THREE.Group; meshes: THREE.Mesh[]; start: number; ghost: boolean } | null = null;
-  private plastic = COLORS.map((c) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.25 }));
+  private plastic: THREE.MeshPhysicalMaterial[];
   private neutralPlastic = new THREE.MeshPhysicalMaterial({ color: NEUTRAL, roughness: 0.5, clearcoat: 0.4 });
-  private roofs = COLORS.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, flatShading: true }));
+  private roofs: THREE.MeshStandardMaterial[];
   private neutralRoof = new THREE.MeshStandardMaterial({ color: NEUTRAL, roughness: 0.6, flatShading: true });
   private wallMat = new THREE.MeshStandardMaterial({ color: 0xf6ead2, roughness: 0.7, flatShading: true });
   private winMat = new THREE.MeshStandardMaterial({ color: 0xffd36b, emissive: 0xffb43b, emissiveIntensity: 0.6 });
@@ -167,6 +176,8 @@ export class BoardEngine {
 
   constructor(private host: HTMLElement, private cb: Callbacks, opts: BoardOptions) {
     this.opts = opts;
+    this.plastic = opts.palette.map((c) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.25 }));
+    this.roofs = opts.palette.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, flatShading: true }));
     this.unitScale = IDS.map((id) => THREE.MathUtils.clamp(Math.sqrt(TERR[id].area) / 95, 0.58, 1));
     const r = (this.renderer = new THREE.WebGLRenderer({ antialias: true }));
     r.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -342,7 +353,7 @@ export class BoardEngine {
 
   private buildLabels() {
     for (let t = 0; t < N; t++) {
-      this.coins.push({ ...this.sprite(128, 128, 0.8, 0.8, 10), pop: 0 });
+      this.coins.push({ ...this.sprite(COIN_PX, COIN_PX, COIN_SIZE, COIN_SIZE, 10), pop: 0 });
       this.names.push(this.sprite(512, 96, 2.45, 0.46, 11));
     }
     this.drawNames();
@@ -370,8 +381,22 @@ export class BoardEngine {
     this.opts = opts;
     if (prev.unitMode !== opts.unitMode) for (let t = 0; t < N; t++) this.buildUnits(t, true);
     if (prev.lang !== opts.lang) this.drawNames();
+    if (prev.palette !== opts.palette) this.applyPalette();
+    if (prev.palette !== opts.palette || prev.emblems !== opts.emblems) for (let t = 0; t < N; t++) this.drawCoin(t);
     if (prev.pad.left !== opts.pad.left || prev.pad.right !== opts.pad.right || prev.pad.bottom !== opts.pad.bottom || prev.pad.top !== opts.pad.top) this.resize(true);
     this.applyOptions();
+  }
+
+  private colorOf(c: number | null) {
+    return c === null ? NEUTRAL : this.opts.palette[c];
+  }
+
+  private applyPalette() {
+    this.opts.palette.forEach((c, i) => {
+      this.plastic[i].color.set(c);
+      this.roofs[i].color.set(c);
+    });
+    this.flipColor.fill(null);
   }
 
   private applyOptions() {
@@ -398,7 +423,7 @@ export class BoardEngine {
       setTimeout(() => {
         if (this.disposed) return;
         const c = this.lands[b.to]?.color ?? null;
-        this.burst(x, this.topY(t) + 0.4, z, new THREE.Color(colorOf(c)), 120, 3.2, 0.11);
+        this.burst(x, this.topY(t) + 0.4, z, new THREE.Color(this.colorOf(c)), 120, 3.2, 0.11);
         this.burst(x, this.topY(t) + 0.4, z, 0xffffff, 60, 2.8, 0.08);
         this.shake = 0.3;
       }, hits * 170);
@@ -409,7 +434,7 @@ export class BoardEngine {
     const t = IDS.indexOf(id);
     if (t < 0) return;
     const [x, z] = toWorld(TERR[id].center[0], TERR[id].center[1]);
-    this.burst(x, this.topY(t) + 0.3, z, new THREE.Color(colorOf(this.lands[id]?.color ?? null)), 24, 1.6, 0.07);
+    this.burst(x, this.topY(t) + 0.3, z, new THREE.Color(this.colorOf(this.lands[id]?.color ?? null)), 24, 1.6, 0.07);
   }
 
   dispose() {
@@ -490,12 +515,14 @@ export class BoardEngine {
   private drawCoin(t: number) {
     const coin = this.coins[t], land = this.lands[IDS[t]];
     const g = coin.canvas.getContext("2d")!;
-    g.clearRect(0, 0, 128, 128);
+    g.clearRect(0, 0, COIN_PX, COIN_PX);
     if (!land || land.troops <= 0) {
       coin.tex.needsUpdate = true;
       return;
     }
-    const col = colorOf(land.color);
+    g.save();
+    g.translate(COIN_PAD, COIN_PAD);
+    const col = this.colorOf(land.color);
     const dark = "#" + new THREE.Color(col).multiplyScalar(0.55).getHexString();
     g.fillStyle = "#00000055"; g.beginPath(); g.arc(64, 70, 52, 0, Math.PI * 2); g.fill();
     g.fillStyle = dark; g.beginPath(); g.arc(64, 66, 52, 0, Math.PI * 2); g.fill();
@@ -510,8 +537,36 @@ export class BoardEngine {
     g.textAlign = "center"; g.textBaseline = "middle";
     g.lineWidth = 10; g.strokeStyle = "#0b0f17"; g.lineJoin = "round"; g.strokeText(text, 64, 64);
     g.fillStyle = "#fff"; g.fillText(text, 64, 64);
+    g.restore();
+    if (this.opts.emblems && land.color !== null) this.drawMedal(g, land.color);
     coin.tex.needsUpdate = true;
     coin.pop = performance.now() / 1000;
+  }
+
+  private drawMedal(g: CanvasRenderingContext2D, color: number) {
+    g.save();
+    g.translate(MEDAL.x, MEDAL.y);
+    g.fillStyle = this.colorOf(color);
+    g.lineWidth = 5; g.strokeStyle = "#0b0f17";
+    g.beginPath(); g.arc(0, 0, MEDAL.r, 0, Math.PI * 2); g.fill(); g.stroke();
+    const emblem = emblemOf(color);
+    g.scale(MEDAL.emblemScale, MEDAL.emblemScale);
+    g.rotate(((emblem.rotate ?? 0) * Math.PI) / 180);
+    g.lineJoin = "round"; g.lineCap = "round";
+    const paths = emblem.shapes.map((d) => new Path2D(d));
+    if (emblem.strokeOnly) {
+      for (const [c, w] of [[EMBLEM_INK, STROKE_EMBLEM_WIDTHS.outline], ["#fff", STROKE_EMBLEM_WIDTHS.inner]] as const) {
+        g.strokeStyle = c; g.lineWidth = w;
+        paths.forEach((p) => g.stroke(p));
+      }
+    } else {
+      g.fillStyle = "#fff"; g.strokeStyle = EMBLEM_INK; g.lineWidth = EMBLEM_OUTLINE;
+      paths.forEach((p) => {
+        g.fill(p, emblem.evenOdd ? "evenodd" : "nonzero");
+        g.stroke(p);
+      });
+    }
+    g.restore();
   }
 
   private drawNames() {
@@ -537,7 +592,7 @@ export class BoardEngine {
 
   // ---------- Colours ----------
   private baseColor(t: number, color: number | null) {
-    const c = new THREE.Color(this.opts.view === "continents" ? CONTINENTS.find((x) => x.id === WORLD[t].continent)!.color : colorOf(color));
+    const c = new THREE.Color(this.opts.view === "continents" ? CONTINENTS.find((x) => x.id === WORLD[t].continent)!.color : this.colorOf(color));
     const hsl = { h: 0, s: 0, l: 0 };
     c.getHSL(hsl);
     return c.setHSL(hsl.h, hsl.s * 0.95, THREE.MathUtils.clamp(hsl.l + (rand(t * 3.1) - 0.5) * 0.1, 0.15, 0.8));
@@ -776,7 +831,7 @@ export class BoardEngine {
       coin.sp.position.set(g.position.x, this.topY(t) + (o.unitMode === "city" ? 1.15 : 1.05), g.position.z - 0.05);
       coin.sp.visible = now > this.boot + 0.7 + this.appear[t] && (this.lands[id]?.troops ?? 0) > 0;
       const pop = Math.min(1, (now - coin.pop) / 0.22), ps = 1 + 0.35 * Math.sin(Math.PI * pop);
-      coin.sp.scale.set(0.8 * ps, 0.8 * ps, 1);
+      coin.sp.scale.set(COIN_SIZE * ps, COIN_SIZE * ps, 1);
       const name = this.names[t];
       name.sp.position.set(g.position.x, this.topY(t) + 0.25, g.position.z + 0.7 * s);
       name.sp.visible = o.showNames && now > this.boot + 1;

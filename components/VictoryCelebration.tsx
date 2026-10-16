@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, type CSSProperties } from "react";
 import { Crown, X } from "lucide-react";
-import { COLORS, type Lang } from "@/lib/world";
+import type { Lang } from "@/lib/world";
 import { texts } from "@/lib/i18n";
 import VictoryConfetti from "./VictoryConfetti";
 
@@ -30,7 +30,7 @@ export default function VictoryCelebration({
     <>
       <div
         className="victory-celebration"
-        style={{ "--winner-color": COLORS[winner.color] } as CSSProperties}
+        style={{ "--winner-color": `var(--pc${winner.color})` } as CSSProperties}
         data-testid="victory-celebration"
       >
         <section

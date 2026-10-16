@@ -4,7 +4,7 @@ import { COLORS } from "@/lib/world";
 
 const pieces = Array.from({ length: 84 }, (_, i) => ({
   left: `${(i * 37 + 11) % 100}%`,
-  background: i % 4 === 0 ? "#edc75e" : COLORS[i % COLORS.length],
+  background: i % 4 === 0 ? "#edc75e" : `var(--pc${i % COLORS.length})`,
   width: `${7 + (i % 4) * 2}px`,
   height: `${10 + (i % 5) * 2}px`,
   borderRadius: i % 3 === 0 ? "50%" : "2px",

@@ -10,6 +10,8 @@ import {
   Clock,
   Copy,
   Crown,
+  Eye,
+  EyeOff,
   HelpCircle,
   LockKeyhole,
   LogOut,
@@ -28,7 +30,7 @@ import VictoryCelebration from "./VictoryCelebration";
 import DefeatAnimation from "./DefeatAnimation";
 import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
 import type { BoardOptions, Lands } from "./board/engine";
-import { COLORS, WORLD, type Lang } from "@/lib/world";
+import { WORLD, playerColors, type Lang } from "@/lib/world";
 import { type PublicGame, type Action } from "@/lib/game";
 import { texts, errorText } from "@/lib/i18n";
 
@@ -91,6 +93,7 @@ export default function Mappa() {
     [rules, setRules] = useState(false),
     [troopChanges, setTroopChanges] = useState<TimedTroopChange[]>([]),
     [audio, setAudio] = useState(false),
+    [colorblind, setColorblind] = useState(false),
     [copied, setCopied] = useState(false),
     [draft, setDraft] = useState(""),
     [now, setNow] = useState(Date.now()),
@@ -177,6 +180,7 @@ export default function Mappa() {
       setAudio(true);
       audioRef.current = true;
     }
+    setColorblind(localStorage.getItem("mappa.colorblind") === "on");
     setName(localStorage.getItem("mappa.name") ?? "");
     const code =
       new URLSearchParams(location.search).get("room")?.toUpperCase() ?? "";
@@ -405,6 +409,17 @@ export default function Mappa() {
       return !v;
     });
   }
+  const palette = playerColors(colorblind);
+  // Crests, HUD seats and celebrations read these variables; the 3D board gets the palette directly.
+  useEffect(() => {
+    palette.forEach((c, i) => document.documentElement.style.setProperty(`--pc${i}`, c));
+  }, [palette]);
+  function changeColorblind() {
+    setColorblind((v) => {
+      localStorage.setItem("mappa.colorblind", v ? "off" : "on");
+      return !v;
+    });
+  }
   const decorOptions: BoardOptions = useMemo(
     () => ({
       view: "players",
@@ -418,13 +433,15 @@ export default function Mappa() {
       highlight: [],
       arrow: null,
       lang,
+      palette,
+      emblems: colorblind,
       pad: { top: 40, right: 40, bottom: 40, left: 40 },
     }),
-    [lang],
+    [lang, palette, colorblind],
   );
-  const palette = (
+  const colorPicker = (
     <div className="palette" role="group" aria-label={t.color}>
-      {COLORS.map((c, i) => {
+      {palette.map((c, i) => {
         const taken = (
           game
             ? game.players.filter((p) => p.id !== game.me)
@@ -608,6 +625,9 @@ export default function Mappa() {
           now={now}
           audio={audio}
           toggleAudio={changeAudio}
+          palette={palette}
+          colorblind={colorblind}
+          toggleColorblind={changeColorblind}
           copyInvite={copy}
           copied={copied}
           openRules={() => setRules(true)}
@@ -654,6 +674,15 @@ export default function Mappa() {
             onClick={changeAudio}
           >
             {audio ? <Volume2 /> : <VolumeX />}
+          </button>
+          <button
+            className="orb small"
+            aria-label={t.colorblind}
+            title={t.colorblind}
+            aria-pressed={colorblind}
+            onClick={changeColorblind}
+          >
+            {colorblind ? <Eye /> : <EyeOff />}
           </button>
           <div className="seg">
             <button aria-pressed={lang === "fr"} onClick={() => setLang("fr")}>
@@ -725,7 +754,7 @@ export default function Mappa() {
                 autoComplete="nickname"
               />
               <label>{t.color}</label>
-              {palette}
+              {colorPicker}
               <button
                 className="btn go wide"
                 disabled={busy || name.trim().length < 2}
@@ -852,7 +881,7 @@ export default function Mappa() {
             <div className="lobby-foot">
               <div className="row">
                 {t.color}
-                {palette}
+                {colorPicker}
               </div>
               <div className="row">
                 <span>

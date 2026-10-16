@@ -341,3 +341,14 @@ export const COLORS = [
   "#2f6fd6",
   "#e0559a",
 ];
+// Okabe–Ito palette: stays distinguishable under protanopia, deuteranopia and tritanopia.
+// Same slot order as COLORS so a player keeps the closest hue when the mode changes.
+export const COLORBLIND_COLORS = [
+  "#d55e00",
+  "#009e73",
+  "#cc79a7",
+  "#f0e442",
+  "#0072b2",
+  "#56b4e9",
+];
+export const playerColors = (colorblind: boolean) => (colorblind ? COLORBLIND_COLORS : COLORS);

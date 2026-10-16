@@ -47,6 +47,9 @@ type Props = {
   now: number;
   audio: boolean;
   toggleAudio: () => void;
+  palette: readonly string[];
+  colorblind: boolean;
+  toggleColorblind: () => void;
   copyInvite: () => void;
   copied: boolean;
   openRules: () => void;
@@ -245,9 +248,9 @@ export default function GameScreen(props: Props) {
   const pad = narrow ? { top: 150, right: 100, bottom: 210, left: 20 } : { top: 95, right: 170, bottom: 170, left: 100 };
   const options: BoardOptions = useMemo(
     // During the advance after a conquest the target is already ours: no red target tint.
-    () => ({ view, unitMode, showNames, interactive: true, selected, target: game.pending ? "" : target, legal, legalTone: fortifying ? "move" : "attack", highlight, arrow, lang, pad, waterMotion }),
+    () => ({ view, unitMode, showNames, interactive: true, selected, target: game.pending ? "" : target, legal, legalTone: fortifying ? "move" : "attack", highlight, arrow, lang, pad, waterMotion, palette: props.palette, emblems: props.colorblind }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [view, unitMode, showNames, selected, target, !!game.pending, fortifying, legal.join(), highlight.join(), arrow?.from, arrow?.to, arrow?.ghost, lang, narrow, waterMotion],
+    [view, unitMode, showNames, selected, target, !!game.pending, fortifying, legal.join(), highlight.join(), arrow?.from, arrow?.to, arrow?.ghost, lang, narrow, waterMotion, props.palette, props.colorblind],
   );
   const battle = game.lastBattle ? { ...game.lastBattle } : null;
 
@@ -567,7 +570,7 @@ export default function GameScreen(props: Props) {
   const hoverOdds = hover && attacking && selected && legal.includes(hover.id) ? blitzOdds(land(selected).troops, land(hover.id).troops).win : null;
 
   return (
-    <div className={"game" + (compact ? " compact" : "")} style={{ "--pc0": "#d9413a", "--pc1": "#36a159", "--pc2": "#8c55d6", "--pc3": "#e8b21f", "--pc4": "#2f6fd6", "--pc5": "#e0559a" } as CSSProperties}>
+    <div className={"game" + (compact ? " compact" : "")}>
       <Board3D
         lands={lands}
         options={options}
@@ -616,6 +619,7 @@ export default function GameScreen(props: Props) {
           <div className="row">{t.sound}<button className="switch" aria-pressed={props.audio} aria-label={t.sound} onClick={props.toggleAudio} /></div>
           <div className="row">{h.language}<div className="seg">
             <button aria-pressed={lang === "fr"} onClick={() => props.setLang("fr")}>FR</button>
+          <div className="row">{t.colorblind}<button className="switch" aria-pressed={props.colorblind} aria-label={t.colorblind} onClick={props.toggleColorblind} /></div>
             <button aria-pressed={lang === "en"} onClick={() => props.setLang("en")}>EN</button>
           </div></div>
           <div className="row">{h.room} <span className="code"><LockKeyhole size={13} /> {game.code}</span></div>
