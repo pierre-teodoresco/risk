@@ -86,12 +86,11 @@ export default function Pioche() {
     <div className="pioche">
       <CardDefs />
       <header className="pioche-top">
-        <a className="pioche-brand" href="/" aria-label={tx.allGames}>
-          <LayoutGrid size={18} aria-hidden="true" />
-          pioche<span>.</span>
-        </a>
         {g && g.phase !== "lobby" && <span className="round-tag">{fmt(tx.round, { n: g.round })} · {g.code}</span>}
         <nav>
+          <a className="orb small" href="/" aria-label={tx.allGames} title={tx.allGames}>
+            <LayoutGrid />
+          </a>
           <button className="orb small" aria-label={tx.howToPlay} title={tx.howToPlay} aria-expanded={rules} onClick={() => setRules(true)}>
             <BookOpen />
           </button>

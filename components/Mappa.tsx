@@ -663,9 +663,6 @@ export default function Mappa() {
         />
       </div>
       <header className="topbar">
-        <button className="brand" onClick={home} aria-label="Mappa">
-          mappa<span>.</span>
-        </button>
         <nav>
           <a className="orb small" href="/" aria-label={t.allGames} title={t.allGames}>
             <LayoutGrid />

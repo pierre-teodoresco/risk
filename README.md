@@ -2,7 +2,7 @@
 
 Jeu de conquête mondiale pour **3 à 6 humains**, en français et en anglais. Salons privés sans compte, carte originale en SVG, combats Blitz instantanés, cartes progressives, chat public et messages privés.
 
-Mappa est le premier jeu du hub **Tablée** : la racine `/` présente la ludothèque, et chaque jeu disponible a sa propre route (`/mappa`, `/pioche` pour le jeu de cartes de défausse). Les anciens liens d’invitation `/?room=CODE` sont redirigés vers `/mappa?room=CODE`.
+Mappa est le premier jeu du hub **Tablée** : la racine `/` présente la ludothèque, et chaque jeu disponible a sa propre route (`/mappa`, `/pioche` pour le jeu de cartes de défausse). Dans chaque jeu, le bouton « Tous les jeux » (icône grille, en haut à droite) ramène au hub. Les anciens liens d’invitation `/?room=CODE` sont redirigés vers `/mappa?room=CODE`.
 
 ## Lancer
 
@@ -51,6 +51,18 @@ Les navigateurs maintiennent leur présence toutes les 10 secondes. Les échéan
 - Pause après 60 secondes d’absence du joueur actif, détectée lors du prochain contrôle de présence. Hôte transféré au premier joueur connecté selon l’ordre d’arrivée.
 - L’exclusion neutralise les territoires et conserve les armées ; les cartes vont à la défausse. Les neutres ne jouent pas, mais défendent et doivent être conquis.
 
+## Pioche
+
+Jeu de défausse pour **2 à 8 joueurs** sur le paquet classique de 108 cartes : poser une carte de même couleur, même chiffre ou même symbole, et vider sa main le premier. Un joueur à une carte doit crier « Pioche ! » avant les autres, sinon il pioche 2 cartes. Le panneau « Règles du jeu » détaille les cartes spéciales et les options.
+
+Options choisies par l’hôte dans la salle d’attente :
+
+- **Cumul des +2 et +4** : répondre à un +2 par un +2, à un +4 par un +4.
+- **Piocher jusqu’à pouvoir jouer** : une fois la pioche commencée, on tire carte par carte jusqu’à pouvoir poser.
+- **Règle du 7-0** : un 7 échange sa main avec un joueur, un 0 fait tourner toutes les mains.
+- **Lots de cartes identiques** : poser d’un coup plusieurs cartes au même chiffre ou au même symbole. La première doit pouvoir se poser, la dernière donne la couleur, et les effets s’additionnent (Passes, +2, +4 ; deux Inversions s’annulent).
+- **Temps par tour** : libre, 15, 30 ou 60 secondes.
+
 ## Vérifier
 
 ```sh
@@ -63,7 +75,7 @@ npm run test:integration
 MAPPA_TEST_URL=https://votre-domaine.vercel.app npm run test:integration
 ```
 
-L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
+L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
 
 ## Déploiement
 

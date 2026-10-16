@@ -14,6 +14,7 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 - Ajouter une brique : une entrée dans le registre, son illustration dans `components/hub/art.tsx` (même `id`), puis, quand elle passe en `live`, une page `app/<id>/page.tsx`. Un jeu `soon` reste visible sans lien.
 - `components/hub/Hub.tsx` affiche la ludothèque ; ses textes sont `hallTexts` dans `lib/i18n.ts`, ses styles sont limités à `.hall` dans `app/hub.css`. Les illustrations sont rendues côté serveur : ne pas importer `components/hub/art.tsx` depuis un composant client.
 - La langue est partagée entre le hub et les jeux par `LANG_KEY`.
+- Retour au hub : chaque jeu ouvre sa barre du haut, à droite, par un bouton rond `orb small` (icône `LayoutGrid`, libellé `allGames`) qui pointe vers `/`. Pas de titre de jeu en haut à gauche. Une nouvelle brique reprend ce modèle.
 
 ## Plateforme
 
@@ -25,8 +26,10 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 
 ## Pioche
 
-- `games/pioche/engine.ts` porte les règles (108 cartes, 2 à 8 joueurs, options d’hôte) et `publicGame`, qui masque les mains adverses, le paquet et la légalité d’un +4. `playable` sert aussi au client pour éclairer les cartes jouables : le serveur reste juge.
-- `games/pioche/ui/` contient l’écran : `Hand.tsx` (éventail, survol, glisser-déposer, clavier) et `Pile.tsx` écrivent leurs transformations dans le DOM depuis une boucle de ressorts, hors du rendu React. Les classes CSS propres à Pioche portent le préfixe `pc-` quand elles risquent d’entrer en collision avec `app/globals.css`.
+- `games/pioche/engine.ts` porte les règles (108 cartes, 2 à 8 joueurs, options d’hôte) et `publicGame`, qui masque les mains adverses, le paquet et la légalité d’un +4. `playable` et `sameRank` servent aussi au client pour éclairer les cartes jouables et les jumelles d’un lot : le serveur reste juge.
+- Options d’hôte : `stacking`, `drawUntilPlayable`, `sevenZero`, `combos` et `timer`. Une nouvelle option s’ajoute au type `Options`, à `createGame`, à l’action `options`, au salon (`Screens.tsx`), au panneau `Rules.tsx` et aux textes des deux langues. Les salles enregistrées sans la clé lisent l’option comme désactivée.
+- Option `combos` (lots de cartes identiques) : l’action `play` accepte `cards` (identifiants dans l’ordre de pose) ; `card` seul reste accepté. La première carte doit être jouable, les suivantes identiques ; la dernière donne la couleur. `lastPlay.cards` liste le lot pour l’animation. Les règles détaillées sont `combosRules` dans `games/pioche/i18n.ts` : les garder alignées avec le moteur.
+- `games/pioche/ui/` contient l’écran : `Hand.tsx` (éventail, survol, sélection d’un lot, glisser-déposer, clavier) et `Pile.tsx` (arrivées échelonnées d’un lot) écrivent leurs transformations dans le DOM depuis une boucle de ressorts, hors du rendu React. La sélection du lot vit dans `Table.tsx`, qui la passe à `Hand.tsx`. Les classes CSS propres à Pioche portent le préfixe `pc-` quand elles risquent d’entrer en collision avec `app/globals.css`.
 - Textes et erreurs dans `games/pioche/i18n.ts`, en français et en anglais. Tests : `tests/pioche.test.ts`, et un passage Pioche dans `npm run test:integration`.
 
 ## Répartition des responsabilités (Mappa)
