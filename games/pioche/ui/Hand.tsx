@@ -15,11 +15,29 @@ type Props = {
   highlight: string | null;
   /** Cards appear from this rectangle (the deck) instead of popping in place. */
   drawOrigin: () => DOMRect | null;
-  /** Dropping a dragged card over this rectangle plays it. */
-  dropZone: () => DOMRect | null;
+  /** Dropping a dragged card over this element plays it; it lights up while a card hovers it. */
+  dropZone: () => HTMLElement | null;
   onPlay: (card: Card, from: DOMRect) => void;
   onCue: (cue: Cue) => void;
   tx: PiocheTexts;
+};
+type Drag = {
+  id: string;
+  startX: number;
+  startY: number;
+  /** Pointer offset from the card centre when the drag started, kept for the whole drag. */
+  grabX: number;
+  grabY: number;
+  x: number;
+  y: number;
+  /** Smoothed horizontal speed in px/s, which leans the card like a held sheet. */
+  vx: number;
+  lastX: number;
+  lastT: number;
+  active: boolean;
+  over: boolean;
+  /** Hand order when the drag began, restored if the card is let go away from the hand. */
+  original: string[];
 };
 type Motion = {
   x: Spring; y: Spring; rot: Spring; lift: Spring; scale: Spring; tiltX: Spring; tiltY: Spring; flip: Spring;
@@ -34,8 +52,16 @@ const SCALE_HOVER = 1.07;
 const SCALE_SELECTED = 1.1;
 const TILT_MAX_DEG = 18;
 const DRAG_THRESHOLD_PX = 8;
-const DRAG_LEAN = 0.04;
-const DRAG_LEAN_MAX_DEG = 16;
+const DRAG_LEAN_DEG_PER_PX_S = 0.012;
+const DRAG_LEAN_MAX_DEG = 14;
+const DRAG_SPEED_SMOOTHING = 0.35;
+/** Per-second decay of the lean once the pointer stops. */
+const DRAG_LEAN_DECAY = 10;
+const DRAG_SCALE = 1.08;
+/** Share of the card height, from its top, above which a held card no longer reorders the hand. */
+const REORDER_BAND = 0.35;
+/** A card that left the hand (played but refused) comes back from where it was for this long. */
+const DEPARTED_MEMORY_S = 6;
 const DROP_MARGIN_PX = 40;
 const DEAL_STAGGER_S = 0.07;
 const SWAY_DEG = 0.7;
@@ -60,7 +86,9 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
     els = useRef(new Map<string, HTMLButtonElement>()),
     motion = useRef(new Map<string, Motion>()),
     hover = useRef<string | null>(null),
-    drag = useRef<{ id: string; startX: number; startY: number; dx: number; dy: number; active: boolean; lastX: number } | null>(null),
+    drag = useRef<Drag | null>(null),
+    returning = useRef<string | null>(null),
+    departed = useRef(new Map<string, { motion: Motion; at: number }>()),
     clock = useRef(0),
     mounted = useRef(false),
     live = useRef({ order, selected, highlight }),
@@ -87,6 +115,12 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
     let delay = 0;
     for (const id of order) {
       if (motion.current.has(id)) continue;
+      const back = departed.current.get(id);
+      if (back && clock.current - back.at < DEPARTED_MEMORY_S) {
+        motion.current.set(id, back.motion);
+        departed.current.delete(id);
+        continue;
+      }
       const fromDeck = mounted.current && box && origin;
       const ox = fromDeck ? origin.left + origin.width / 2 - (box.left + box.width / 2) : 0;
       const oy = fromDeck ? origin.top - box.top : 0;
@@ -104,7 +138,11 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
       });
       if (fromDeck) delay += DEAL_STAGGER_S;
     }
-    for (const id of [...motion.current.keys()]) if (!order.includes(id)) motion.current.delete(id);
+    for (const [id, m] of [...motion.current]) {
+      if (order.includes(id)) continue;
+      departed.current.set(id, { motion: m, at: clock.current });
+      motion.current.delete(id);
+    }
     mounted.current = true;
     loop.current?.kick();
   }, [order]);
@@ -125,10 +163,11 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
         const cardW = card.offsetWidth, cardH = cardW * 1.5;
         if (clock.current >= m.wait) {
           if (d?.id === id) {
-            m.x.target = d.dx;
-            m.y.target = d.dy;
-            m.rot.target = Math.max(-DRAG_LEAN_MAX_DEG, Math.min(DRAG_LEAN_MAX_DEG, (d.dx - d.lastX) * DRAG_LEAN * 60));
-            d.lastX = d.dx;
+            // The held card sticks to the pointer; only its lean is animated.
+            m.x.set(d.x);
+            m.y.set(d.y);
+            d.vx *= Math.exp(-DRAG_LEAN_DECAY * dt);
+            m.rot.target = Math.max(-DRAG_LEAN_MAX_DEG, Math.min(DRAG_LEAN_MAX_DEG, d.vx * DRAG_LEAN_DEG_PER_PX_S));
           } else {
             const s = slot(layout.indexOf(id), layout.length, width, cardW);
             const sway = reduced ? 0 : Math.sin(clock.current * 1.4 + m.phase);
@@ -137,16 +176,17 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
             m.rot.target = s.rot + sway * SWAY_DEG;
           }
           m.flip.target = 1;
-          const up = sel === id ? LIFT_SELECTED : hover.current === id || d?.id === id ? LIFT_HOVER : 0;
+          const up = d?.id === id ? 0 : sel === id ? LIFT_SELECTED : hover.current === id ? LIFT_HOVER : 0;
           m.lift.target = -up * cardH;
-          m.scale.target = sel === id ? SCALE_SELECTED : hover.current === id || d?.id === id ? SCALE_HOVER : 1;
+          m.scale.target = d?.id === id ? DRAG_SCALE : sel === id ? SCALE_SELECTED : hover.current === id ? SCALE_HOVER : 1;
           if (hover.current !== id && d?.id !== id) m.tiltX.target = m.tiltY.target = 0;
         }
         for (const s of [m.x, m.y, m.rot, m.lift, m.scale, m.tiltX, m.tiltY, m.flip]) s.step(dt);
         card.style.transform =
           `translate3d(${m.x.value}px, ${m.y.value + m.lift.value}px, 0) rotate(${m.rot.value}deg) ` +
           `rotateX(${m.tiltX.value}deg) rotateY(${m.tiltY.value}deg) scale(${m.scale.value})`;
-        card.style.zIndex = String(d?.id === id ? 200 : sel === id || hover.current === id ? 100 : layout.indexOf(id) + 1);
+        if (returning.current === id && ![m.x, m.y].some((s) => s.value !== s.target || s.velocity !== 0)) returning.current = null;
+        card.style.zIndex = String(d?.id === id || returning.current === id ? 200 : sel === id || hover.current === id ? 100 : layout.indexOf(id) + 1);
         card.style.setProperty("--flip", String(m.flip.value));
       });
       // The idle sway keeps the loop alive; with reduced motion it sleeps once everything rests.
@@ -185,50 +225,92 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
     loop.current?.kick();
   }
 
+  function dropState(clientX: number, clientY: number) {
+    const zone = dropZone();
+    const r = zone?.getBoundingClientRect();
+    const over = !!r &&
+      clientX > r.left - DROP_MARGIN_PX && clientX < r.right + DROP_MARGIN_PX &&
+      clientY > r.top - DROP_MARGIN_PX && clientY < r.bottom + DROP_MARGIN_PX;
+    return { zone, over };
+  }
+  function lightZone(zone: HTMLElement | null, over: boolean, ok: boolean) {
+    zone?.classList.toggle("drop-ready", over && ok);
+    zone?.classList.toggle("drop-refused", over && !ok);
+  }
+
   function onPointerDown(e: PointerEvent<HTMLButtonElement>, id: string) {
     if (e.button !== 0) return;
-    drag.current = { id, startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, active: false, lastX: 0 };
+    drag.current = {
+      id, startX: e.clientX, startY: e.clientY, grabX: 0, grabY: 0, x: 0, y: 0,
+      vx: 0, lastX: e.clientX, lastT: e.timeStamp, active: false, over: false, original: order,
+    };
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
       // Capture only keeps a fast drag attached to its card; the drag still works without it.
     }
   }
-  function onPointerMove(e: PointerEvent<HTMLButtonElement>, id: string) {
+  function onPointerMove(e: PointerEvent<HTMLButtonElement>, card: Card) {
     const d = drag.current;
-    if (!d || d.id !== id) return tilt(e, id);
+    if (!d || d.id !== card.id) return tilt(e, card.id);
     if (!d.active && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < DRAG_THRESHOLD_PX) return;
+    const el = e.currentTarget;
     const box = host.current!.getBoundingClientRect();
+    // Card centre when it sits at translate(0, 0): CSS left/top inside the hand.
+    const baseX = box.left + el.offsetLeft + el.offsetWidth / 2;
+    const baseY = box.top + el.offsetTop + el.offsetHeight / 2;
     if (!d.active) {
+      const m = motion.current.get(card.id)!;
       d.active = true;
-      d.lastX = motion.current.get(id)!.x.value;
+      d.grabX = d.startX - (baseX + m.x.value);
+      d.grabY = d.startY - (baseY + m.y.value + m.lift.value);
+      // The hover lift becomes part of the held position, so the card does not slide off the cursor.
+      m.lift.set(0);
+      m.tiltX.target = m.tiltY.target = 0;
+      setSelected(null);
     }
-    d.dx = e.clientX - (box.left + box.width / 2);
-    d.dy = e.clientY - box.top - e.currentTarget.offsetHeight / 2;
-    // Live reorder: the dragged card takes the slot under the pointer.
-    const rest = order.filter((x) => x !== id);
-    const cardW = e.currentTarget.offsetWidth;
-    let index = rest.length;
-    for (let i = 0; i < rest.length; i++)
-      if (d.dx < slot(i, rest.length + 1, box.width, cardW).x) {
-        index = i;
-        break;
-      }
-    const next = [...rest.slice(0, index), id, ...rest.slice(index)];
-    if (next.join() !== order.join()) setOrder(next);
+    const dt = Math.max(1, e.timeStamp - d.lastT) / 1000;
+    d.vx += ((e.clientX - d.lastX) / dt - d.vx) * DRAG_SPEED_SMOOTHING;
+    d.lastX = e.clientX;
+    d.lastT = e.timeStamp;
+    d.x = e.clientX - d.grabX - baseX;
+    d.y = e.clientY - d.grabY - baseY;
+
+    const { zone, over } = dropState(e.clientX, e.clientY);
+    d.over = over;
+    lightZone(zone, over, canPlay(card));
+    // Reorder only while the pointer stays in the band of cards, not on the way to the pile.
+    if (e.clientY > box.top + el.offsetTop + el.offsetHeight * REORDER_BAND) {
+      const rest = order.filter((x) => x !== card.id);
+      const relX = e.clientX - (box.left + box.width / 2);
+      let index = rest.length;
+      for (let i = 0; i < rest.length; i++)
+        if (relX < slot(i, rest.length + 1, box.width, el.offsetWidth).x) {
+          index = i;
+          break;
+        }
+      const next = [...rest.slice(0, index), card.id, ...rest.slice(index)];
+      if (next.join() !== order.join()) setOrder(next);
+    }
     loop.current?.kick();
+  }
+  function endDrag() {
+    lightZone(dropZone(), false, false);
+    drag.current = null;
   }
   function onPointerUp(e: PointerEvent<HTMLButtonElement>, card: Card) {
     const d = drag.current;
-    drag.current = null;
+    endDrag();
     if (!d || d.id !== card.id) return;
     if (!d.active) return choose(card);
-    const zone = dropZone();
-    const over = zone &&
-      e.clientX > zone.left - DROP_MARGIN_PX && e.clientX < zone.right + DROP_MARGIN_PX &&
-      e.clientY > zone.top - DROP_MARGIN_PX && e.clientY < zone.bottom + DROP_MARGIN_PX;
+    const { over } = dropState(e.clientX, e.clientY);
     if (over && canPlay(card)) onPlay(card, e.currentTarget.getBoundingClientRect());
-    else if (over) onCue("error");
+    else {
+      returning.current = card.id;
+      if (over) onCue("error");
+      const box = host.current!.getBoundingClientRect();
+      if (e.clientY < box.top) setOrder(d.original);
+    }
     loop.current?.kick();
   }
   function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, id: string) {
@@ -265,9 +347,9 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
               loop.current?.kick();
             }}
             onPointerDown={(e) => onPointerDown(e, id)}
-            onPointerMove={(e) => onPointerMove(e, id)}
+            onPointerMove={(e) => onPointerMove(e, card)}
             onPointerUp={(e) => onPointerUp(e, card)}
-            onPointerCancel={() => (drag.current = null)}
+            onPointerCancel={endDrag}
             onFocus={() => {
               hover.current = id;
               loop.current?.kick();

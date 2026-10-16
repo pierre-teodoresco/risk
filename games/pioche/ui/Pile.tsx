@@ -9,7 +9,10 @@ import { CardFace } from "./CardFace";
 const JITTER_DEG = 22;
 const JITTER_PX = 9;
 const ARRIVAL_SPIN_DEG = 200;
-const ARRIVAL_SCALE = 1.25;
+const ARRIVAL_SCALE = 1.22;
+/** A card thrown from far spins fully; one dropped onto the pile only settles. */
+const SPIN_DEG_PER_PX = 0.45;
+const SCALE_PER_PX = 0.0006;
 
 function hash(id: string) {
   let h = 2166136261;
@@ -56,12 +59,15 @@ export default function Pile({
       const from = originOf(card);
       if (!from || !box) continue;
       const rest = restingPose(card.id);
-      const spin = hash(card.id + "s") > 0.5 ? ARRIVAL_SPIN_DEG : -ARRIVAL_SPIN_DEG;
+      const dx = from.left + from.width / 2 - (box.left + box.width / 2);
+      const dy = from.top + from.height / 2 - (box.top + box.height / 2);
+      const distance = Math.hypot(dx, dy);
+      const spin = Math.min(ARRIVAL_SPIN_DEG, distance * SPIN_DEG_PER_PX) * (hash(card.id + "s") > 0.5 ? 1 : -1);
       flights.current.set(card.id, {
-        x: new Spring(from.left + from.width / 2 - (box.left + box.width / 2), SPRINGS.soft, rest.x),
-        y: new Spring(from.top + from.height / 2 - (box.top + box.height / 2), SPRINGS.soft, rest.y),
+        x: new Spring(dx, SPRINGS.soft, rest.x),
+        y: new Spring(dy, SPRINGS.soft, rest.y),
         rot: new Spring(rest.rot - spin, SPRINGS.soft, rest.rot),
-        scale: new Spring(ARRIVAL_SCALE, SPRINGS.wobbly, 1),
+        scale: new Spring(Math.min(ARRIVAL_SCALE, 1 + distance * SCALE_PER_PX + 0.06), SPRINGS.wobbly, 1),
       });
     }
     seen.current = new Set(ids);

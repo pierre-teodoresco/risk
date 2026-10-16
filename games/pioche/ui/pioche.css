@@ -101,7 +101,9 @@
 .deck-pending { position: absolute; right: -14px; top: -14px; z-index: 5; min-width: 44px; padding: 4px 8px; border-radius: 999px; background: var(--hot); color: #fff; font: 20px var(--f-display); border: 3px solid var(--ink); animation: flag-pop .4s cubic-bezier(.2,1.6,.4,1) both; }
 
 /* Pile */
-.pile { position: relative; width: calc(var(--card-w) * 1.06); height: calc(var(--card-h) * 1.06); }
+.pile { position: relative; width: calc(var(--card-w) * 1.06); height: calc(var(--card-h) * 1.06); border-radius: var(--card-radius); transition: box-shadow .15s, scale .15s cubic-bezier(.2,1.4,.4,1); }
+.pile.drop-ready { scale: 1.06; box-shadow: 0 0 0 4px var(--gold), 0 0 40px #ffd24d88; }
+.pile.drop-refused { box-shadow: 0 0 0 4px var(--hot), 0 0 30px #e5483f77; }
 .pile-card { position: absolute; inset: 0; filter: drop-shadow(0 4px 5px #0006); will-change: transform; }
 .pile-card.top { filter: drop-shadow(0 12px 16px #0009); }
 

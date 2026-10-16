@@ -230,7 +230,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
           canPlay={canPlay}
           highlight={game.drawn}
           drawOrigin={() => deckEl.current?.getBoundingClientRect() ?? null}
-          dropZone={() => pileEl.current?.getBoundingClientRect() ?? null}
+          dropZone={() => pileEl.current}
           onPlay={onPlay}
           onCue={cue}
           tx={tx}
