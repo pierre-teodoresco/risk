@@ -1,4 +1,5 @@
 "use client";
+import ThemeToggle from "@/components/ThemeToggle";
 // Grand Tour's screen: the top bar, then the entrance, the waiting room or the table.
 import { useEffect, useState } from "react";
 import { BookOpen, LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
@@ -65,6 +66,7 @@ export default function GrandTour() {
     <div className="gt gt-tour">
       <header className="gt-top">
         <nav>
+          <ThemeToggle lang={lang} />
           <a className="gt-orb" href="/" aria-label={tx.allGames} title={tx.allGames}><LayoutGrid /></a>
           <button className="gt-orb" aria-label={tx.howToPlay} title={tx.howToPlay} aria-expanded={rules} onClick={() => setRules(true)}><BookOpen /></button>
           {g && (

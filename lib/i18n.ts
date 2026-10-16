@@ -889,3 +889,8 @@ const hallEn: typeof hallFr = {
   language: "Language",
 };
 export const hallTexts = (lang: Lang) => (lang === "fr" ? hallFr : hallEn);
+
+// One appearance preference shared by every game.
+const themeFr = { appearance: "Apparence", light: "Clair", dark: "Sombre", system: "Système" };
+const themeEn: typeof themeFr = { appearance: "Appearance", light: "Light", dark: "Dark", system: "System" };
+export const themeTexts = (lang: Lang) => lang === "fr" ? themeFr : themeEn;

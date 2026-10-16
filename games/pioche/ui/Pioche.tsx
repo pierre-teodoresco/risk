@@ -1,4 +1,5 @@
 "use client";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { BookOpen, LayoutGrid, Link2, LogOut, Palette, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
 import { LANG_KEY, fmt } from "@/lib/i18n";
@@ -100,6 +101,7 @@ export default function Pioche() {
       <header className="pioche-top">
         {g && g.phase !== "lobby" && <span className="round-tag">{fmt(tx.round, { n: g.round })} · {g.code}</span>}
         <nav>
+          <ThemeToggle lang={lang} />
           <a className="orb small" href="/" aria-label={tx.allGames} title={tx.allGames}>
             <LayoutGrid />
           </a>

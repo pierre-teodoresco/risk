@@ -1,4 +1,5 @@
 "use client";
+import ThemeToggle from "@/components/ThemeToggle";
 // Shared screen of the two-player games: top bar, entrance, waiting room; each game brings its
 // table (`Table`, usually the shared Table2D with the game's rules).
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
@@ -119,6 +120,7 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
     <div className={"gt du" + (config.className ? " " + config.className : "")}>
       <header className="gt-top">
         <nav>
+          <ThemeToggle lang={lang} />
           <a className="gt-orb" href="/" aria-label={tx.allGames} title={tx.allGames}><LayoutGrid /></a>
           <button className="gt-orb" aria-label={tx.howToPlay} title={tx.howToPlay} aria-expanded={rules} onClick={() => setRules(true)}><BookOpen /></button>
           {g && <button className="gt-orb" aria-label={copied ? tx.copied : tx.invite} title={copied ? tx.copied : tx.invite} onClick={copy}><Link2 /></button>}

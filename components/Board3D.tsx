@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
 import type { TroopChange } from "@/lib/game-feedback";
+import { useTheme } from "@/lib/theme";
 import { LocateFixed } from "lucide-react";
 import { hudTexts } from "@/lib/i18n";
 import MAP from "@/lib/map-data.json";
@@ -56,6 +57,7 @@ export default function Board3D({
   onSelect: (id: string) => void;
   onHover: (id: string | null, x: number, y: number) => void;
 }) {
+  const { theme } = useTheme();
   const host = useRef<HTMLDivElement>(null),
     engine = useRef<BoardEngine | null>(null),
     badgeEls = useRef<(HTMLDivElement | null)[]>([]),
@@ -83,7 +85,7 @@ export default function Board3D({
           });
         },
       },
-      options,
+      { ...options, theme },
     );
     engine.current = e;
     e.setLands(lands, true);
@@ -100,8 +102,8 @@ export default function Board3D({
     engine.current?.setLands(lands);
   }, [lands]);
   useEffect(() => {
-    engine.current?.setOptions(options);
-  }, [options]);
+    engine.current?.setOptions({ ...options, theme });
+  }, [options, theme]);
   useEffect(() => {
     if (battle) engine.current?.battle(battle);
     // Only a new battle (new timestamp) triggers effects.

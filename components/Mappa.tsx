@@ -1,4 +1,5 @@
 "use client";
+import ThemeToggle from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -665,6 +666,7 @@ export default function Mappa() {
       </div>
       <header className="topbar">
         <nav>
+          <ThemeToggle lang={lang} />
           <a className="orb small" href="/" aria-label={t.allGames} title={t.allGames}>
             <LayoutGrid />
           </a>

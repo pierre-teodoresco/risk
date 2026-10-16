@@ -1,4 +1,5 @@
 "use client";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, ArrowUpRight, Clock, Users } from "lucide-react";
 import { fmt, hallTexts, LANG_KEY } from "@/lib/i18n";
@@ -86,9 +87,12 @@ export default function Hub({ arts }: { arts: Record<string, ReactNode> }) {
     <div className="hall">
       <header className="hall-top">
         <a className="hall-brand" href="/">{HUB_NAME}</a>
-        <div className="seg" role="group" aria-label={h.language}>
-          <button aria-pressed={lang === "fr"} onClick={() => changeLang("fr")}>FR</button>
-          <button aria-pressed={lang === "en"} onClick={() => changeLang("en")}>EN</button>
+        <div className="hall-controls">
+          <ThemeToggle lang={lang} />
+          <div className="seg" role="group" aria-label={h.language}>
+            <button aria-pressed={lang === "fr"} onClick={() => changeLang("fr")}>FR</button>
+            <button aria-pressed={lang === "en"} onClick={() => changeLang("en")}>EN</button>
+          </div>
         </div>
       </header>
       <main>

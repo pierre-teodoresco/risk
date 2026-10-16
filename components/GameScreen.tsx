@@ -1,4 +1,5 @@
 "use client";
+import ThemeToggle from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
@@ -595,6 +596,7 @@ export default function GameScreen(props: Props) {
           <MessageCircle />
           {unread.length > 0 && <span className="orb-badge">{unread.length}</span>}
         </button>
+        <ThemeToggle lang={lang} />
       </div>
       <button className="hud journal-shortcut" aria-expanded={chat && chatTab === "journal"} onClick={() => { setChat(true); setChatTab("journal"); }}><ScrollText size={17} /> {t.journal}</button>
       {latestPrivate && (

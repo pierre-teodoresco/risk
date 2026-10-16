@@ -1,0 +1,212 @@
+/* Shared appearance. Game colours (players, cards, board squares) remain semantic colours. */
+:root {
+  color-scheme: dark;
+  --app-bg: #101014;
+  --app-panel: #1c1b22;
+  --app-inset: #141319;
+  --app-raised: #292730;
+  --app-hover: #36323e;
+  --app-line: #ffffff24;
+  --app-text: #f4f2ee;
+  --app-muted: #b0aab9;
+  --app-dim: #938b9e;
+  --app-accent: #ff916e;
+  --app-on-accent: #231009;
+  --app-overlay: #08070bba;
+  --app-shadow: 0 12px 36px #0004;
+  --app-green: #91c76c;
+  --app-green-edge: #406a30;
+  --app-danger: #ffaaa2;
+  --app-danger-bg: #452326;
+  --app-table-light: #353942;
+  --app-table-dark: #17191f;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --app-bg: #f5f2ec;
+  --app-panel: #fffdfa;
+  --app-inset: #eeeae2;
+  --app-raised: #e8e3d9;
+  --app-hover: #ddd6ca;
+  --app-line: #332c242b;
+  --app-text: #29252e;
+  --app-muted: #655e6d;
+  --app-dim: #716a79;
+  --app-accent: #b34120;
+  --app-on-accent: #ffffff;
+  --app-overlay: #29222d66;
+  --app-shadow: 0 12px 36px #30251d14;
+  --app-green: #4d7b34;
+  --app-green-edge: #355923;
+  --app-danger: #a9302c;
+  --app-danger-bg: #fbe1dc;
+  --app-table-light: #faf6ed;
+  --app-table-dark: #d9dfcf;
+}
+html[data-theme] {
+  --sea-deep: var(--app-bg);
+  --text: var(--app-text);
+  --muted: var(--app-muted);
+  --edge: var(--app-line);
+}
+html[data-theme] body { background: var(--app-bg); color: var(--app-text); }
+html[data-theme] :focus-visible { outline-color: var(--app-accent); }
+
+/* The same control and popover in the hub, entrances and active tables. */
+.theme-picker { position: relative; flex: none; align-self: center; color: var(--app-text); }
+.theme-trigger { list-style: none; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--app-line); border-radius: 50%; cursor: pointer; background: var(--app-panel); color: var(--app-text); }
+.theme-trigger::-webkit-details-marker { display: none; }
+.theme-trigger svg { width: 20px; height: 20px; }
+.theme-trigger:hover, .theme-picker[open] .theme-trigger { background: var(--app-raised); }
+.theme-menu { position: absolute; z-index: 100; top: calc(100% + 10px); right: 0; margin: 0; padding: 12px; width: 210px; border: 1px solid var(--app-line); border-radius: 16px; background: var(--app-panel); color: var(--app-text); box-shadow: var(--app-shadow); font: 600 14px/1.4 var(--f-ui); }
+.theme-menu legend { float: left; width: 100%; padding: 2px 8px 10px; font-weight: 800; }
+.theme-menu label { clear: both; display: flex; gap: 10px; align-items: center; padding: 10px 8px; border-radius: 9px; cursor: pointer; }
+.theme-menu label:hover, .theme-menu label:has(input:checked) { background: var(--app-raised); }
+.theme-menu label span { flex: 1; }
+html[data-theme] .theme-menu input { width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--app-accent); }
+html[data-theme] :is(.orb, .gt-orb) { background: var(--app-panel); color: var(--app-text); border: 1px solid var(--app-line); box-shadow: none; }
+html[data-theme] :is(.orb, .gt-orb):hover { background: var(--app-raised); color: var(--app-text); }
+html[data-theme] :is(.orb, .gt-orb)[aria-pressed="true"], html[data-theme] .orb[aria-expanded="true"] { background: var(--app-raised); color: var(--app-accent); }
+html[data-theme] :is(.seg, .gt-seg) { background: var(--app-inset); box-shadow: none; }
+html[data-theme] :is(.seg, .gt-seg) button { color: var(--app-muted); }
+html[data-theme] :is(.seg, .gt-seg) button[aria-pressed="true"] { background: var(--app-panel); color: var(--app-text); }
+html[data-theme] :is(.panel, .gt-card-panel, .gt-panel, .gt-dialog) { background: var(--app-panel); color: var(--app-text); border: 1px solid var(--app-line); box-shadow: var(--app-shadow); }
+html[data-theme] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), html[data-theme] select { background: var(--app-inset); color: var(--app-text); border-color: var(--app-line); }
+html[data-theme] input::placeholder { color: var(--app-dim); }
+html[data-theme] input:focus { border-color: var(--app-accent); }
+html[data-theme] :is(.btn.ghost, .gt-btn.ghost, .gt-icon-btn) { background: var(--app-raised); color: var(--app-text); border-color: var(--app-line); box-shadow: none; }
+html[data-theme] :is(.btn.ghost, .gt-btn.ghost, .gt-icon-btn):hover:not(:disabled) { background: var(--app-hover); }
+html[data-theme] :is(.gt-veil, .round-end, .paused-veil) { background: var(--app-overlay); }
+html[data-theme] :is(.btn.danger, .gt-btn.danger) { color: var(--app-danger); background: var(--app-danger-bg); border-color: var(--app-danger); }
+html[data-theme] :is(.orb.danger, .gt-orb.danger) { background: #ad332f; color: #fff; }
+
+/* Hub */
+html[data-theme] .hall {
+  --hall-bg: var(--app-bg);
+  --hall-raise: var(--app-panel);
+  --hall-line: var(--app-line);
+  --hall-text: var(--app-text);
+  --hall-grey: var(--app-muted);
+  --hall-accent: var(--app-accent);
+}
+.hall .hall-controls { display: flex; align-items: center; gap: 12px; }
+html[data-theme] .hall .hall-tiles span.on { background: var(--app-raised); border-color: var(--app-muted); }
+html[data-theme] .hall .hall-recent a:hover { color: var(--app-accent); }
+html[data-theme] .hall .hall-soon small { color: var(--app-dim); }
+html[data-theme] .hall .poster-visual { background: radial-gradient(ellipse at 50% 58%, color-mix(in srgb, var(--accent) 10%, var(--app-bg)), var(--app-inset) 80%); }
+html[data-theme] .hall .poster-play { background: var(--app-text); color: var(--app-bg); }
+html[data-theme] .hall .poster:hover .poster-play { background: var(--app-accent); color: var(--app-on-accent); }
+
+/* Mappa: the canvas receives the same choice through BoardOptions. */
+html[data-theme] .stage-board::after { background: linear-gradient(90deg, color-mix(in srgb, var(--app-bg) 93%, transparent), color-mix(in srgb, var(--app-bg) 65%, transparent) 50%, transparent); }
+html[data-theme] :is(.hero h1, .outlined) { -webkit-text-stroke: 0; text-shadow: none; }
+html[data-theme] .hero h1 em, html[data-theme] .eyebrow { color: var(--app-accent); }
+html[data-theme] .hero > p { text-shadow: none; }
+html[data-theme] .hero-facts li { background: var(--app-panel); border-color: var(--app-line); }
+html[data-theme] .game .theme-menu { right: auto; left: 0; }
+html[data-theme] :is(.turnbar .plate, .seat .stats, .journal-shortcut, .message-alert, .toast-chip, .log, .grid3 div) { background: var(--app-panel); color: var(--app-text); border-color: var(--app-line); }
+html[data-theme] :is(.cbadge .ring b, .cbadge .plate, .big-medal .count, .step, .code, .clock, .quick button) { background: var(--app-raised); color: var(--app-text); }
+html[data-theme] .quick button:hover { background: var(--app-hover); color: var(--app-text); }
+html[data-theme] :is(.lseat, .chat-form) { border-color: var(--app-line); }
+html[data-theme] .steps i { background: var(--app-raised); }
+html[data-theme] .steps i.done { background: var(--app-muted); }
+html[data-theme] .steps i.on { background: var(--app-accent); }
+
+/* Pioche: table decoration stays independent of the shared appearance. */
+html[data-theme] .pioche { color: var(--app-text); }
+html[data-theme] .pioche[data-skin="arcade"] { background: radial-gradient(ellipse at 50% 46%, color-mix(in srgb, var(--play) 24%, var(--app-table-light)), var(--app-table-dark) 90%); }
+html[data-theme] .pioche[data-skin="bistrot"] { background: repeating-linear-gradient(91deg, transparent 0 60px, #69513514 60px 62px), radial-gradient(ellipse at 50% 35%, color-mix(in srgb, #ac8757 22%, var(--app-table-light)), var(--app-table-dark)); }
+html[data-theme] .pioche::after { box-shadow: inset 0 0 160px #0002; }
+html[data-theme] .pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading)) { background: var(--app-bg); }
+html[data-theme] .pioche :is(.pc-logo, .entrance-panel .eyebrow) { color: var(--app-text); }
+html[data-theme] .pioche :is(.entrance-hero > p, .entrance-panel .join-row .divider) { color: var(--app-muted); }
+html[data-theme] .pioche .entrance-panel .btn.go { background: var(--app-accent); color: var(--app-on-accent); }
+html[data-theme] .pioche .entrance-panel .btn.go:disabled { background: var(--app-raised); color: var(--app-dim); }
+html[data-theme] .pioche :is(.lobby-players li, .round-hands li, .skin-choice, .round-tag, .reactions button, .pc-toast) { background: var(--app-panel); color: var(--app-text); border-color: var(--app-line); }
+html[data-theme] .pioche :is(.lobby-players small, .skin-choice[aria-pressed="true"]) { background: var(--app-raised); }
+html[data-theme] .pioche :is(.option, .pioche-rules .rule-options li) { border-color: var(--app-line); }
+html[data-theme] .pioche :is(.prompt, .turn-flag) { color: var(--app-text); text-shadow: none; -webkit-text-stroke: 0; }
+html[data-theme] .pioche .seat-name { background: var(--app-panel); color: var(--app-text); border-color: var(--app-line); }
+html[data-theme="light"] .pioche[data-skin="bistrot"] .table::before { background: radial-gradient(ellipse, #e0e7d0, #b5c6a4); box-shadow: inset 0 0 0 6px #b79a63, 0 18px 40px #30251d25; }
+
+/* Grand Tour and the shared duel screens */
+html[data-theme] .gt {
+  --gt-bg: var(--app-bg);
+  --gt-raise: var(--app-panel);
+  --gt-raise-2: var(--app-raised);
+  --gt-line: var(--app-line);
+  --gt-text: var(--app-text);
+  --gt-grey: var(--app-muted);
+  --gt-dim: var(--app-dim);
+  --gt-accent: var(--app-accent);
+  --gt-card-shadow: var(--app-shadow);
+  background: var(--app-bg);
+}
+html[data-theme] .gt-tour { --gt-blue: #497acc; animation: none; }
+html[data-theme] .gt :is(.gt-logo, .gt-code) { color: var(--app-text); -webkit-text-stroke: 0; text-shadow: none; }
+html[data-theme] .gt :is(.gt-entrance-board, .gt-canvas) { background: radial-gradient(ellipse, var(--app-table-light), var(--app-bg)); box-shadow: var(--app-shadow); }
+html[data-theme] .gt :is(.gt-lobby-players li, .gt-ranking li, .gt-trade-side, .gt-deeds button) { background: var(--app-inset); border-color: var(--app-line); }
+html[data-theme] .gt :is(.gt-lobby-players small, .gt-who b small) { background: var(--app-raised); color: var(--app-muted); }
+html[data-theme] .gt .gt-option { border-color: var(--app-line); }
+html[data-theme] .gt :is(.gt-switch, .gt-timer) { background: var(--app-raised); }
+html[data-theme] .gt .gt-switch[aria-pressed="true"] { background: var(--app-green); }
+html[data-theme] .gt .gt-trade-side label { background: var(--app-panel); }
+
+/* Chess and draughts: keep the board and the two clocks distinct in either mode. */
+html[data-theme] :is(.cc, .cc-showcase) {
+  --cc-page: var(--app-bg);
+  --cc-panel: var(--app-panel);
+  --cc-panel-2: var(--app-inset);
+  --cc-raise: var(--app-raised);
+  --cc-raise-2: var(--app-hover);
+  --cc-text: var(--app-text);
+  --cc-grey: var(--app-muted);
+  --cc-dim: var(--app-dim);
+  --cc-green: var(--app-green);
+  --cc-green-hi: #659545;
+  --cc-green-edge: var(--app-green-edge);
+}
+html[data-theme] .cc :is(.cc-who b, .cc-side-head b, .cc-btn:hover:not(:disabled), .cc-nav button:hover:not(:disabled), .cc-move:hover, .cc-move.on) { color: var(--app-text); }
+html[data-theme] .cc :is(.cc-move:hover, .cc-move.on) { background: var(--app-raised); border-color: var(--app-line); }
+html[data-theme] .cc .cc-row:nth-child(even) { background: var(--app-inset); }
+html[data-theme] .cc .cc-premoves { color: var(--app-danger); }
+html[data-theme] .cc .cc-btn:is(.green, .red) { color: #fff; }
+html[data-theme="dark"] .cc .cc-btn.green { color: #14200e; text-shadow: none; }
+
+@media (max-width: 600px) {
+  html[data-theme] :is(.topbar, .pioche-top, .gt-top) { padding-left: 12px; padding-right: 12px; }
+  html[data-theme] :is(.topbar nav, .pioche-top nav, .gt-top nav) { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+}
+html[data-theme] :is(.topbar, .pioche-top, .gt-top):has(.theme-picker[open]), html[data-theme] .orbs:has(.theme-picker[open]) { z-index: 80; }
+html[data-theme] .hall .hall-join-go { color: var(--app-on-accent); }
+html[data-theme] .hall .hall-error { color: var(--app-danger); }
+html[data-theme="light"] { --gold: #926300; }
+html[data-theme] .btn.go { background: #477532; color: #fff; box-shadow: 0 4px 0 #2c5021; }
+@media (max-width: 600px) {
+  html[data-theme] .game .orbs { gap: 6px; }
+  html[data-theme] .game .orbs .orb { width: 44px; height: 44px; }
+}
+/* Entrance styles have extra specificity; controls still use the shared palette. */
+html[data-theme] .pioche .orb { background: var(--app-panel); color: var(--app-text); border-color: var(--app-line); box-shadow: none; }
+html[data-theme] .pioche .orb:hover { background: var(--app-raised); }
+html[data-theme] .pioche .seg { background: var(--app-inset); }
+html[data-theme] .pioche .seg button { color: var(--app-muted); }
+html[data-theme] .pioche .seg button[aria-pressed="true"] { background: var(--app-panel); color: var(--app-text); }
+html[data-theme] .pioche .entrance-panel .btn.go { box-shadow: none; }
+html[data-theme] .hall .hall-join-go:disabled { color: var(--app-dim); }
+html[data-theme] :is(.lseat, .msg p, .reopen-action, .defeat-card, .victory-announcement) { background: var(--app-inset); color: var(--app-text); }
+html[data-theme] :is(.tip b, .victory-announcement h2 strong) { color: var(--app-text); }
+html[data-theme] :is(.modal-backdrop, .defeat-animation::before, .victory-celebration::before) { background: var(--app-overlay); }
+html[data-theme] :is(.sep::before, .sep::after) { background: var(--app-line); }
+html[data-theme] .game .journal-shortcut { left: 426px; }
+@media (max-width: 600px) {
+  html[data-theme] .game .journal-shortcut { left: 16px; top: 72px; }
+}
+html[data-theme="dark"] .cc .gt-btn.go { color: #14200e; text-shadow: none; }
+html[data-theme] .clock.urgent { color: var(--app-danger); }
+html[data-theme="light"] .odds.good :is(b, span) { color: var(--app-green); }
+html[data-theme] .lseat.ready { border-color: var(--go); }
+html[data-theme] .pioche .orb:is([aria-pressed="true"], [aria-expanded="true"]) { background: var(--app-raised); color: var(--app-accent); }
+@media (max-width: 600px) {
+  html[data-theme] .theme-menu, html[data-theme] .game .theme-menu { position: fixed; right: 12px; left: auto; top: 76px; }
+}

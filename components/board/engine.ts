@@ -30,8 +30,9 @@ export type BoardOptions = {
   palette: readonly string[];
   /** Adds the owner's crest emblem to troop coins so players differ by shape, not only by colour. */
   emblems: boolean;
-  /** Screen space kept free for the HUD, in CSS pixels. */
   waterMotion?: boolean;
+  theme?: "light" | "dark";
+  /** Screen space kept free for the HUD, in CSS pixels. */
   pad: { top: number; right: number; bottom: number; left: number };
 };
 export type Battle = { from: string; to: string; conquered: boolean; attackerLoss: number; defenderLoss: number };
@@ -189,7 +190,7 @@ export class BoardEngine {
     r.domElement.style.touchAction = "none";
     host.appendChild(r.domElement);
 
-    const sea = new THREE.Color("#0b2443");
+    const sea = new THREE.Color(opts.theme === "light" ? "#bfd8df" : "#172c3d");
     this.scene.background = sea;
     this.scene.fog = new THREE.Fog(sea, 34, 64);
     this.scene.add(new THREE.HemisphereLight(0xfff4e0, 0x3b7486, 1.15));
@@ -204,7 +205,7 @@ export class BoardEngine {
 
     const oceanGeo = new THREE.PlaneGeometry(180, 140, 110, 78);
     oceanGeo.rotateX(-Math.PI / 2);
-    const water = new THREE.MeshStandardMaterial({ color: 0x258fc0, roughness: 0.26, metalness: 0.08 });
+    const water = new THREE.MeshStandardMaterial({ color: opts.theme === "light" ? 0x9dcbd3 : 0x24627a, roughness: 0.26, metalness: 0.08 });
     water.onBeforeCompile = (shader) => {
       shader.uniforms.uWaterTime = this.waterTime;
       shader.vertexShader = shader.vertexShader
@@ -379,6 +380,12 @@ export class BoardEngine {
   setOptions(opts: BoardOptions) {
     const prev = this.opts;
     this.opts = opts;
+    if (prev.theme !== opts.theme) {
+      const sea = opts.theme === "light" ? "#bfd8df" : "#172c3d";
+      (this.scene.background as THREE.Color).set(sea);
+      (this.scene.fog as THREE.Fog).color.set(sea);
+      (this.ocean.material as THREE.MeshStandardMaterial).color.set(opts.theme === "light" ? 0x9dcbd3 : 0x24627a);
+    }
     if (prev.unitMode !== opts.unitMode) for (let t = 0; t < N; t++) this.buildUnits(t, true);
     if (prev.lang !== opts.lang) this.drawNames();
     if (prev.palette !== opts.palette) this.applyPalette();

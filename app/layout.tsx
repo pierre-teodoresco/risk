@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./theme.css";
+import { THEME_INIT } from "@/lib/theme-init";
 export const metadata: Metadata = {
   title: "Tablée — Jeux de société entre amis",
   description:
@@ -12,7 +14,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_INIT }} /></head>
       <body>{children}</body>
     </html>
   );
