@@ -190,7 +190,7 @@ export class BoardEngine {
     r.domElement.style.touchAction = "none";
     host.appendChild(r.domElement);
 
-    const sea = new THREE.Color(opts.theme === "light" ? "#bfd8df" : "#172c3d");
+    const sea = new THREE.Color(opts.theme === "light" ? "#dce7e8" : "#171d25");
     this.scene.background = sea;
     this.scene.fog = new THREE.Fog(sea, 34, 64);
     this.scene.add(new THREE.HemisphereLight(0xfff4e0, 0x3b7486, 1.15));
@@ -205,7 +205,7 @@ export class BoardEngine {
 
     const oceanGeo = new THREE.PlaneGeometry(180, 140, 110, 78);
     oceanGeo.rotateX(-Math.PI / 2);
-    const water = new THREE.MeshStandardMaterial({ color: opts.theme === "light" ? 0x9dcbd3 : 0x24627a, roughness: 0.26, metalness: 0.08 });
+    const water = new THREE.MeshStandardMaterial({ color: opts.theme === "light" ? 0xc7d9de : 0x273945, roughness: 0.26, metalness: 0.08 });
     water.onBeforeCompile = (shader) => {
       shader.uniforms.uWaterTime = this.waterTime;
       shader.vertexShader = shader.vertexShader
@@ -219,7 +219,7 @@ export class BoardEngine {
           float ripple = sin(sea.x * 3.4 + sin(sea.y * 2.8 - uWaterTime * 0.7) * 0.8 + uWaterTime);
           float glint = pow(max(0.0, ripple * sin(sea.y * 3.2 - uWaterTime * 0.6)), 8.0);
           diffuseColor.rgb *= 1.0 + tide * 0.06;
-          diffuseColor.rgb += vec3(0.02, 0.04, 0.05) * glint;
+          diffuseColor.rgb += vec3(0.003, 0.006, 0.008) * glint;
         `);
     };
     this.ocean = new THREE.Mesh(oceanGeo, water);
@@ -308,16 +308,6 @@ export class BoardEngine {
     const halo = new LineSegments2(new LineSegmentsGeometry().setPositions(glowPos), glow);
     halo.renderOrder = -1;
     this.scene.add(halo);
-    // Faint navigation lines across the sea.
-    const web: number[] = [];
-    for (let k = 0; k < 46; k++) {
-      const a = rand(k * 2.7) * Math.PI, cx = (rand(k * 5.1) - 0.5) * 50, cz = (rand(k * 3.3) - 0.5) * 34;
-      web.push(cx - Math.cos(a) * 40, 0.03, cz - Math.sin(a) * 40, cx + Math.cos(a) * 40, 0.03, cz + Math.sin(a) * 40);
-    }
-    this.scene.add(new THREE.LineSegments(
-      new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(web, 3)),
-      new THREE.LineBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.13 }),
-    ));
   }
 
   private buildSeaRoutes() {
@@ -381,10 +371,10 @@ export class BoardEngine {
     const prev = this.opts;
     this.opts = opts;
     if (prev.theme !== opts.theme) {
-      const sea = opts.theme === "light" ? "#bfd8df" : "#172c3d";
+      const sea = opts.theme === "light" ? "#dce7e8" : "#171d25";
       (this.scene.background as THREE.Color).set(sea);
       (this.scene.fog as THREE.Fog).color.set(sea);
-      (this.ocean.material as THREE.MeshStandardMaterial).color.set(opts.theme === "light" ? 0x9dcbd3 : 0x24627a);
+      (this.ocean.material as THREE.MeshStandardMaterial).color.set(opts.theme === "light" ? 0xc7d9de : 0x273945);
     }
     if (prev.unitMode !== opts.unitMode) for (let t = 0; t < N; t++) this.buildUnits(t, true);
     if (prev.lang !== opts.lang) this.drawNames();

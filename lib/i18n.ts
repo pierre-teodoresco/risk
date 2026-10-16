@@ -856,12 +856,8 @@ export const hudTexts = (lang: Lang) => (lang === "fr" ? hudFr : hudEn);
 export const LANG_KEY = "mappa.lang";
 
 const hallFr = {
-  eyebrow: "Jeux de société entre amis",
-  titleStart: "Ce soir, on joue à ",
-  titleWord: "quoi",
-  titleEnd: "\u00a0?",
-  lead: "Des jeux de société qui se lancent avec un lien. Pas de compte, rien à installer.",
-  joinTitle: "Un ami t’a envoyé un code\u00a0?",
+  joinTitle: "Rejoindre avec un code",
+  joining: "Recherche…",
   join: "Rejoindre",
   notFound: "Aucune table avec ce code. Vérifie les 6 caractères avec ton ami.",
   yourTables: "Tes tables\u00a0:",
@@ -875,12 +871,8 @@ const hallFr = {
   language: "Langue",
 };
 const hallEn: typeof hallFr = {
-  eyebrow: "Board games with friends",
-  titleStart: "What are we playing ",
-  titleWord: "tonight",
-  titleEnd: "?",
-  lead: "Board games you start with a link. No account, nothing to install.",
-  joinTitle: "Got a code from a friend?",
+  joinTitle: "Join with a code",
+  joining: "Searching…",
   join: "Join",
   notFound: "No table with this code. Check the 6 characters with your friend.",
   yourTables: "Your tables:",

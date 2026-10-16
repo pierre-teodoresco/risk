@@ -82,7 +82,6 @@ export default function Hub({ arts }: { arts: Record<string, ReactNode> }) {
     setNotFound(true);
   }
 
-  const cells = Array.from({ length: CODE_LENGTH }, (_, i) => code[i] ?? "");
   return (
     <div className="hall">
       <header className="hall-top">
@@ -96,15 +95,15 @@ export default function Hub({ arts }: { arts: Record<string, ReactNode> }) {
         </div>
       </header>
       <main>
-        <section className="hall-hero">
-          <p className="hall-eyebrow">{h.eyebrow}</p>
-          <h1>{h.titleStart}<em>{h.titleWord}</em>{h.titleEnd}</h1>
-          <div className="hall-hero-side">
-            <p className="hall-lead">{h.lead}</p>
-            <form className="hall-join" onSubmit={join}>
+        <section className="hall-shelf" aria-labelledby="hall-shelf-title">
+          <div className="hall-toolbar">
+            <div className="hall-heading">
+              <h1 id="hall-shelf-title">{h.shelf}</h1>
+              <p>{fmt(h.shelfNote, { n: LIVE.length, m: SOON.length })}</p>
+            </div>
+            <form className="hall-join" onSubmit={join} aria-busy={joining}>
               <label htmlFor="hall-code">{h.joinTitle}</label>
               <div className="hall-code">
-                {/* One real input under six painted cells: typing, pasting and the keyboard all just work. */}
                 <input
                   id="hall-code"
                   value={code}
@@ -112,44 +111,37 @@ export default function Hub({ arts }: { arts: Record<string, ReactNode> }) {
                     setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, CODE_LENGTH));
                     setNotFound(false);
                   }}
+                  placeholder="ABC123"
                   autoComplete="off"
                   autoCapitalize="characters"
                   spellCheck={false}
                   maxLength={CODE_LENGTH}
+                  aria-invalid={notFound || undefined}
                   aria-describedby={notFound ? "hall-code-error" : undefined}
                 />
-                <span className="hall-tiles" aria-hidden="true">
-                  {cells.map((c, i) => (
-                    <span key={i} className={c ? "on" : i === code.length ? "caret" : ""}>{c}</span>
-                  ))}
-                </span>
-                <button className="hall-join-go" disabled={code.length !== CODE_LENGTH || joining} aria-label={h.join}>
-                  <ArrowRight size={20} />
+                <button className="hall-join-go" disabled={code.length !== CODE_LENGTH || joining}>
+                  {joining ? h.joining : h.join}<ArrowRight size={16} aria-hidden="true" />
                 </button>
               </div>
               {notFound && <p id="hall-code-error" className="hall-error" role="alert">{h.notFound}</p>}
-              {recent.length > 0 && (
-                <div className="hall-recent">
-                  <span>{h.yourTables}</span>
-                  {recent.map((r) => (
-                    <a key={r.game.id} href={`${gamePath(r.game.id)}?room=${r.code}`} style={{ "--accent": r.game.accent } as CSSProperties}>
-                      <i aria-hidden="true" />{r.game.name} {r.code}<ArrowUpRight size={14} aria-hidden="true" />
-                    </a>
-                  ))}
-                </div>
-              )}
             </form>
           </div>
-        </section>
-
-        <section className="hall-shelf" aria-labelledby="hall-shelf-title">
-          <h2 id="hall-shelf-title" className="hall-label">{h.shelf}</h2>
+          {recent.length > 0 && (
+            <div className="hall-recent">
+              <span>{h.yourTables}</span>
+              {recent.map((r) => (
+                <a key={r.game.id} href={`${gamePath(r.game.id)}?room=${r.code}`} style={{ "--accent": r.game.accent } as CSSProperties}>
+                  <i aria-hidden="true" />{r.game.name} {r.code}<ArrowUpRight size={14} aria-hidden="true" />
+                </a>
+              ))}
+            </div>
+          )}
           <ul className="hall-posters">
             {LIVE.map((g) => (
               <li key={g.id}><Poster game={g} art={arts[g.id]} lang={lang} h={h} /></li>
             ))}
           </ul>
-          <h3 className="hall-label">{h.soon}</h3>
+          <h2 className="hall-label">{h.soon}</h2>
           <ul className="hall-soon">
             {SOON.map((g) => (
               <li key={g.id} style={{ "--accent": g.accent } as CSSProperties} title={g.pitch[lang]}>
