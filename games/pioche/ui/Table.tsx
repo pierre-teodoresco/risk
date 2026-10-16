@@ -260,7 +260,8 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
         />
         <div className="me-tag">
           <EmblemBadge emblem={me.emblem} size={34} />
-          <span>{me.name}</span>
+          <span className="me-name">{me.name}</span>
+          <span className="me-count" aria-live="polite">{me.hand.length === 1 ? tx.card1 : fmt(tx.cards, { n: me.hand.length })}</span>
           {myReaction && <span className="pc-bubble mine" key={myReaction.id}>{reactionGlyph(myReaction.key, tx)}</span>}
         </div>
       </div>

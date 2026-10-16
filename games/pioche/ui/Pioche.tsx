@@ -143,6 +143,11 @@ export default function Pioche() {
             <div className="paused-veil" role="status">
               <b>{tx.paused}</b>
               {g.pauseReason === "offline" && pausedBy && <span>{fmt(tx.pausedOffline, { name: pausedBy.name })}</span>}
+              {g.host === g.me && (
+                <button className="btn go" disabled={room.busy} onClick={() => void room.act({ type: "pause" })}>
+                  <Play size={18} /> {tx.resume2}
+                </button>
+              )}
             </div>
           )}
         </>
