@@ -153,13 +153,50 @@ test("after drawing, only the drawn card may be played, else the player passes",
   assert.notEqual(g.active, me);
 });
 
-test("drawing until playable keeps drawing", () => {
-  let g = position(table(3, { drawUntilPlayable: true }), ["blue-1a"], "red-5a");
+test("drawing until playable takes one card per draw and locks the hand until one fits", () => {
+  let g = position(table(3, { drawUntilPlayable: true }), ["blue-1a", "red-2b"], "red-5a");
   g.deck.push(card("red-9b"), card("blue-3a"), card("green-4a"));
   const me = g.active;
+  const hand = () => g.players.find((p) => p.id === me)!.hand.length;
   g = applyAction(g, me, { type: "draw" }, rand, NOW + 1);
-  assert.equal(g.players.find((p) => p.id === me)!.hand.length, 4);
+  assert.equal(hand(), 3);
+  assert.equal(g.active, me);
+  assert.equal(g.drawing, true);
+  // Once drawing has started, even a card that fitted before stays in hand.
+  assert.throws(() => applyAction(g, me, { type: "play", card: "red-2b" }, rand, NOW + 2), /notPlayable/);
+  assert.throws(() => applyAction(g, me, { type: "pass" }, rand, NOW + 2), /cannotPass/);
+  g = applyAction(g, me, { type: "draw" }, rand, NOW + 3);
+  assert.equal(hand(), 4);
+  assert.equal(g.drawn, null);
+  g = applyAction(g, me, { type: "draw" }, rand, NOW + 4);
+  assert.equal(hand(), 5);
   assert.equal(g.drawn, "red-9b");
+  assert.equal(g.drawing, false);
+  g = applyAction(g, me, { type: "play", card: "red-9b" }, rand, NOW + 5);
+  assert.notEqual(g.active, me);
+});
+
+test("drawing until playable leaves +2 penalties drawn in one go", () => {
+  let g = position(table(3, { drawUntilPlayable: true }), ["red-draw2a", "red-1a"], "red-5a");
+  const victim = seat(g, 1).id;
+  g = applyAction(g, g.active, { type: "play", card: "red-draw2a" }, rand, NOW + 1);
+  assert.equal(g.players.find((p) => p.id === victim)!.hand.length, 5);
+  assert.notEqual(g.active, victim);
+  assert.equal(g.drawing, false);
+});
+
+test("a timeout while drawing until playable draws once and passes", () => {
+  let g = position(table(3, { drawUntilPlayable: true, timer: 15 }), ["blue-1a"], "red-5a");
+  g.deck.push(card("green-4a"), card("blue-3a"));
+  const me = g.active;
+  g = applyAction(g, me, { type: "draw" }, rand, NOW + 1);
+  assert.equal(g.drawing, true);
+  g.deadline = NOW + 15000;
+  for (const p of g.players) p.lastSeen = NOW + 15000;
+  g = applyAction(g, seat(g, 1).id, { type: "heartbeat" }, rand, NOW + 15001);
+  assert.equal(g.players.find((p) => p.id === me)!.hand.length, 3);
+  assert.notEqual(g.active, me);
+  assert.equal(g.drawing, false);
 });
 
 test("a player on one card can be made to draw by anyone until they call, whatever happens in between", () => {

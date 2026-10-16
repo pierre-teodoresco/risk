@@ -68,6 +68,8 @@ export type Game = {
   challenge: { from: string; to: string; previousColor: CardColor; illegal: boolean } | null;
   /** Card just drawn this turn: the only one the player may still play. */
   drawn: string | null;
+  /** "Draw until playable": the active player started drawing and must go on until a card fits. */
+  drawing: boolean;
   deadline: number | null;
   paused: boolean;
   /** "offline" pauses lift when the active player returns; "host" pauses wait for the host. */
@@ -132,11 +134,14 @@ export function nextSeat(g: Pick<Game, "players" | "direction">, from: string, s
 }
 
 /** Shared with the client, which passes its public view to highlight playable cards. */
-export function playable(g: Pick<Game, "discard" | "pendingDraw" | "options" | "drawn" | "color">, card: Card) {
+export function playable(
+  g: Pick<Game, "discard" | "pendingDraw" | "options" | "drawn" | "color"> & { drawing?: boolean },
+  card: Card,
+) {
   const top = topCard(g);
   if (g.pendingDraw > 0)
     return g.options.stacking && !!top && (top.kind === "draw2" || top.kind === "draw4") && card.kind === top.kind;
-  if (g.drawn && card.id !== g.drawn) return false;
+  if ((g.drawn || g.drawing) && card.id !== g.drawn) return false;
   if (card.kind === "wild" || card.kind === "draw4") return true;
   if (card.color === g.color) return true;
   if (!top) return true;
@@ -165,6 +170,7 @@ function drawCards(g: Game, p: Player, count: number, random: () => number) {
 function startTurn(g: Game, id: string, now: number) {
   g.active = id;
   g.drawn = null;
+  g.drawing = false;
   g.deadline = g.options.timer ? now + g.options.timer * 1000 : null;
 }
 function advance(g: Game, steps: number, now: number) {
@@ -179,6 +185,7 @@ function finish(g: Game, winner: Player) {
   g.deadline = null;
   g.paused = false;
   g.pauseReason = null;
+  g.drawing = false;
   g.challenge = null;
   g.pendingDraw = 0;
   g.drawn = null;
@@ -222,6 +229,7 @@ export function createGame(code: string, input: Record<string, unknown>, hash: s
     pendingDraw: 0,
     challenge: null,
     drawn: null,
+    drawing: false,
     deadline: null,
     paused: false,
     pauseReason: null,
@@ -295,9 +303,12 @@ export function maintenance(g: Game, now: number, random: () => number) {
   }
   if (g.deadline && now >= g.deadline) {
     log(g, "timeout", active.name);
-    if (g.drawn) advance(g, 1, now);
-    else takeDraw(g, active, random, now);
-    if (g.phase === "playing" && g.active === active.id && g.drawn) advance(g, 1, now);
+    // A slow player pays their pending cards, or draws one card, then the turn moves on.
+    if (g.pendingDraw > 0) takeDraw(g, active, random, now);
+    else {
+      if (!g.drawn) drawCards(g, active, 1, random);
+      advance(g, 1, now);
+    }
     changed = true;
   }
   return changed;
@@ -327,10 +338,13 @@ function takeDraw(g: Game, p: Player, random: () => number, now: number) {
     return;
   }
   if (g.drawn) fail("alreadyDrew");
-  let last: Card | undefined;
-  do last = drawCards(g, p, 1, random)[0];
-  while (last && g.options.drawUntilPlayable && !playable(g, last));
-  if (last && playable(g, last)) g.drawn = last.id;
+  // One card per draw, even when drawing until playable: each draw is its own suspenseful click.
+  const card = drawCards(g, p, 1, random)[0];
+  // The streak lock keeps hand cards out; the card just drawn is judged on its own.
+  if (card && playable({ ...g, drawing: false }, card)) {
+    g.drawn = card.id;
+    g.drawing = false;
+  } else if (card && g.options.drawUntilPlayable) g.drawing = true;
   else advance(g, 1, now);
 }
 

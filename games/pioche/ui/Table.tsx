@@ -154,6 +154,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
   const challenger = game.challenge ? game.players.find((p) => p.id === game.challenge!.from) : null;
   let prompt = myTurn ? tx.playHint : fmt(tx.theirTurn, { name: activePlayer?.name ?? "" });
   if (myTurn && game.drawn) prompt = tx.drawnHint;
+  if (myTurn && game.drawing && !game.drawn) prompt = tx.keepDrawingHint;
   if (myTurn && game.pendingDraw > 0 && !challengedMe)
     prompt = fmt(tx.stackHint, { card: top?.kind === "draw4" ? "+4" : "+2", n: game.pendingDraw });
   if (challengedMe) prompt = fmt(tx.challengeHint, { name: challenger?.name ?? "" });
