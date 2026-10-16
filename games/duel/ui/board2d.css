@@ -125,9 +125,10 @@
 .cc-notation { display: inline-flex; align-items: center; }
 
 .cc-bar { display: flex; align-items: center; gap: 10px; min-height: 48px; }
-.cc-avatar { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 4px; background: var(--cc-raise); overflow: hidden; }
+/* The emblem is the avatar: a plain medallion, no tile behind it. */
+.cc-avatar { width: 42px; height: 42px; flex: none; display: grid; place-items: center; border-radius: 50%; }
 .cc-avatar svg { width: 100%; height: 100%; }
-.cc-avatar.big { width: 64px; height: 64px; border-radius: 6px; }
+.cc-avatar.big { width: 64px; height: 64px; }
 .cc-who { min-width: 0; flex: 1; display: grid; gap: 2px; }
 .cc-who b { font: 700 14.5px var(--f-cc); color: #fff; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cc-who b small { padding: 1px 6px; border-radius: 3px; background: var(--cc-raise); color: var(--cc-grey); font: 700 10.5px var(--f-cc); text-transform: uppercase; letter-spacing: .04em; }
