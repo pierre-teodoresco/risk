@@ -15,6 +15,7 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 - `components/hub/Hub.tsx` affiche la ludothèque ; ses textes sont `hallTexts` dans `lib/i18n.ts`, ses styles sont limités à `.hall` dans `app/hub.css`. Les illustrations sont rendues côté serveur : ne pas importer `components/hub/art.tsx` depuis un composant client.
 - La langue est partagée entre le hub et les jeux par `LANG_KEY`.
 - Le son aussi : `lib/sound.ts` (`soundEnabled`, `setSoundEnabled`) porte un seul réglage pour tous les jeux. Chaque jeu affiche un bouton son dans sa barre du haut ; une nouvelle brique fait de même et lit ce réglage avant de jouer un son.
+- Abandonner : chaque jeu propose l’action `resign` et un bouton (drapeau) avec confirmation. Le joueur est éliminé (territoires neutres, faillite à la banque, main remise au paquet) mais garde sa place pour regarder et pour la revanche, à la différence de `leave`.
 - Retour au hub : chaque jeu ouvre sa barre du haut, à droite, par un bouton rond `orb small` (icône `LayoutGrid`, libellé `allGames`) qui pointe vers `/`. Pas de titre de jeu en haut à gauche. Une nouvelle brique reprend ce modèle.
 
 ## Plateforme

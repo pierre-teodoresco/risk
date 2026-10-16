@@ -396,3 +396,18 @@ test("the drawn card may lead a lot, and a lot may end the round", () => {
   assert.equal(g.phase, "finished");
   assert.equal(g.winner, me);
 });
+
+test("giving up a round keeps the seat for the next one", () => {
+  let g = table(3);
+  const quitter = seat(g, 1).id;
+  g = applyAction(g, quitter, { type: "resign" }, rand, NOW + 1);
+  assert.ok(g.players.find((p) => p.id === quitter)!.left);
+  assert.equal(g.players.find((p) => p.id === quitter)!.hand.length, 0);
+  assert.equal(g.phase, "playing");
+  const leaver = g.players.find((p) => p.id !== quitter && p.id !== g.active)!.id;
+  g = applyAction(g, leaver, { type: "leave" }, rand, NOW + 2);
+  assert.equal(g.phase, "finished");
+  g = applyAction(g, g.host, { type: "again" }, rand, NOW + 3);
+  assert.ok(g.players.some((p) => p.id === quitter && !p.left));
+  assert.ok(!g.players.some((p) => p.id === leaver));
+});

@@ -484,10 +484,13 @@ export function applyAction(
     } else pause(g, "host", now);
     return g;
   }
-  if (type === "kick" || type === "leave") {
+  if (type === "kick" || type === "leave" || type === "resign") {
     if (type === "kick") isHost();
+    // Resigning gives the lands back like leaving, but the player keeps watching the game.
+    const resign = type === "resign";
+    if (resign && g.phase === "lobby") fail("invalidPhase");
     const target =
-      type === "leave"
+      type !== "kick"
         ? p
         : (g.players.find((x) => x.id === action.player) ?? fail("notMember"));
     if (type === "kick" && target.id === actor) fail("invalidAction");
@@ -505,7 +508,7 @@ export function applyAction(
     target.reserve = 0;
     target.eliminated = true;
     dropDiplomacy(g, target.id);
-    log(g, "left", target.name);
+    log(g, resign ? "resigned" : "left", target.name);
     if (
       g.pending &&
       (g.lands[g.pending.from].owner === null ||
@@ -526,7 +529,7 @@ export function applyAction(
         if (next) g.active = next.id;
       } else if (g.players.some((x) => !x.eliminated)) nextTurn(g, random, now);
     }
-    if (target.id === g.host) {
+    if (!resign && target.id === g.host) {
       const next = g.players
         .toSorted((a, b) => a.joined - b.joined)
         .find((x) => !x.eliminated);

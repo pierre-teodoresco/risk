@@ -2,7 +2,7 @@
 import ThemeToggle from "@/components/ThemeToggle";
 // Grand Tour's screen: the top bar, then the entrance, the waiting room or the table.
 import { useEffect, useState } from "react";
-import { BookOpen, LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
+import { BookOpen, Flag, LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
 import { LANG_KEY, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { gamePath } from "@/games/registry";
@@ -21,6 +21,7 @@ export default function GrandTour() {
   const [lang, setLang] = useState<Lang>("fr"),
     [copied, setCopied] = useState(false),
     [leaving, setLeaving] = useState(false),
+    [resigning, setResigning] = useState(false),
     [rules, setRules] = useState(false),
     [sound, setSoundState] = useState(true);
   const room = useRoom<PublicGame>("grand-tour", PATH);
@@ -50,6 +51,15 @@ export default function GrandTour() {
     } catch {
       room.setError("serverError");
     }
+  }
+  function resign() {
+    if (!resigning) {
+      setResigning(true);
+      setTimeout(() => setResigning(false), LEAVE_CONFIRM_MS);
+      return;
+    }
+    setResigning(false);
+    void room.act({ type: "resign" });
   }
   function leave() {
     if (!leaving) {
@@ -87,6 +97,14 @@ export default function GrandTour() {
             <button aria-pressed={lang === "fr"} onClick={() => setLang("fr")}>FR</button>
             <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
           </div>
+          {g && g.phase === "playing" && (() => {
+            const me = g.players.find((p) => p.id === g.me);
+            return me && !me.bankrupt && !me.left;
+          })() && (
+            <button className={"gt-orb" + (resigning ? " danger" : "")} aria-label={resigning ? tx.resignConfirm : tx.resign} title={resigning ? tx.resignConfirm : tx.resign} onClick={resign}>
+              <Flag />
+            </button>
+          )}
           {g && (
             <button className={"gt-orb" + (leaving ? " danger" : "")} aria-label={leaving ? tx.leaveConfirm : tx.leave} title={leaving ? tx.leaveConfirm : tx.leave} onClick={leave}><LogOut /></button>
           )}

@@ -1,7 +1,7 @@
 "use client";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { BookOpen, LayoutGrid, Link2, LogOut, Palette, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
+import { BookOpen, Flag, LayoutGrid, Link2, LogOut, Palette, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
 import { LANG_KEY, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { gamePath } from "@/games/registry";
@@ -27,6 +27,7 @@ export default function Pioche() {
     [audio, setAudio] = useState(false),
     [copied, setCopied] = useState(false),
     [leaving, setLeaving] = useState(false),
+    [resigning, setResigning] = useState(false),
     [rules, setRules] = useState(false),
     [skin, setSkinState] = useState<Skin>("arcade");
   const room = useRoom<PublicGame>("pioche", PATH);
@@ -82,6 +83,15 @@ export default function Pioche() {
       room.setError("serverError");
     }
   }
+  function resign() {
+    if (!resigning) {
+      setResigning(true);
+      setTimeout(() => setResigning(false), LEAVE_CONFIRM_MS);
+      return;
+    }
+    setResigning(false);
+    void room.act({ type: "resign" });
+  }
   function leave() {
     if (!leaving) {
       setLeaving(true);
@@ -133,6 +143,11 @@ export default function Pioche() {
             <button aria-pressed={lang === "fr"} onClick={() => setLang("fr")}>FR</button>
             <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
           </div>
+          {g && g.phase === "playing" && !g.players.find((p) => p.id === g.me)?.left && (
+            <button className={"orb small" + (resigning ? " danger" : "")} aria-label={resigning ? tx.resignConfirm : tx.resign} title={resigning ? tx.resignConfirm : tx.resign} onClick={resign}>
+              <Flag />
+            </button>
+          )}
           {g && (
             <button className={"orb small" + (leaving ? " danger" : "")} aria-label={tx.leave} title={tx.leave} onClick={leave}>
               <LogOut />

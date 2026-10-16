@@ -823,6 +823,13 @@ function run(input: Game, actor: string, action: Action, random: () => number, n
       return g;
     }
 
+    case "resign":
+      // Giving up: bankrupt to the bank, but the player stays at the table to watch and for the rematch.
+      playing();
+      log(g, "resigned", p.name);
+      bankrupt(g, p, null);
+      return g;
+
     // Trades: any two players still in, at any moment of the game.
     case "offer": {
       playing();

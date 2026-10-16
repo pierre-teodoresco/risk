@@ -39,6 +39,8 @@ export type Player = {
   /** Said "Last card!" for the hand they hold now. */
   called: boolean;
   left: boolean;
+  /** Gave up this round but kept the seat for the next one. */
+  resigned?: boolean;
 };
 export type GameEvent = { id: string; key: string; args: string[]; at: number };
 export type Reaction = { id: string; from: string; key: string; at: number };
@@ -491,7 +493,8 @@ export function applyAction(
     if (type === "start" && g.phase !== "lobby") fail("alreadyStarted");
     if (type === "again") {
       if (g.phase !== "finished") fail("invalidPhase");
-      g.players = g.players.filter((x) => !x.left);
+      g.players = g.players.filter((x) => !x.left || x.resigned);
+      for (const x of g.players) x.left = x.resigned = false;
       g.direction = 1;
       g.dealer = nextSeat(g, g.players.some((x) => x.id === g.dealer) ? g.dealer : g.players[0].id);
     } else g.dealer = g.players[Math.floor(random() * g.players.length)].id;
@@ -508,9 +511,12 @@ export function applyAction(
     } else pause(g, "host", now);
     return g;
   }
-  if (type === "kick" || type === "leave") {
+  if (type === "kick" || type === "leave" || type === "resign") {
     if (type === "kick") hostOnly();
-    const target = type === "leave" ? p : byId(g, String(action.player));
+    // Resigning leaves the game but keeps the seat: the player watches and comes back for the next round.
+    const resign = type === "resign";
+    if (resign && g.phase !== "playing") fail("invalidPhase");
+    const target = type === "kick" ? byId(g, String(action.player)) : p;
     if (type === "kick" && target.id === actor) fail("invalidAction");
     if (g.phase === "lobby") {
       g.players = g.players.filter((x) => x.id !== target.id);
@@ -519,8 +525,9 @@ export function applyAction(
     }
     if (target.left) fail("eliminated");
     target.left = true;
-    log(g, "left", target.name);
-    if (g.host === target.id) {
+    if (resign) target.resigned = true;
+    log(g, resign ? "resigned" : "left", target.name);
+    if (!resign && g.host === target.id) {
       const next = g.players.toSorted((a, b) => a.joined - b.joined).find((x) => !x.left);
       if (next) g.host = next.id;
     }

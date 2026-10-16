@@ -588,9 +588,9 @@ export default function Mappa() {
           >
             <LogOut size={26} />
             <h2 id="confirm-title">
-              {confirm.type === "leave" ? t.leave : t.kick}
+              {confirm.type === "leave" ? t.leave : confirm.type === "resign" ? t.resign : t.kick}
             </h2>
-            <p>{confirm.type === "leave" ? t.leaveConfirm : t.kickConfirm}</p>
+            <p>{confirm.type === "leave" ? t.leaveConfirm : confirm.type === "resign" ? t.resignConfirm : t.kickConfirm}</p>
             <div className="btns">
               <button
                 className="btn ghost"
@@ -640,6 +640,7 @@ export default function Mappa() {
             if (me?.eliminated || game.phase === "finished") home();
             else setConfirm({ type: "leave" });
           }}
+          onResign={() => setConfirm({ type: "resign" })}
           onKick={(player) => setConfirm({ type: "kick", player })}
           onHome={home}
           troopChanges={troopChanges}

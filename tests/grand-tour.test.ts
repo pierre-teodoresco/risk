@@ -394,3 +394,14 @@ test("a timed game ends on time and the richest player wins", () => {
   assert.equal(g.winner, b.id);
   assert.equal(g.winReason, "time");
 });
+
+test("resigning goes bankrupt to the bank but keeps the seat for the rematch", () => {
+  let g = table(3);
+  const a = active(g).id;
+  g.holdings = { "1": { owner: a, houses: 0, mortgaged: false } };
+  g = act(g, a, { type: "resign" });
+  assert.ok(byId(g, a).bankrupt);
+  assert.ok(!byId(g, a).left);
+  assert.equal(g.holdings["1"], undefined);
+  assert.notEqual(g.active, a);
+});

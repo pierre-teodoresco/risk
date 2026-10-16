@@ -596,3 +596,14 @@ test("placement journal entries translate territories and singular or plural tro
     "Alice deploys 5 armies to North Africa.",
   );
 });
+test("resigning frees the player's lands but keeps them at the table as host", () => {
+  let g = deployed(3);
+  const host = g.host;
+  g = applyAction(g, host, { type: "resign" }, rand, 2000);
+  const p = g.players.find((x) => x.id === host)!;
+  assert.ok(p.eliminated);
+  assert.equal(g.host, host);
+  assert.ok(Object.values(g.lands).every((l) => l.owner !== host));
+  const l = lobby(2);
+  assert.throws(() => applyAction(l, l.host, { type: "resign" }, rand, 2001), /invalidPhase/);
+});

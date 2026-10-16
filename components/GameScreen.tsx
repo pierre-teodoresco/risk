@@ -8,6 +8,7 @@ import {
   Clock,
   Globe2,
   LockKeyhole,
+  Flag,
   LogOut,
   MessageCircle,
   Pause,
@@ -55,6 +56,7 @@ type Props = {
   copied: boolean;
   openRules: () => void;
   onLeave: () => void;
+  onResign: () => void;
   onKick: (player: string) => void;
   onHome: () => void;
   troopChanges: TroopChange[];
@@ -632,6 +634,9 @@ export default function GameScreen(props: Props) {
           <button className="btn ghost wide" onClick={props.copyInvite}><Link2 size={16} /> {props.copied ? t.copied : t.invite}</button>
           {isHost && phase !== "finished" && (
             <button className="btn ghost wide" disabled={busy} onClick={() => run({ type: "pause" })}>{game.paused ? <Play size={16} /> : <Pause size={16} />} {game.paused ? t.resume : t.pause}</button>
+          )}
+          {!me.eliminated && phase !== "finished" && (
+            <button className="btn ghost wide danger" disabled={busy} onClick={props.onResign}><Flag size={16} /> {t.resign}</button>
           )}
           <button className="btn ghost wide danger" onClick={props.onLeave}><LogOut size={16} /> {t.leave}</button>
         </section>
