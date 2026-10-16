@@ -1,4 +1,8 @@
 import { BY_ID, CONTINENTS, WORLD } from "./world";
+import type { Action } from "../platform/contract";
+import { GameError, fail } from "../platform/errors";
+export { GameError };
+export type { Action };
 export type Phase =
   "lobby" | "setup" | "reinforce" | "attack" | "fortify" | "finished";
 export type Card = { id: string; symbol: number; territory?: string };
@@ -70,15 +74,6 @@ export type Game = {
     at: number;
   } | null;
 };
-export type Action = { type: string; [key: string]: unknown };
-export class GameError extends Error {
-  constructor(public code: string) {
-    super(code);
-  }
-}
-function fail(code: string): never {
-  throw new GameError(code);
-}
 const integer = (v: unknown, min = 0, max = 100000) =>
   typeof v === "number" && Number.isInteger(v) && v >= min && v <= max
     ? v
