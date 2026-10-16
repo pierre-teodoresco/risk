@@ -133,7 +133,8 @@ export function nextSeat(g: Pick<Game, "players" | "direction">, from: string, s
   return g.players[i].id;
 }
 
-export function playable(g: Game, card: Card) {
+/** Shared with the client, which passes its public view to highlight playable cards. */
+export function playable(g: Pick<Game, "discard" | "pendingDraw" | "options" | "drawn" | "color">, card: Card) {
   const top = topCard(g);
   if (g.pendingDraw > 0)
     return g.options.stacking && !!top && (top.kind === "draw2" || top.kind === "draw4") && card.kind === top.kind;

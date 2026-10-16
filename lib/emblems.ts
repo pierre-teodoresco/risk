@@ -1,4 +1,4 @@
-// Faction emblems, one per colour slot, as SVG path data centred on (0, 0) within ±25 units.
+// Faction emblems: one per Mappa colour slot (first six), one per Pioche seat (all eight), as SVG path data centred on (0, 0) within ±25 units.
 // Shared by the SVG crests and the canvas-drawn troop coins of the 3D board.
 export type Emblem = {
   /** Drawn in order, each filled then outlined, so later shapes cover earlier outlines. */
@@ -43,6 +43,10 @@ export const EMBLEMS: Emblem[] = [
   { strokeOnly: true, shapes: [circle(0, -14, 4.5), "M0-9V17M-9-3H9M-15 5Q-13 18 0 18 13 18 15 5"] },
   // Lightning
   { shapes: ["M4-21-12 3h9l-5 18 17-25H0l5-17Z"] },
+  // Moon
+  { shapes: ["M4-21A20 20 0 1 0 19 9 16 16 0 1 1 4-21Z"] },
+  // Heart
+  { shapes: ["M0 19C-15 9-21 0-21-8a10.5 10.5 0 0 1 21-4 10.5 10.5 0 0 1 21 4c0 8-6 17-21 27Z"] },
 ];
 
 export const emblemOf = (color: number) => EMBLEMS[color % EMBLEMS.length];

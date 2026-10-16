@@ -2,7 +2,7 @@ import { EMBLEM_INK, EMBLEM_OUTLINE, STROKE_EMBLEM_WIDTHS, emblemOf, type Emblem
 
 // Faction crest per colour: medallion in the player's colour with an outlined emblem.
 // The fill reads the --pcN variables so the colour-blind palette applies everywhere.
-function EmblemShapes({ emblem }: { emblem: Emblem }) {
+export function EmblemShapes({ emblem }: { emblem: Emblem }) {
   const shapes = emblem.strokeOnly ? (
     <g fill="none" strokeLinecap="round">
       {[[EMBLEM_INK, STROKE_EMBLEM_WIDTHS.outline], ["#fff", STROKE_EMBLEM_WIDTHS.inner]].map(([c, w]) => (
