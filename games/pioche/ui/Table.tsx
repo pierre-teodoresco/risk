@@ -20,6 +20,35 @@ const TOASTS_KEPT = 3;
 const SHAKE_MS = 900;
 const DECK_LAYERS = 3;
 const CLOCK_MS = 250;
+/** The shout button ignores clicks while it pops in, so a click already on its way lands nowhere. */
+const SHOUT_ARM_MS = 150;
+
+/**
+ * "Last card!" must be won by reflex, not by parking the cursor where the button always appears:
+ * each race puts it at a fresh random spot of the table, drawn separately on every screen.
+ */
+function ShoutButton({ label, title, disabled, onShout }: {
+  label: string; title: string; disabled: boolean; onShout: () => void;
+}) {
+  const [spot] = useState(() => ({ x: 14 + Math.random() * 72, y: 16 + Math.random() * 50, tilt: Math.random() * 16 - 8 }));
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setArmed(true), SHOUT_ARM_MS);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <button
+      className="pc-shout"
+      style={{ left: `${spot.x}%`, top: `${spot.y}%`, "--tilt": `${spot.tilt}deg` } as CSSProperties}
+      disabled={disabled}
+      aria-label={title}
+      title={title}
+      onClick={() => armed && onShout()}
+    >
+      {label}
+    </button>
+  );
+}
 
 /** Cards on their way to the pile, with where each one left the hand. */
 type Staged = { cards: Card[]; from: Map<string, DOMRect> };
@@ -195,7 +224,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
   if (partners) prompt = fmt(tx.comboHint, { card: lead.kind === "number" ? String(lead.value) : tx.kinds[lead.kind] });
   if (lotReady) prompt = tx.lotHint;
   if (picking) prompt = picking.kind === "color" ? tx.chooseColor : tx.chooseTarget;
-  // "Pioche!" is a race open as long as a player sits on one card without having called it.
+  // "Last card!" is a race open as long as a player sits on one card without having called it.
   const canCall = playing && catchable(me);
   const forgetful = playing ? game.players.find((p) => p.id !== game.me && catchable(p)) : undefined;
   if (forgetful && !picking) prompt = fmt(tx.catchHint, { name: forgetful.name });
@@ -211,7 +240,6 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
         shaking={shaking}
         choosing={picking?.kind === "target"}
         onChoose={(id) => picking && void send(picking, { target: id })}
-        onCatch={(id) => void act({ type: "catch", player: id })}
         register={(id, el) => {
           if (el) seatEls.current.set(id, el);
           else seatEls.current.delete(id);
@@ -275,21 +303,11 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
           {myTurn && game.drawn && !game.pendingDraw && (
             <button className="btn ghost" disabled={busy} onClick={() => void act({ type: "pass" })}>{tx.pass}</button>
           )}
-          {forgetful && !picking && (
-            <button className="btn red shout" disabled={busy} onClick={() => void act({ type: "catch", player: forgetful.id })} aria-label={fmt(tx.catchLabel, { name: forgetful.name })}>
-              {tx.catch}
-            </button>
-          )}
           {picking && <button className="btn ghost" onClick={cancelPick}>{tx.cancel}</button>}
         </div>
       </div>
 
       <div className="hand-zone" ref={handEl}>
-        {canCall && (
-          <button className="call" disabled={busy} onClick={() => { cue("call"); void act({ type: "call" }); }} title={tx.callHint}>
-            {tx.call}
-          </button>
-        )}
         <Hand
           cards={hand}
           canPlay={canPlay}
@@ -310,6 +328,22 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
           {myReaction && <span className="pc-bubble mine" key={myReaction.id}>{reactionGlyph(myReaction.key, tx)}</span>}
         </div>
       </div>
+
+      {(canCall || (forgetful && !picking)) && (
+        // A new key (player and hand size) is a new race, so the button moves somewhere else.
+        <ShoutButton
+          key={canCall ? `me:${me.hand.length}` : `${forgetful!.id}:${forgetful!.cardCount}`}
+          label={canCall ? tx.call : tx.catch}
+          title={canCall ? tx.callHint : fmt(tx.catchLabel, { name: forgetful!.name })}
+          disabled={busy}
+          onShout={() => {
+            if (canCall) {
+              cue("call");
+              void act({ type: "call" });
+            } else void act({ type: "catch", player: forgetful!.id });
+          }}
+        />
+      )}
 
       <div className="reactions" role="group" aria-label={tx.reactions}>
         {REACTIONS.map((r) => (

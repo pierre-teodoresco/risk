@@ -1,13 +1,13 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { BookOpen, LayoutGrid, Link2, LogOut, Palette, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
 import { LANG_KEY, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { gamePath } from "@/games/registry";
 import { useRoom } from "@/platform/useRoom";
 import type { PublicGame } from "../engine";
 import { errorText, piocheTexts } from "../i18n";
-import { CardDefs } from "./CardFace";
+import { CARD_HEX, CardDefs, SKINS, SkinContext, type Skin } from "./CardFace";
 import Rules from "./Rules";
 import { Home, Lobby, RoundEnd } from "./Screens";
 import Table from "./Table";
@@ -15,6 +15,8 @@ import { playCue, type Cue } from "./sound";
 
 const PATH = gamePath("pioche");
 const AUDIO_KEY = "pioche.audio";
+/** Each player picks their own table; it changes nothing for the others. */
+const SKIN_KEY = "pioche.skin";
 const COPIED_MS = 2500;
 const LEAVE_CONFIRM_MS = 3000;
 
@@ -23,7 +25,8 @@ export default function Pioche() {
     [audio, setAudio] = useState(false),
     [copied, setCopied] = useState(false),
     [leaving, setLeaving] = useState(false),
-    [rules, setRules] = useState(false);
+    [rules, setRules] = useState(false),
+    [skin, setSkinState] = useState<Skin>("arcade");
   const room = useRoom<PublicGame>("pioche", PATH);
   const audioRef = useRef(false);
   const tx = piocheTexts(lang);
@@ -37,6 +40,8 @@ export default function Pioche() {
       const on = localStorage.getItem(AUDIO_KEY) === "on";
       setAudio(on);
       audioRef.current = on;
+      const savedSkin = localStorage.getItem(SKIN_KEY);
+      if (SKINS.includes(savedSkin as Skin)) setSkinState(savedSkin as Skin);
     } catch {}
   }, []);
   useEffect(() => {
@@ -61,6 +66,12 @@ export default function Pioche() {
     } catch {}
     if (next) playCue("select");
   }
+  function setSkin(next: Skin) {
+    setSkinState(next);
+    try {
+      localStorage.setItem(SKIN_KEY, next);
+    } catch {}
+  }
   async function copy() {
     if (!g) return;
     try {
@@ -83,7 +94,9 @@ export default function Pioche() {
 
   const pausedBy = g?.paused ? g.players.find((p) => p.id === g.active) : null;
   return (
-    <div className="pioche">
+    <SkinContext.Provider value={skin}>
+    {/* The Arcade table glows in the colour to play; Bistrot keeps its wood whatever happens. */}
+    <div className="pioche" data-skin={skin} style={{ "--play": g?.color ? CARD_HEX[g.color] : "#6a4cff" } as CSSProperties}>
       <CardDefs />
       <header className="pioche-top">
         {g && g.phase !== "lobby" && <span className="round-tag">{fmt(tx.round, { n: g.round })} · {g.code}</span>}
@@ -104,6 +117,14 @@ export default function Pioche() {
               {g.paused ? <Play /> : <Pause />}
             </button>
           )}
+          <button
+            className="orb small"
+            aria-label={`${tx.skin} : ${tx.skins[skin]}`}
+            title={`${tx.skin} : ${tx.skins[skin]}`}
+            onClick={() => setSkin(SKINS[(SKINS.indexOf(skin) + 1) % SKINS.length])}
+          >
+            <Palette />
+          </button>
           <button className="orb small" aria-label={tx.sound} aria-pressed={audio} onClick={toggleAudio}>
             {audio ? <Volume2 /> : <VolumeX />}
           </button>
@@ -133,7 +154,7 @@ export default function Pioche() {
           onEnter={(code, name, emblem) => void room.enter(code, { name, emblem })}
         />
       ) : g.phase === "lobby" ? (
-        <Lobby game={g} tx={tx} busy={room.busy} act={room.act} copied={copied} onCopy={copy} />
+        <Lobby game={g} tx={tx} busy={room.busy} act={room.act} copied={copied} onCopy={copy} skin={skin} onSkin={setSkin} />
       ) : (
         <>
           <Table game={g} tx={tx} lang={lang} act={room.act} busy={room.busy} cue={cue} />
@@ -160,5 +181,6 @@ export default function Pioche() {
         </div>
       )}
     </div>
+    </SkinContext.Provider>
   );
 }

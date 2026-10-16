@@ -7,7 +7,7 @@ import { fmt } from "@/lib/i18n";
 import type { Action } from "@/platform/contract";
 import { CARD_POINTS, EMBLEM_COUNT, MIN_PLAYERS, TIMERS, type PublicGame } from "../engine";
 import { type PiocheTexts } from "../i18n";
-import { CardFace } from "./CardFace";
+import { CardFace, SKINS, type Skin } from "./CardFace";
 
 const FAN_SPREAD_DEG = 5;
 
@@ -62,11 +62,11 @@ export function Home({ tx, busy, room, setRoom, preview, recent, hasRecent, onEn
   return (
     <main className="entrance">
       <section className="entrance-hero">
-        <h1>pioche<span>.</span></h1>
+        <h1 className="pc-logo">pioche<span>.</span></h1>
         <p>{tx.tagline}</p>
         <div className="entrance-cards" aria-hidden="true">
           {(["red-7a", "yellow-skipa", "green-draw2a", "blue-reversea", "draw4-1"] as const).map((id, i) => (
-            <span key={id} style={{ "--i": i - 2 } as React.CSSProperties}>
+            <span key={id} style={{ "--i": i - 2, "--n": i } as React.CSSProperties}>
               <CardFace card={{ id, ...DEMO[id] }} />
             </span>
           ))}
@@ -105,13 +105,15 @@ const DEMO: Record<string, { kind: "number" | "skip" | "draw2" | "reverse" | "dr
   "draw4-1": { kind: "draw4", color: null, value: null },
 };
 
-export function Lobby({ game, tx, busy, act, copied, onCopy }: {
+export function Lobby({ game, tx, busy, act, copied, onCopy, skin, onSkin }: {
   game: PublicGame;
   tx: PiocheTexts;
   busy: boolean;
   act: (a: Action) => Promise<boolean>;
   copied: boolean;
   onCopy: () => void;
+  skin: Skin;
+  onSkin: (s: Skin) => void;
 }) {
   const isHost = game.host === game.me;
   const me = game.players.find((p) => p.id === game.me)!;
@@ -149,6 +151,16 @@ export function Lobby({ game, tx, busy, act, copied, onCopy }: {
           onPick={(e) => void act({ type: "profile", emblem: e })}
           label={tx.emblem}
         />
+        <span className="eyebrow">{tx.skin}</span>
+        <div className="skin-picker" role="group" aria-label={tx.skin}>
+          {SKINS.map((k) => (
+            <button key={k} className={"skin-choice " + k} aria-pressed={skin === k} onClick={() => onSkin(k)}>
+              <span className="skin-swatch" aria-hidden="true" />
+              {tx.skins[k]}
+            </button>
+          ))}
+        </div>
+        <p className="note">{tx.skinHint}</p>
       </section>
 
       <section className="lobby-panel panel">

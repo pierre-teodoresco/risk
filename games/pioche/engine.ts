@@ -36,7 +36,7 @@ export type Player = {
   lastSeen: number;
   joined: number;
   hand: Card[];
-  /** Said "Pioche!" for the hand they hold now. */
+  /** Said "Last card!" for the hand they hold now. */
   called: boolean;
   left: boolean;
 };
@@ -540,7 +540,7 @@ export function applyAction(
     return g;
   }
 
-  // "Pioche!" is a race: the player on one card must call it before anyone else does.
+  // "Last card!" is a race: the player on one card must call it before anyone else does.
   if (type === "call") {
     if (g.phase !== "playing" || p.left) fail("invalidPhase");
     if (g.paused) fail("paused");

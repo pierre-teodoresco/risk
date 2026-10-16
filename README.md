@@ -53,7 +53,7 @@ Les navigateurs maintiennent leur présence toutes les 10 secondes. Les échéan
 
 ## Pioche
 
-Jeu de défausse pour **2 à 8 joueurs** sur le paquet classique de 108 cartes : poser une carte de même couleur, même chiffre ou même symbole, et vider sa main le premier. Un joueur à une carte doit crier « Pioche ! » avant les autres, sinon il pioche 2 cartes. Le panneau « Règles du jeu » détaille les cartes spéciales et les options.
+Jeu de défausse pour **2 à 8 joueurs** sur le paquet classique de 108 cartes : poser une carte de même couleur, même chiffre ou même symbole, et vider sa main le premier. Un joueur à une carte doit crier « Dernière carte ! » avant les autres, sinon il pioche 2 cartes. Le panneau « Règles du jeu » détaille les cartes spéciales et les options.
 
 Options choisies par l’hôte dans la salle d’attente :
 
