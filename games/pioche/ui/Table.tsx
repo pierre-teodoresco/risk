@@ -99,6 +99,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
     }
     if (fresh.some((e) => e.key === "called")) cue("call");
     if (fresh.some((e) => e.key === "caught")) cue("catch");
+    if (game.exposed && game.exposed !== game.me && game.exposed !== old.exposed) cue("call");
     if (game.lastPlay && game.lastPlay.at !== old.lastPlay?.at && game.lastPlay.by !== game.me) cue("play");
     if (game.active === game.me && old.active !== game.me && game.phase === "playing") cue("turn");
     const hits = new Map<string, number>();
@@ -154,6 +155,9 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
   if (challengedMe) prompt = fmt(tx.challengeHint, { name: challenger?.name ?? "" });
   if (picking) prompt = picking.kind === "color" ? tx.chooseColor : tx.chooseTarget;
   const canCall = playing && !me.left && me.hand.length > 0 && me.hand.length <= 2 && !me.called;
+  // Someone else forgot to call: every other player may shout it until the next move.
+  const forgetful = game.exposed && game.exposed !== game.me ? game.players.find((p) => p.id === game.exposed) : null;
+  if (forgetful && !picking) prompt = fmt(tx.catchHint, { name: forgetful.name });
   const myReaction = lastReaction(game.reactions, game.me, now);
 
   return (
@@ -213,6 +217,11 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
           )}
           {myTurn && game.drawn && !game.pendingDraw && (
             <button className="btn ghost" disabled={busy} onClick={() => void act({ type: "pass" })}>{tx.pass}</button>
+          )}
+          {forgetful && !picking && (
+            <button className="btn red shout" disabled={busy} onClick={() => void act({ type: "catch" })} aria-label={fmt(tx.catchLabel, { name: forgetful.name })}>
+              {tx.catch}
+            </button>
           )}
           {picking && <button className="btn ghost" onClick={() => setPicking(null)}>{tx.cancel}</button>}
         </div>

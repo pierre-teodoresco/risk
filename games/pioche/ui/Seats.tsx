@@ -106,7 +106,7 @@ export default function Seats({
             {shake && <span className="seat-penalty" key={`${p.id}-${p.cardCount}`}>+{shake}</span>}
             {reaction && <span className="pc-bubble" key={reaction.id}>{reactionGlyph(reaction.key, tx)}</span>}
             {game.exposed === p.id && !choosing && (
-              <button className="seat-catch" onClick={onCatch} aria-label={fmt(tx.catchHint, { name: p.name })}>
+              <button className="seat-catch" onClick={onCatch} aria-label={fmt(tx.catchLabel, { name: p.name })}>
                 {tx.catch}
               </button>
             )}

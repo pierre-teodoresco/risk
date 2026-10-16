@@ -153,7 +153,9 @@ button.pc-seat { cursor: pointer; }
 .seat-count { position: absolute; right: -8px; bottom: -6px; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--cream); color: var(--ink); font: 15px/26px var(--f-display); text-align: center; box-shadow: 0 2px 0 #0005; }
 .seat-name { max-width: 100%; padding: 2px 10px; border-radius: 999px; background: #0009; font-weight: 800; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .seat-call { position: absolute; top: 34px; left: 50%; transform: translateX(-50%) rotate(-6deg); padding: 2px 10px; border-radius: 999px; background: var(--hot); color: #fff; font: 13px var(--f-display); border: 2px solid var(--ink); white-space: nowrap; }
-.seat-catch { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); z-index: 3; padding: 7px 14px; border-radius: 999px; background: var(--gold); color: var(--ink); font: 17px var(--f-display); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); white-space: nowrap; animation: call-pulse .8s ease-in-out infinite; }
+.seat-catch { position: absolute; top: 100%; left: 50%; z-index: 6; margin-top: 6px; translate: -50% 0; padding: 9px 18px; border-radius: 999px; background: linear-gradient(180deg, #f2645a, var(--hot)); color: #fff; font: 20px var(--f-display); border: 3px solid var(--ink); box-shadow: 0 5px 0 var(--ink), 0 10px 22px #0009; white-space: nowrap; animation: call-pulse .8s ease-in-out infinite; }
+.seat-catch:active { translate: -50% 3px; box-shadow: 0 2px 0 var(--ink); }
+.prompt-actions .shout { font-size: 20px; padding: 10px 22px; animation: call-pulse .8s ease-in-out infinite; }
 .pc-seat.shake { animation: seat-shake .5s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes seat-shake { 20%, 60% { transform: translate(calc(-50% - 7px), -50%) rotate(-3deg); } 40%, 80% { transform: translate(calc(-50% + 7px), -50%) rotate(3deg); } }
 .seat-penalty { position: absolute; top: 40px; right: 6px; color: #ffb3ab; font: 24px var(--f-display); -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; animation: float-up 1.2s ease-out both; pointer-events: none; }
@@ -210,5 +212,5 @@ button.pc-seat { cursor: pointer; }
   .pioche-top .seg { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .direction-spin, .pc-deck.ready, .call, .seat-catch, .pc-seat.choosable .seat-medal, .entrance-cards span, .hand-card.drawn .card-flip { animation: none; }
+  .direction-spin, .pc-deck.ready, .call, .seat-catch, .prompt-actions .shout, .pc-seat.choosable .seat-medal, .entrance-cards span, .hand-card.drawn .card-flip { animation: none; }
 }
