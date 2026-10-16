@@ -115,37 +115,39 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
   }, [game, lang, cue]);
 
   const canPlay = useCallback(
-    (card: Card) => myTurn && !busy && !inFlight && playable(game, card),
-    [myTurn, busy, inFlight, game],
+    (card: Card) => myTurn && !busy && !inFlight && !picking && playable(game, card),
+    [myTurn, busy, inFlight, picking, game],
   );
 
   async function send(card: Card, from: DOMRect, extra: Partial<Action> = {}) {
     setPicking(null);
     setInFlight({ card, from });
-    cue("play");
     await act({ type: "play", card: card.id, ...extra });
     setInFlight(null);
   }
   function onPlay(card: Card, from: DOMRect) {
+    cue("play");
     if (card.kind === "wild" || card.kind === "draw4") return setPicking({ card, from, kind: "color" });
     if (game.options.sevenZero && card.kind === "number" && card.value === 7)
       return setPicking({ card, from, kind: "target" });
     void send(card, from);
   }
 
+  // A card waiting for its colour or target already lies on the pile; cancelling returns it to the hand.
+  const staged = inFlight ?? picking;
   const originOf = useCallback(
     (card: Card) => {
-      if (inFlight?.card.id === card.id) return inFlight.from;
+      if (staged?.card.id === card.id) return staged.from;
       if (game.lastPlay?.card !== card.id) return null;
       if (game.lastPlay.by === game.me) return handEl.current?.getBoundingClientRect() ?? null;
       return seatEls.current.get(game.lastPlay.by)?.getBoundingClientRect() ?? null;
     },
-    [inFlight, game.lastPlay, game.me],
+    [staged, game.lastPlay, game.me],
   );
-  const pileCards = inFlight && !game.discard.some((c) => c.id === inFlight.card.id) ? [...game.discard, inFlight.card] : game.discard;
-  const hand = me.hand.filter((c) => c.id !== inFlight?.card.id);
+  const pileCards = staged && !game.discard.some((c) => c.id === staged.card.id) ? [...game.discard, staged.card] : game.discard;
+  const hand = me.hand.filter((c) => c.id !== staged?.card.id);
 
-  const canDraw = myTurn && !busy && !inFlight && (!game.drawn || game.pendingDraw > 0);
+  const canDraw = myTurn && !busy && !inFlight && !picking && (!game.drawn || game.pendingDraw > 0);
   const activePlayer = game.players.find((p) => p.id === game.active);
   const challenger = game.challenge ? game.players.find((p) => p.id === game.challenge!.from) : null;
   let prompt = myTurn ? tx.playHint : fmt(tx.theirTurn, { name: activePlayer?.name ?? "" });
