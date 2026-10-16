@@ -141,7 +141,10 @@ export default function Pioche() {
       </header>
 
       {room.loading ? (
-        <main className="center-note"><div className="spinner" />{tx.loading}</main>
+        <main className="center-note pc-loading" role="status">
+          <span className="pc-loader" aria-hidden="true"><i /><i /><i /></span>
+          {tx.loading}
+        </main>
       ) : !g ? (
         <Home
           tx={tx}

@@ -328,9 +328,9 @@ button.pc-seat { cursor: pointer; }
    Entrance: the same quiet store front as the hub, whatever table the player picked.
    One wordmark, one real hand of cards dealt once on arrival, one plain panel.
    ============================================================ */
-.pioche:has(.entrance) { --f-pc: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif; background: #0e0d11; }
-.pioche:has(.entrance)::before { display: none; }
-.pioche:has(.entrance)::after { box-shadow: none; }
+.pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading)) { --f-pc: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif; background: #0e0d11; }
+.pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading))::before { display: none; }
+.pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading))::after { box-shadow: none; }
 .entrance { gap: 48px 72px; max-width: 1180px; }
 .entrance-hero { gap: 0; }
 .entrance-hero .pc-logo { font: 800 clamp(76px, 11vw, 150px)/.85 var(--f-pc); letter-spacing: -.06em; color: #f4f2ee; -webkit-text-stroke: 0; }
@@ -356,8 +356,40 @@ button.pc-seat { cursor: pointer; }
   .entrance-cards span { width: 88px; height: 132px; margin-left: -44px; }
 }
 @media (prefers-reduced-motion: reduce) { .entrance-cards span { animation: none; } }
-.pioche:has(.entrance) .orb { background: #17161b; border: 1px solid #ffffff1f; box-shadow: none; color: #b9b5c2; }
-.pioche:has(.entrance) .orb:hover { color: #f4f2ee; background: #1f1d24; }
-.pioche:has(.entrance) .seg { background: #17161b; box-shadow: none; }
-.pioche:has(.entrance) .seg button { font-family: var(--f-pc); }
-.pioche:has(.entrance) .seg button[aria-pressed="true"] { background: #f4f2ee; color: #0e0d11; }
+.pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading)) .orb { background: #17161b; border: 1px solid #ffffff1f; box-shadow: none; color: #b9b5c2; }
+.pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading)) .orb:hover { color: #f4f2ee; background: #1f1d24; }
+.pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading)) .seg { background: #17161b; box-shadow: none; }
+.pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading)) .seg button { font-family: var(--f-pc); }
+.pioche:is(:has(.entrance), :has(.pc-lobby), :has(.pc-loading)) .seg button[aria-pressed="true"] { background: #f4f2ee; color: #0e0d11; }
+
+/* Loading: three cards turning over one after the other, instead of a spinner. */
+.pc-loading { font: 500 16px var(--f-pc); color: #8d8996; gap: 22px; }
+.pc-loader { display: flex; gap: 10px; perspective: 400px; }
+.pc-loader i { width: 26px; height: 39px; border-radius: 5px; background: #ff7a45; animation: pc-turn 1.4s cubic-bezier(.4,0,.2,1) infinite; }
+.pc-loader i:nth-child(2) { background: #f6b928; animation-delay: .15s; }
+.pc-loader i:nth-child(3) { background: #2c7fdb; animation-delay: .3s; }
+@keyframes pc-turn { 0%, 55%, 100% { transform: none; } 25% { transform: rotateY(180deg) translateY(-6px); filter: brightness(.6); } }
+
+/* Waiting room: the same quiet panels as the entrance. */
+.pc-lobby { font-family: var(--f-pc); gap: 20px; }
+.pc-lobby .lobby-panel.panel { padding: 26px; border-radius: 22px; background: #17161b; border: 1px solid #ffffff17; box-shadow: none; }
+.pc-lobby .eyebrow { font: 500 12px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .16em; color: #8d8996; }
+.pc-lobby .lobby-code { font: 800 clamp(44px, 7vw, 60px)/1 var(--f-pc); letter-spacing: .06em; color: #f4f2ee; -webkit-text-stroke: 0; margin: 4px 0 6px; }
+.pc-lobby h2 { font: 700 20px var(--f-pc); letter-spacing: -.02em; }
+.pc-lobby .btn.ghost { border-radius: 12px; background: #ffffff0d; border: 1px solid #ffffff17; font: 700 15px var(--f-pc); }
+.pc-lobby .lobby-players li { background: #0e0d11; border: 1px solid #ffffff12; font-family: var(--f-pc); font-weight: 700; }
+.pc-lobby .lobby-players small { background: #ffffff10; font: 500 11px ui-monospace, Menlo, monospace; letter-spacing: .08em; }
+.pc-lobby .option { border-top-color: #ffffff12; }
+.pc-lobby .option b { font-weight: 700; }
+.pc-lobby .option small { color: #8d8996; }
+.pc-lobby .switch[aria-pressed="true"] { background: #ff7a45; }
+.pc-lobby .seg { background: #0e0d11; box-shadow: none; border: 1px solid #ffffff12; }
+.pc-lobby .seg button { font-family: var(--f-pc); }
+.pc-lobby .seg button[aria-pressed="true"] { background: #f4f2ee; color: #0e0d11; }
+.pc-lobby .deal.btn.go { background: #ff7a45; color: #1a0b03; box-shadow: none; border-radius: 12px; font: 700 18px var(--f-pc); }
+.pc-lobby .deal.btn.go:disabled { background: #26242c; color: #6d6878; }
+.pc-lobby .note { color: #8d8996; font-weight: 500; }
+.pc-lobby .emblem-choice[aria-pressed="true"] { box-shadow: 0 0 0 3px #ff7a45; }
+.pc-lobby .skin-choice { background: #0e0d11; border: 1px solid #ffffff12; font: 700 15px var(--f-pc); }
+.pc-lobby .skin-choice[aria-pressed="true"] { box-shadow: 0 0 0 2px #ff7a45; background: #1f1d24; }
+@media (prefers-reduced-motion: reduce) { .pc-loader i { animation: none; } }
