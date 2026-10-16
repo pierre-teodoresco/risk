@@ -627,7 +627,6 @@ export default function GameScreen(props: Props) {
           <div className="row">{t.sound}<button className="switch" aria-pressed={props.audio} aria-label={t.sound} onClick={props.toggleAudio} /></div>
           <div className="row">{h.language}<div className="seg">
             <button aria-pressed={lang === "fr"} onClick={() => props.setLang("fr")}>FR</button>
-          <div className="row">{t.colorblind}<button className="switch" aria-pressed={props.colorblind} aria-label={t.colorblind} onClick={props.toggleColorblind} /></div>
             <button aria-pressed={lang === "en"} onClick={() => props.setLang("en")}>EN</button>
           </div></div>
           <div className="row">{h.room} <span className="code"><LockKeyhole size={13} /> {game.code}</span></div>

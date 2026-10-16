@@ -22,23 +22,17 @@
 .hall .hall-top { display: flex; justify-content: space-between; align-items: center; padding-top: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--hall-line); }
 .hall .hall-brand { color: var(--hall-text); font: 800 26px var(--f-hall); letter-spacing: -.045em; text-decoration: none; }
 .hall .hall-brand.small { font-size: 18px; }
-.hall .seg { background: var(--app-inset); box-shadow: none; }
-.hall .seg button { color: var(--hall-grey); font: 700 13px var(--f-hall); }
-.hall .seg button[aria-pressed="true"] { background: var(--app-panel); color: var(--app-text); }
 
 /* Library toolbar */
 .hall main { padding-top: 28px; }
 .hall .hall-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px 32px; }
-.hall .hall-heading h1 { font: 800 32px/1.1 var(--f-hall); letter-spacing: -.045em; }
+.hall .hall-heading h1 { font: 800 var(--text-title)/1.1 var(--f-hall); letter-spacing: -.045em; }
 .hall .hall-heading p { margin-top: 8px; color: var(--hall-grey); font-size: 14px; }
 .hall .hall-join { display: grid; gap: 8px; width: 320px; max-width: 100%; }
 .hall .hall-join label { font: 600 13px var(--f-hall); color: var(--hall-grey); }
 .hall .hall-code { display: flex; gap: 8px; }
-.hall .hall-code input { min-width: 0; width: 100%; height: 44px; padding: 10px 12px; border: 1px solid var(--hall-line); border-radius: 10px; font: 600 16px var(--f-hall); letter-spacing: .16em; text-transform: uppercase; }
-.hall .hall-code input:focus-visible { outline: 2px solid var(--hall-accent); outline-offset: 2px; }
-.hall .hall-join-go { flex: none; min-height: 44px; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--app-action); color: #fff; font: 700 14px var(--f-hall); transition: background .12s; }
-.hall .hall-join-go:disabled { background: var(--app-raised); color: var(--app-muted); border: 1px solid var(--hall-line); }
-.hall .hall-join-go:not(:disabled):hover { filter: brightness(1.1); }
+.hall .hall-code input { min-width: 0; width: 100%; letter-spacing: .16em; text-transform: uppercase; }
+.hall .hall-join-go { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .hall .hall-error { color: var(--app-danger); font-size: 13px; line-height: 1.4; }
 .hall .hall-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; color: var(--hall-grey); font-size: 13px; }
 .hall .hall-recent a { display: inline-flex; align-items: center; gap: 6px; color: var(--hall-text); font-weight: 600; text-decoration: none; }
@@ -46,30 +40,29 @@
 .hall .hall-recent i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
 /* Shelf */
-.hall .hall-shelf { display: grid; gap: 18px; padding-bottom: 32px; }
+.hall .hall-shelf { display: grid; gap: var(--space-5); padding-bottom: 32px; }
 .hall .hall-label { font: 500 13px var(--f-hall); letter-spacing: .14em; text-transform: uppercase; color: var(--hall-grey); }
 .hall .hall-shelf > .hall-label { display: flex; align-items: center; gap: 14px; }
 .hall .hall-shelf > .hall-label::after { content: ""; flex: 1; height: 1px; background: var(--hall-line); }
-.hall .hall-posters { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.hall .hall-posters { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); }
 .hall .hall-posters li { display: flex; }
 
-.hall .poster { display: flex; flex-direction: column; width: 100%; overflow: hidden; border-radius: 22px; background: var(--hall-raise); border: 1px solid var(--hall-line); color: var(--hall-text); text-decoration: none; outline-offset: 4px; }
+.hall .poster { display: flex; flex-direction: column; width: 100%; overflow: hidden; border-radius: var(--radius-panel); background: var(--hall-raise); border: 1px solid var(--hall-line); color: var(--hall-text); text-decoration: none; outline-offset: 4px; }
 .hall .poster-visual { position: relative; display: block; aspect-ratio: 16 / 9; overflow: hidden; background: var(--app-inset); }
 .hall .poster-visual > svg { display: block; width: 100%; height: 100%; }
 .hall .shelf-art-object { transform-origin: 200px 125px; transition: transform .35s cubic-bezier(.2,.8,.2,1); filter: drop-shadow(0 10px 8px #0004); }
 .hall .poster:hover .shelf-art-object, .hall .poster:focus-visible .shelf-art-object { transform: translateY(-4px); }
-.hall .poster-info { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px 14px; padding: 18px; }
+.hall .poster-info { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px 14px; padding: var(--space-4); }
 .hall .poster-text { display: grid; gap: 4px; }
-.hall .poster-name { font: 800 28px/1 var(--f-hall); letter-spacing: -.04em; }
+.hall .poster-name { font: 800 24px/1.15 var(--f-hall); letter-spacing: -.04em; }
 .hall .poster-tagline { color: var(--hall-grey); font-size: 14px; }
 .hall .poster-meta { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--hall-grey); font-size: 13px; }
 .hall .poster-meta span { display: inline-flex; align-items: center; gap: 6px; }
-.hall .poster-play { grid-column: 2; grid-row: 1 / span 2; align-self: center; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 999px; background: var(--hall-text); color: var(--hall-bg); font: 700 14px var(--f-hall); transition: background .15s, transform .15s; }
-.hall .poster:hover .poster-play { background: var(--app-action); color: #fff; }
+.hall .poster-play { grid-column: 2; grid-row: 1 / span 2; align-self: center; display: inline-flex; align-items: center; gap: 8px; }
 .hall .poster:hover .poster-play svg { transform: translateX(2px); }
 
 .hall .hall-soon { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 12px; }
-.hall .hall-soon li { display: grid; gap: 4px; padding: 18px 20px; border-radius: 16px; border: 1px solid var(--hall-line); }
+.hall .hall-soon li { display: grid; gap: 4px; padding: 18px 20px; border-radius: var(--radius-panel); border: 1px solid var(--hall-line); }
 .hall .hall-soon b { display: flex; align-items: center; gap: 10px; font: 700 19px var(--f-hall); letter-spacing: -.02em; }
 .hall .hall-soon b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .hall .hall-soon span { color: var(--hall-grey); font-size: 15px; }

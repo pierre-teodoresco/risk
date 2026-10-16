@@ -21,6 +21,8 @@ Production locale : `npm run build`, puis `npm start`.
 
 Le menu « Apparence » (soleil ou lune) du hub et de chaque jeu propose Clair, Sombre et Système. Le choix est partagé entre les jeux et mémorisé dans le navigateur ; par défaut, il suit le système. Le décor Arcade ou Bistrot de Pioche reste un choix indépendant.
 
+Les composants, tailles et états communs sont décrits dans [le design system](docs/design-system.md).
+
 ## Configuration
 
 | Variable | Usage |

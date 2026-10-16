@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./typography.css";
 import "./globals.css";
 import "./theme.css";
+import "./ui.css";
 import { THEME_INIT } from "@/lib/theme-init";
 export const metadata: Metadata = {
   title: "Tablée — Jeux de société entre amis",

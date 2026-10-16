@@ -1,0 +1,137 @@
+/* Tablée UI primitives. Existing game class names are aliases of these shared components.
+   Game artwork and spatial HUD layouts stay in their own stylesheets. */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --text-caption: 12px;
+  --text-meta: 13px;
+  --text-body: 15px;
+  --text-control: 14px;
+  --text-heading: 20px;
+  --text-title: 32px;
+  --text-dialog: 24px;
+  --text-display: clamp(40px, 6vw, 64px);
+  --leading-body: 1.5;
+  --leading-heading: 1.15;
+  --weight-body: 500;
+  --weight-control: 700;
+  --weight-heading: 800;
+  --radius-control: 10px;
+  --radius-panel: 16px;
+  --radius-small: 8px;
+  --radius-pill: 999px;
+  --control-height: 44px;
+  --control-small: 36px;
+  --control-large: 48px;
+  --icon-size: 20px;
+  --motion-fast: 140ms;
+  --app-action-hover: color-mix(in srgb, var(--app-action) 85%, #000);
+}
+
+/* Secondary by default; primary, destructive and selected are explicit variants. */
+:is(.ui-button, .btn, .gt-btn, .cc-btn, .hall-join-go, .poster-play, .gt-roll, .cc-nav button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--app-line);
+  border-radius: var(--radius-control);
+  background: var(--app-panel);
+  color: var(--app-text);
+  font: var(--weight-control) var(--text-control)/1.25 var(--font-app);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+}
+:is(.ui-button, .btn, .gt-btn, .cc-btn, .hall-join-go, .poster-play, .gt-roll, .cc-nav button):hover:not(:disabled) { background: var(--app-hover); }
+:is(.ui-button.is-primary, .btn.go, .gt-btn.go, .cc-btn.green, .hall-join-go, .poster-play, .gt-roll) { background: var(--app-action); border-color: transparent; color: #fff; }
+:is(.ui-button.is-primary, .btn.go, .gt-btn.go, .cc-btn.green, .hall-join-go, .poster-play, .gt-roll):hover:not(:disabled) { background: var(--app-action-hover); }
+:is(.ui-button.is-destructive, .btn.red, .cc-btn.red) { background: var(--app-danger-fill); border-color: transparent; color: #fff; }
+:is(.ui-button.is-destructive, .btn.red, .cc-btn.red):hover:not(:disabled) { background: color-mix(in srgb, var(--app-danger-fill) 85%, #000); }
+:is(.ui-button.is-danger, .btn.danger, .gt-btn.danger) { background: var(--app-danger-bg); border-color: var(--app-danger); color: var(--app-danger); }
+:is(.ui-button.is-danger, .btn.danger, .gt-btn.danger):hover:not(:disabled) { background: color-mix(in srgb, var(--app-danger) 12%, var(--app-danger-bg)); }
+:is(.ui-button.is-small, .gt-btn.small, .cc-nav button) { min-height: var(--control-small); padding: 6px var(--space-3); font-size: var(--text-meta); }
+:is(.ui-button.is-large, .gt-btn.big, .cc-btn.big, .gt-roll) { min-height: var(--control-large); font-size: var(--text-body); }
+:is(.ui-button, .btn, .gt-btn, .cc-btn, .hall-join-go, .poster-play, .gt-roll, .cc-nav button) > svg { flex: none; width: 18px; height: 18px; }
+
+/* Icon controls share a round 44px target in all top bars. */
+:is(.ui-icon-button, .orb, .gt-orb, .theme-trigger) {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+  border: 1px solid var(--app-line);
+  border-radius: 50%;
+  background: var(--app-panel);
+  color: var(--app-text);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
+}
+:is(.ui-icon-button, .orb, .gt-orb, .theme-trigger):hover { background: var(--app-hover); }
+:is(.ui-icon-button, .orb, .gt-orb)[aria-pressed="true"], .orb[aria-expanded="true"], .theme-picker[open] .theme-trigger { background: var(--app-selected); border-color: var(--app-accent); color: var(--app-accent); }
+:is(.orb, .gt-orb).danger { background: var(--app-danger-bg); color: var(--app-danger); border-color: var(--app-danger); }
+:is(.ui-icon-button, .orb, .gt-orb, .theme-trigger) > svg { width: var(--icon-size); height: var(--icon-size); stroke-width: 2; }
+:is(.ui-close, .x, .gt-icon-btn, .cc-result-x) { display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: var(--app-raised); color: var(--app-text); }
+:is(.ui-close, .x, .gt-icon-btn, .cc-result-x):hover { background: var(--app-hover); }
+:is(.ui-close, .x, .gt-icon-btn, .cc-result-x) svg { width: 16px; height: 16px; }
+
+/* One field treatment; native radios, sliders and checkboxes keep their semantics. */
+:is(.ui-field, input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"])), select, textarea) {
+  min-width: 0;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--app-line);
+  border-radius: var(--radius-control);
+  background: var(--app-inset);
+  color: var(--app-text);
+  font: var(--weight-body) 16px/1.4 var(--font-app);
+}
+input::placeholder, textarea::placeholder { color: var(--app-dim); opacity: 1; }
+:is(.ui-field, input, select, textarea):focus { border-color: var(--app-accent); }
+:is(input, select, textarea)[aria-invalid="true"] { border-color: var(--app-danger); }
+:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 3px; }
+
+:is(.ui-choice, .seg, .gt-seg) { display: inline-flex; align-items: center; flex: none; gap: 2px; padding: 3px; border: 1px solid var(--app-line); border-radius: var(--radius-pill); background: var(--app-inset); }
+:is(.ui-choice, .seg, .gt-seg) button { min-height: 30px; padding: var(--space-1) var(--space-3); border: 0; border-radius: var(--radius-pill); color: var(--app-muted); font: var(--weight-control) var(--text-meta)/1.25 var(--font-app); white-space: nowrap; }
+:is(.ui-choice, .seg, .gt-seg) button:hover:not(:disabled) { background: var(--app-hover); color: var(--app-text); }
+:is(.ui-choice, .seg, .gt-seg) button[aria-pressed="true"] { background: var(--app-panel); color: var(--app-accent); box-shadow: 0 1px 3px #00000014; }
+:is(.ui-switch, .switch, .gt-switch) { position: relative; flex: none; width: 44px; height: 26px; padding: 0; border: 0; border-radius: var(--radius-pill); background: var(--app-hover); }
+:is(.ui-switch, .switch, .gt-switch)::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--app-muted); transition: transform var(--motion-fast), background var(--motion-fast); }
+:is(.ui-switch, .switch, .gt-switch)[aria-pressed="true"] { background: var(--app-action); }
+:is(.ui-switch, .switch, .gt-switch)[aria-pressed="true"]::after { transform: translateX(18px); background: #fff; }
+:is(.ui-switch, .switch, .gt-switch).mixed { background: var(--app-action); }
+:is(.ui-switch, .switch, .gt-switch).mixed::after { transform: translateX(9px); background: #fff; }
+
+:is(.ui-button, .btn, .gt-btn, .cc-btn, .hall-join-go, .gt-roll, .ui-icon-button, .orb, .gt-orb, .ui-switch, .switch, .gt-switch, .cc-nav button):disabled,
+:is(.ui-choice, .seg, .gt-seg) button:disabled { background: var(--app-inset); border-color: var(--app-line); color: var(--app-dim); box-shadow: none; filter: none; opacity: 1; cursor: not-allowed; }
+:is(input, select, textarea):disabled { color: var(--app-dim); cursor: not-allowed; }
+
+:is(.ui-dialog-title, .gt-dialog h2, .rules-modal h2, .round-end-card h2, .cc-result-card h2, .confirm-modal h2) { font: var(--weight-heading) var(--text-dialog)/var(--leading-heading) var(--font-app); letter-spacing: -.02em; }
+
+/* Surface roles: page > panel > inset. Layout and density belong to the screen. */
+:is(.ui-panel, .panel, .gt-card-panel, .gt-panel, .gt-dialog, .cc-side, .cc-result-card, .round-end-card) { border: 1px solid var(--app-line); border-radius: var(--radius-panel); background: var(--app-panel); color: var(--app-text); box-shadow: var(--app-shadow); }
+.ui-panel { padding: var(--space-6); }
+.ui-panel.is-compact { padding: var(--space-4); }
+:is(.entry, .entrance-panel, .lobby-panel, .gt-card-panel, .gt-dialog) { padding: var(--space-6); }
+:is(.entry, .entrance-panel, .lobby-panel, .gt-card-panel) h2 { font: var(--weight-heading) var(--text-heading)/var(--leading-heading) var(--font-app); letter-spacing: -.02em; }
+:is(.eyebrow, .gt-label, .gt-label.mono) { color: var(--app-muted); font: var(--weight-control) var(--text-caption)/1.4 var(--font-app); letter-spacing: .08em; text-transform: uppercase; }
+:is(.hero h1, .entrance-hero .pc-logo, .gt-logo, .cc .gt-logo) { font: var(--weight-heading) var(--text-display)/1.05 var(--font-app); letter-spacing: -.04em; }
+:is(.entrance-hero > p, .gt-entrance-hero > p, .hero > p) { color: var(--app-muted); font: var(--weight-body) 18px/var(--leading-body) var(--font-app); }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.ui-button, .btn, .gt-btn, .cc-btn, .ui-icon-button, .orb, .gt-orb, .theme-trigger),
+  :is(.ui-switch, .switch, .gt-switch)::after { transition: none; }
+}

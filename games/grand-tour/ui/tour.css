@@ -22,27 +22,11 @@
 .gt-vars .gt-canvas, .poster-gt .gt-canvas { -webkit-mask-image: none; mask-image: none; background: var(--app-bg); }
 
 /* Shared controls */
-.gt-tour .gt-orb { background: var(--app-panel); border: 0; color: var(--app-text); box-shadow: none; }
-.gt-tour .gt-orb:hover { background: var(--app-hover); color: var(--app-text); }
-.gt-tour .gt-orb.danger { background: var(--gt-red); color: #fff; }
-.gt-tour .gt-seg { background: var(--app-panel); box-shadow: none; }
-.gt-tour .gt-seg button { color: var(--gt-grey); }
-.gt-tour .gt-seg button[aria-pressed="true"] { background: var(--app-raised); color: var(--app-text); }
-.gt-tour .gt-btn.go { background: var(--app-success); color: #fff; box-shadow: 0 3px 0 var(--app-success-edge); text-shadow: none; }
-.gt-tour .gt-btn.go:active:not(:disabled) { box-shadow: 0 2px 0 #15703a, inset 0 2px 0 #ffffff66; }
-.gt-tour .gt-btn.ghost { background: var(--app-raised); color: var(--gt-text); box-shadow: none; border: 1px solid var(--app-line); }
-.gt-tour .gt-btn.ghost:hover:not(:disabled) { background: var(--app-hover); }
-.gt-tour .gt-btn.danger { background: var(--app-danger-bg); color: var(--app-danger); border: 1px solid var(--app-line); }
-.gt-tour .gt-icon-btn { background: var(--app-raised); color: var(--gt-grey); }
-.gt-tour .gt-card-panel, .gt-tour .gt-panel, .gt-tour .gt-dialog { background: var(--app-panel); border: 0; box-shadow: var(--gt-card-shadow); color: var(--gt-text); }
 .gt-tour .gt-panel h3 { color: var(--gt-dim); }
 .gt-tour input:not([type="checkbox"]) { background: var(--app-inset); border: 1px solid var(--app-line); color: var(--gt-text); }
 .gt-tour .gt-lobby-players li { background: var(--app-inset); border: 0; }
 .gt-tour .gt-lobby-players small, .gt-tour .gt-who b small { background: var(--app-raised); color: var(--gt-grey); }
-.gt-tour .gt-option { border-top-color: #1f2a4412; }
-.gt-tour .gt-switch { background: var(--app-hover); }
-.gt-tour .gt-switch[aria-pressed="true"] { background: var(--app-success); }
-.gt-tour .gt-switch[aria-pressed="true"]::after { background: #fff; }
+.gt-tour .gt-option { border-top-color: var(--app-line); }
 .gt-tour .gt-code { color: var(--app-text); -webkit-text-stroke: 0; text-shadow: none; }
 .gt-tour .gt-logo { color: var(--app-text); -webkit-text-stroke: 0; text-shadow: none; }
 .gt-tour .gt-entrance-hero > p { color: var(--gt-grey); }
@@ -73,7 +57,7 @@
   column-gap: 10px;
   align-items: center;
   padding: 8px 10px 8px 8px;
-  border-radius: 18px;
+  border-radius: var(--radius-panel);
   background: var(--app-panel);
   box-shadow: var(--gt-card-shadow);
   pointer-events: auto;
@@ -86,7 +70,7 @@
 .gt-seat.s4 { left: 20px; top: 50%; translate: 0 -50%; }
 .gt-seat.s5 { right: 20px; top: 50%; translate: 0 -50%; }
 .gt-seat.on { transform: scale(1.06); box-shadow: 0 0 0 4px var(--pc), var(--gt-card-shadow); }
-.gt-seat.on::after { content: ""; position: absolute; inset: -4px; border-radius: 22px; box-shadow: 0 0 0 4px var(--pc); animation: gt-pulse 1.4s ease-out infinite; pointer-events: none; }
+.gt-seat.on::after { content: ""; position: absolute; inset: -4px; border-radius: var(--radius-panel); box-shadow: 0 0 0 4px var(--pc); animation: gt-pulse 1.4s ease-out infinite; pointer-events: none; }
 @keyframes gt-pulse { from { opacity: .7; } to { opacity: 0; transform: scale(1.12); } }
 .gt-seat.out { opacity: .55; filter: grayscale(.8); }
 .gt-seat-face { grid-row: 1 / 4; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 16px; background: var(--pc); box-shadow: inset 0 -5px 0 #0002; }
@@ -139,7 +123,7 @@
 @keyframes gt-dot { 50% { transform: translateY(-5px); } }
 
 /* The postcard: a city for sale, an auction, a debt */
-.gt-postcard { --band: var(--gt-blue); width: 100%; display: grid; gap: 12px; padding: 0 0 16px; border-radius: 22px; background: var(--app-panel); box-shadow: var(--gt-card-shadow); overflow: hidden; animation: gt-postcard .5s cubic-bezier(.2,.9,.25,1.2) both; }
+.gt-postcard { --band: var(--gt-blue); width: 100%; display: grid; gap: 12px; padding: 0 0 16px; border-radius: var(--radius-panel); background: var(--app-panel); box-shadow: var(--gt-card-shadow); overflow: hidden; animation: gt-postcard .5s cubic-bezier(.2,.9,.25,1.2) both; }
 @keyframes gt-postcard { from { transform: translateY(60px) rotate(-6deg) scale(.85); opacity: 0; } }
 .gt-postcard header { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--app-raised); color: var(--app-text); text-shadow: none; }
 .gt-postcard header b { display: block; font: 800 26px/1 var(--f-gt-display); }
@@ -205,7 +189,6 @@
   .gt-seat-cash { font-size: 14px; margin: 0; }
   .gt-seat-meta, .gt-seat-trade { display: none; }
   .gt-toasts { top: auto; bottom: 150px; }
-  .gt-roll { font-size: 19px; padding: 13px 22px 13px 16px; }
   .gt-drawer { right: 8px; left: 8px; width: auto; top: 64px; }
   .gt-drawer-btn { top: auto; bottom: 130px; right: 12px; translate: none; }
   .gt-offers { top: auto; bottom: 120px; translate: none; right: 8px; }
@@ -221,6 +204,4 @@
 .gt-tour .gt-fun b { font: 800 17px var(--f-gt-display); color: var(--app-accent); }
 .gt-tour .gt-fun-more { justify-self: start; margin-top: -6px; }
 .gt-tour .gt-fun-list { display: grid; margin-left: 12px; padding-left: 12px; border-left: 3px solid var(--app-line); }
-.gt-tour .gt-switch.mixed { background: var(--app-action); }
-.gt-tour .gt-switch.mixed::after { transform: translateX(9px); background: #fff; }
 .gt-postcard header { border-top: 4px solid var(--band); }

@@ -55,14 +55,10 @@
 body { background: var(--app-bg); color: var(--app-text); }
 :focus-visible { outline-color: var(--app-accent); }
 input { accent-color: var(--app-action); }
-input:focus, select:focus { border-color: var(--app-accent); }
 
 /* Shared appearance picker */
 .theme-picker { position: relative; flex: none; align-self: center; color: var(--app-text); }
-.theme-trigger { list-style: none; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--app-line); border-radius: 50%; cursor: pointer; background: var(--app-panel); color: var(--app-text); }
-.theme-trigger::-webkit-details-marker { display: none; }
-.theme-trigger svg { width: 20px; height: 20px; }
-.theme-trigger:hover, .theme-picker[open] .theme-trigger { background: var(--app-raised); }
+.theme-trigger { list-style: none; }
 .theme-menu { position: absolute; z-index: 100; top: calc(100% + 10px); right: 0; margin: 0; padding: 12px; width: 210px; border: 1px solid var(--app-line); border-radius: 16px; background: var(--app-panel); color: var(--app-text); box-shadow: var(--app-shadow); font: 600 14px/1.4 var(--f-ui); }
 .theme-menu legend { float: left; width: 100%; padding: 2px 8px 10px; font-weight: 800; }
 .theme-menu label { clear: both; display: flex; gap: 10px; align-items: center; padding: 10px 8px; border-radius: 9px; cursor: pointer; }
@@ -76,6 +72,5 @@ html[data-theme] .theme-menu input { width: 16px; height: 16px; margin: 0; paddi
   :is(.topbar, .pioche-top, .gt-top) { padding-left: 12px; padding-right: 12px; }
   :is(.topbar nav, .pioche-top nav, .gt-top nav) { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
   .game .orbs { gap: 6px; }
-  .game .orbs .orb { width: 44px; height: 44px; }
   .theme-menu, .game .theme-menu { position: fixed; right: 12px; left: auto; top: 76px; }
 }
