@@ -89,7 +89,6 @@
 .gt-entrance { position: relative; overflow-y: auto; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 420px); align-items: center; gap: 40px 72px; max-width: 1180px; width: 100%; margin: 0 auto; padding: 12px var(--gt-gutter) 40px; }
 .gt-entrance-hero { display: grid; min-width: 0; }
 .gt-logo { font: clamp(64px, 9vw, 124px)/.88 var(--f-gt-display); letter-spacing: -.02em; -webkit-text-stroke: 9px #0a1830; paint-order: stroke fill; text-shadow: 0 8px 0 #0a183066; }
-.gt-logo span { color: var(--gt-accent); }
 .gt-entrance-hero > p { margin-top: 26px; font: 500 clamp(18px, 1.8vw, 22px) var(--f-gt); color: var(--gt-grey); }
 .gt-entrance-board { position: relative; margin-top: 20px; width: min(100%, 600px); aspect-ratio: 4 / 3; border-radius: 26px; overflow: hidden; box-shadow: 0 0 0 3px #2b4f80, 0 0 0 6px #0a183099, 0 30px 60px #0009; }
 

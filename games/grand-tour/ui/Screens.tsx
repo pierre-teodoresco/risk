@@ -76,7 +76,7 @@ export function Home({ tx, lang, busy, room, setRoom, preview, recent, hasRecent
   return (
     <main className="gt-entrance">
       <section className="gt-entrance-hero">
-        <h1 className="gt-logo">grand tour<span>.</span></h1>
+        <h1 className="gt-logo">grand tour</h1>
         <p>{tx.tagline}</p>
         <div className="gt-entrance-board" aria-hidden="true">
           <Board lang={lang} holdings={DEMO.holdings} pawns={DEMO.pawns} move={null} ownerColor={DEMO_COLOR} interactive={false} autoRotate showcase />

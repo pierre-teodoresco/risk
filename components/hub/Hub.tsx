@@ -4,12 +4,6 @@ import { ArrowRight, ArrowUpRight, Clock, Users } from "lucide-react";
 import { fmt, hallTexts, LANG_KEY } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { GAMES, HUB_NAME, gamePath, type GameEntry } from "@/games/registry";
-import { CardDefs, CardFace } from "@/games/pioche/ui/CardFace";
-import type { Card } from "@/games/pioche/engine";
-import Board from "@/games/grand-tour/ui/Board";
-import { DEMO, DEMO_COLOR } from "@/games/grand-tour/ui/Screens";
-import { Showcase as ChessShowcase } from "@/games/echecs/ui/Echecs";
-import { Showcase as DraughtsShowcase } from "@/games/dames/ui/Dames";
 
 type HallTexts = ReturnType<typeof hallTexts>;
 type Recent = { game: GameEntry; code: string };
@@ -18,47 +12,10 @@ const CODE_LENGTH = 6;
 const LIVE = GAMES.filter((g) => g.status === "live");
 const SOON = GAMES.filter((g) => g.status === "soon");
 
-// Pioche shows its real cards rather than a drawing of them.
-const HAND: Card[] = [
-  { id: "a", kind: "number", color: "red", value: 7 },
-  { id: "b", kind: "skip", color: "yellow", value: null },
-  { id: "c", kind: "draw2", color: "green", value: null },
-  { id: "d", kind: "reverse", color: "blue", value: null },
-  { id: "e", kind: "draw4", color: null, value: null },
-];
-function PiocheVisual() {
-  return (
-    <svg className="poster-pioche" viewBox="0 0 320 200" aria-hidden="true">
-      {HAND.map((card, i) => (
-        <foreignObject key={card.id} x="128" y="38" width="64" height="96" transform={`rotate(${(i - 2) * 13} 160 250)`}>
-          <CardFace card={card} />
-        </foreignObject>
-      ))}
-    </svg>
-  );
-}
-
-// Grand Tour shows its real board, mid-game.
-function GrandTourVisual({ lang }: { lang: Lang }) {
-  return (
-    <span className="gt-vars poster-gt">
-      <Board lang={lang} holdings={DEMO.holdings} pawns={DEMO.pawns} move={null} ownerColor={DEMO_COLOR} interactive={false} autoRotate showcase />
-    </span>
-  );
-}
-
 function Poster({ game, art, lang, h }: { game: GameEntry; art: ReactNode; lang: Lang; h: HallTexts }) {
   return (
     <a className="poster" href={gamePath(game.id)} style={{ "--accent": game.accent } as CSSProperties} title={game.pitch[lang]}>
-      <span className={"poster-visual " + game.id}>{game.id === "pioche" ? (
-          <PiocheVisual />
-        ) : game.id === "grand-tour" ? (
-          <GrandTourVisual lang={lang} />
-        ) : game.id === "echecs" || game.id === "dames" ? (
-          <span className="gt-vars poster-gt">{game.id === "echecs" ? <ChessShowcase /> : <DraughtsShowcase />}</span>
-        ) : (
-          art
-        )}</span>
+      <span className="poster-visual">{art}</span>
       <span className="poster-info">
         <span className="poster-text">
           <span className="poster-name">{game.name}</span>
@@ -127,9 +84,8 @@ export default function Hub({ arts }: { arts: Record<string, ReactNode> }) {
   const cells = Array.from({ length: CODE_LENGTH }, (_, i) => code[i] ?? "");
   return (
     <div className="hall">
-      <CardDefs />
       <header className="hall-top">
-        <a className="hall-brand" href="/">{HUB_NAME}<span>.</span></a>
+        <a className="hall-brand" href="/">{HUB_NAME}</a>
         <div className="seg" role="group" aria-label={h.language}>
           <button aria-pressed={lang === "fr"} onClick={() => changeLang("fr")}>FR</button>
           <button aria-pressed={lang === "en"} onClick={() => changeLang("en")}>EN</button>
@@ -202,7 +158,7 @@ export default function Hub({ arts }: { arts: Record<string, ReactNode> }) {
         </section>
       </main>
       <footer className="hall-foot">
-        <span className="hall-brand small">{HUB_NAME}<span>.</span></span>
+        <span className="hall-brand small">{HUB_NAME}</span>
         {h.footer}
       </footer>
     </div>

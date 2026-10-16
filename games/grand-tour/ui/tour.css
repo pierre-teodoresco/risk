@@ -49,7 +49,6 @@
 .gt-tour .gt-switch[aria-pressed="true"]::after { background: #fff; }
 .gt-tour .gt-code { color: var(--gt-blue); -webkit-text-stroke: 6px #ffffff; text-shadow: 0 5px 0 #1f2a4422; }
 .gt-tour .gt-logo { color: var(--gt-blue); -webkit-text-stroke: 10px #ffffff; text-shadow: 0 8px 0 #1f3a6626; }
-.gt-tour .gt-logo span { color: #ff8a1f; }
 .gt-tour .gt-entrance-hero > p { color: var(--gt-grey); }
 .gt-tour .gt-entrance-board { box-shadow: 0 0 0 6px #ffffff, 0 24px 60px #1f3a6640; }
 .gt-tour .gt-veil { background: #1f3a6655; }

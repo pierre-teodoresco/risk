@@ -1,7 +1,4 @@
 import "./hub.css";
-import "@/games/grand-tour/ui/grand-tour.css";
-import "@/games/grand-tour/ui/tour.css";
-import "@/games/duel/ui/board2d.css";
 import Hub from "@/components/hub/Hub";
 import { boxArt } from "@/components/hub/art";
 import { GAMES } from "@/games/registry";

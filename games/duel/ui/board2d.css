@@ -61,7 +61,6 @@
 
 /* Entrance */
 .cc .gt-logo { font: 800 clamp(60px, 8vw, 108px)/.9 var(--f-cc); letter-spacing: -.035em; -webkit-text-stroke: 0; text-shadow: none; }
-.cc .gt-logo span { color: var(--cc-green); }
 .cc .gt-entrance-hero > p { margin-top: 18px; }
 .cc .gt-entrance-board { width: min(100%, 470px); aspect-ratio: 1; border-radius: 4px; box-shadow: 0 18px 50px #0008; }
 

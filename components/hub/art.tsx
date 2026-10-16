@@ -1,141 +1,214 @@
-// Box-lid illustrations for the hub shelf, one per game id. Server-only: Mappa's art reads the
-// map shapes, which must not ship in the hub's client bundle.
+// Server-rendered shelf illustrations: one camera, material palette and light for every game.
+// Mappa's map geometry stays out of the hub's client bundle.
 import type { ReactNode } from "react";
 import MAP from "@/lib/map-data.json";
 import { CONTINENTS, WORLD } from "@/lib/world";
+import { BOARD } from "@/games/grand-tour/board";
+import ChessPiece from "@/games/echecs/ui/Piece";
+import DraughtsPiece from "@/games/dames/ui/Piece";
+import type { Cell } from "@/games/echecs/rules";
 
-const VIEW = "0 0 320 200";
-const MAP_POINT_STEP = 2; // keep one map vertex in two: plenty at box-art size
-const MIN_RING_POINTS = 12;
-
+const CREAM = "#ede4cf", EDGE = "#6c604e", GREEN = "#66866b";
+// The same oblique projection is used for the map, cards and boards.
+const plane = (x: number, y: number) => [200 + x - .55 * y, 111 + .18 * x + .65 * y];
+const CAMERA = "matrix(1 .18 -.55 .65 200 111)";
 const TERR = MAP.territories as Record<string, { rings: number[][][] }>;
 const CONTINENT_COLOR = Object.fromEntries(CONTINENTS.map((c) => [c.id, c.color]));
 const ringPath = (ring: number[][]) => {
-  const pts = ring.length > MIN_RING_POINTS ? ring.filter((_, i) => i % MAP_POINT_STEP === 0) : ring;
+  const pts = ring.length > 12 ? ring.filter((_, i) => i % 2 === 0) : ring;
   return "M" + pts.map(([x, y]) => `${x} ${y}`).join("L") + "Z";
 };
+
+function Scene({ children }: { children: ReactNode }) {
+  return (
+    <svg className="shelf-art" viewBox="0 0 400 250" aria-hidden="true" focusable="false">
+      <ellipse cx="200" cy="193" rx="139" ry="15" fill="#000" opacity=".25" />
+      <g className="shelf-art-object">{children}</g>
+    </svg>
+  );
+}
+
+function Slab({ width = 180, height = 180, fill = CREAM, children }: {
+  width?: number; height?: number; fill?: string; children?: ReactNode;
+}) {
+  return (
+    <>
+      <g transform="translate(0 8)">
+        <g transform={CAMERA}>
+          <rect x={-width / 2 - 5} y={-height / 2 - 5} width={width + 10} height={height + 10} rx="6" fill={EDGE} />
+        </g>
+      </g>
+      <g transform={CAMERA}>
+        <rect x={-width / 2 - 5} y={-height / 2 - 5} width={width + 10} height={height + 10} rx="6" fill={CREAM} />
+        <rect x={-width / 2} y={-height / 2} width={width} height={height} rx="2" fill={fill} />
+        {children}
+      </g>
+    </>
+  );
+}
+
+function Token({ x, y, color }: { x: number; y: number; color: string }) {
+  const [cx, cy] = plane(x, y);
+  return (
+    <g transform={`translate(${cx} ${cy})`}>
+      <ellipse cy="2" rx="8" ry="4" fill="#000" opacity=".25" />
+      <path d="M-6 0L-4-13H4L6 0Q0 5-6 0" fill={color} stroke="#332f2b" strokeWidth="1.2" />
+      <circle cy="-16" r="5" fill={color} stroke="#332f2b" strokeWidth="1.2" />
+      <path d="M-2-18V-15" stroke="#fff" strokeOpacity=".5" strokeWidth="2" strokeLinecap="round" />
+    </g>
+  );
+}
 
 function MappaArt() {
   const [x, y, w, h] = MAP.viewBox;
   return (
-    <svg viewBox={VIEW} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <defs>
-        <radialGradient id="art-mappa-sea" cx="50%" cy="40%" r="80%">
-          <stop offset="0" stopColor="#2f9fd0" />
-          <stop offset="1" stopColor="#0b3a66" />
-        </radialGradient>
-      </defs>
-      <rect width="320" height="200" fill="url(#art-mappa-sea)" />
-      <svg x="-6" y="14" width="332" height="180" viewBox={`${x} ${y} ${w} ${h}`}>
-        {WORLD.map((t) => (
-          <path
-            key={t.id}
-            d={TERR[t.id].rings.map(ringPath).join("")}
-            fill={CONTINENT_COLOR[t.continent]}
-            stroke="#2a1c12"
-            strokeWidth="2.4"
-            strokeLinejoin="round"
-          />
-        ))}
-      </svg>
-    </svg>
+    <Scene>
+      <Slab width={236} height={154} fill="#253d48">
+        <svg x="-113" y="-73" width="226" height="146" viewBox={`${x} ${y} ${w} ${h}`}>
+          {WORLD.map((t) => (
+            <path key={t.id} d={TERR[t.id].rings.map(ringPath).join("")} fill={CONTINENT_COLOR[t.continent]} stroke="#253d48" strokeWidth="3" strokeLinejoin="round" />
+          ))}
+        </svg>
+      </Slab>
+      <Token x={-61} y={-21} color="#e78b62" />
+      <Token x={22} y={-24} color="#d9bd66" />
+      <Token x={30} y={25} color="#84aa82" />
+    </Scene>
   );
 }
 
-const CARD_COLORS = ["#e2483d", "#ffc531", "#4cbb4f", "#2f6fd6", "#1d1d2b"];
-const CARD_SYMBOLS = ["7", "+2", "↻", "4", "★"];
+const CARDS = [
+  { color: "#d96a55", symbol: "7" }, { color: "#d9b951", symbol: "2" },
+  { color: "#6d9a76", symbol: "+2" }, { color: "#6592b4", symbol: "4" },
+  { color: "#655b7b", symbol: "+4" },
+];
 function PiocheArt() {
   return (
-    <svg viewBox={VIEW} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <rect width="320" height="200" fill="#3b1d4a" />
-      <circle cx="160" cy="230" r="170" fill="#55286a" />
-      {CARD_COLORS.map((c, i) => (
-        <g key={c} transform={`rotate(${(i - 2) * 16} 160 260)`}>
-          <rect x="128" y="62" width="64" height="96" rx="9" fill="#fff" />
-          <rect x="133" y="67" width="54" height="86" rx="6" fill={c} />
-          <ellipse cx="160" cy="110" rx="20" ry="30" transform="rotate(28 160 110)" fill="#fff" />
-          <text x="160" y="119" textAnchor="middle" fontFamily="Paytone One, sans-serif" fontSize="24" fill={c}>
-            {CARD_SYMBOLS[i]}
-          </text>
+    <Scene>
+      <g transform="translate(0 9)">
+        <g transform={CAMERA}>
+          <rect x="-45" y="-69" width="90" height="138" rx="9" fill={EDGE} />
         </g>
-      ))}
-    </svg>
-  );
-}
-
-const STREETS = ["#e2483d", "#ff7a45", "#ffd24d", "#4cbb4f", "#2f9fd0", "#2f6fd6", "#9b8cff", "#e0559a"];
-const TILES_PER_SIDE = 6;
-function GrandTourArt() {
-  const tiles: ReactNode[] = [];
-  const size = 26, x0 = 82, y0 = 22;
-  for (let side = 0; side < 4; side++)
-    for (let k = 0; k < TILES_PER_SIDE; k++) {
-      const pos = [
-        [x0 + k * size, y0],
-        [x0 + TILES_PER_SIDE * size, y0 + k * size],
-        [x0 + (TILES_PER_SIDE - k) * size, y0 + TILES_PER_SIDE * size],
-        [x0, y0 + (TILES_PER_SIDE - k) * size],
-      ][side];
-      const n = side * TILES_PER_SIDE + k;
-      tiles.push(
-        <g key={n}>
-          <rect x={pos[0]} y={pos[1]} width={size} height={size} fill="#fff7e3" stroke="#1d3a2a" strokeWidth="1.5" />
-          {k % 3 !== 0 && <rect x={pos[0] + 3} y={pos[1] + 3} width={size - 6} height="7" rx="2" fill={STREETS[n % STREETS.length]} />}
-        </g>,
-      );
-    }
-  return (
-    <svg viewBox={VIEW} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <rect width="320" height="200" fill="#1f5a3c" />
-      <g transform="translate(0 -10) scale(1 .62) translate(0 70)">{tiles}</g>
-      <g transform="translate(160 104)">
-        <path d="M-26 6v26h52V6L0-16Z" fill="#e2483d" stroke="#2a1c12" strokeWidth="3" strokeLinejoin="round" />
-        <rect x="-7" y="14" width="14" height="18" fill="#2a1c12" />
-        <circle cx="44" cy="22" r="14" fill="#ffd24d" stroke="#2a1c12" strokeWidth="3" />
-        <text x="44" y="28" textAnchor="middle" fontFamily="Paytone One, sans-serif" fontSize="16" fill="#2a1c12">€</text>
       </g>
-    </svg>
+      <g transform={CAMERA}>
+        {[3, 2, 1].map((i) => <rect key={i} x="-45" y={-73 + i * 2} width="90" height="138" rx="9" fill={CREAM} stroke="#a79a84" />)}
+        {CARDS.map(({ color, symbol }, i) => (
+          <g key={color} transform={`rotate(${(i - 2) * 17} 0 107) translate(0 -12)`}>
+            <rect x="-40" y="-68" width="80" height="120" rx="8" fill={CREAM} stroke={EDGE} strokeWidth="1.3" />
+            <rect x="-34" y="-62" width="68" height="108" rx="5" fill={color} />
+            <ellipse cx="0" cy="-8" rx="24" ry="40" transform="rotate(24 0 -8)" fill={CREAM} />
+            <text x="0" y="2" textAnchor="middle" fontFamily="system-ui, sans-serif" fontWeight="800" fontSize={symbol.length > 1 ? 26 : 38} fill={color}>{symbol}</text>
+            <text x="-28" y="-44" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="11" fill={CREAM}>{symbol}</text>
+          </g>
+        ))}
+      </g>
+    </Scene>
   );
 }
 
-const STARS = [[30, 30], [70, 18], [112, 44], [214, 26], [262, 52], [292, 20], [180, 14], [140, 22]];
+const STREETS: Record<string, string> = {
+  brown: "#a57c60", sky: "#8bb6c9", pink: "#c994a6", orange: "#d89459",
+  red: "#cd6b5e", yellow: "#d7bb63", green: "#749c77", navy: "#647f9e",
+};
+function House({ x, y, color }: { x: number; y: number; color: string }) {
+  const [cx, cy] = plane(x, y);
+  return (
+    <g transform={`translate(${cx} ${cy})`} stroke="#494a3b" strokeWidth=".9" strokeLinejoin="round">
+      <path d="M-9-9L0-14L9-9V2L0 7L-9 2Z" fill={color} />
+      <path d="M-11-9L-2-19L10-13L1-3Z" fill="#f0d5a2" />
+      <path d="M1-3V7L9 2V-10" fill="#000" fillOpacity=".17" />
+    </g>
+  );
+}
+function GrandTourArt() {
+  return (
+    <Scene>
+      <Slab fill={GREEN}>
+        {BOARD.map((s, i) => {
+          const side = Math.floor(i / 10), step = i % 10;
+          const [x, y] = [[-90 + step * 18, -90], [72, -90 + step * 18], [72 - step * 18, 72], [-90, 72 - step * 18]][side];
+          return (
+            <g key={i} transform={`translate(${x} ${y})`}>
+              <rect width="18" height="18" fill={CREAM} stroke="#b1a78e" strokeWidth=".6" />
+              {s.kind === "city" ? <rect x="2" y="2" width="14" height="5" fill={STREETS[s.group]} /> : <circle cx="9" cy="9" r="2.6" fill={s.kind === "go" ? GREEN : "#b1a78e"} />}
+            </g>
+          );
+        })}
+        <rect x="-29" y="-24" width="28" height="40" rx="3" fill="#d7bb63" transform="rotate(-12)" stroke={CREAM} strokeWidth="2" />
+        <rect x="8" y="-12" width="28" height="40" rx="3" fill="#d38d77" transform="rotate(12)" stroke={CREAM} strokeWidth="2" />
+      </Slab>
+      <House x={-35} y={-81} color="#8fac79" />
+      <House x={28} y={-81} color="#8fac79" />
+      <House x={81} y={12} color="#d38d77" />
+      <Token x={-81} y={18} color="#d9bd66" />
+      <Token x={25} y={81} color="#e78b62" />
+    </Scene>
+  );
+}
+
+function Checkerboard({ size, children }: { size: number; children: ReactNode }) {
+  const cell = 180 / size;
+  return (
+    <Scene>
+      <Slab>
+        {Array.from({ length: size * size }, (_, i) => {
+          const row = Math.floor(i / size), col = i % size;
+          return <rect key={i} x={-90 + col * cell} y={-90 + row * cell} width={cell} height={cell} fill={(row + col) % 2 ? GREEN : CREAM} />;
+        })}
+      </Slab>
+      {children}
+    </Scene>
+  );
+}
+function EchecsArt() {
+  const pieces: [number, number, Exclude<Cell, null>][] = [
+    [1, 0, "br"], [3, 0, "bq"], [5, 0, "bk"], [2, 1, "bp"], [4, 2, "bp"],
+    [3, 4, "wp"], [5, 5, "wn"], [1, 6, "wp"], [2, 7, "wk"], [6, 7, "wr"],
+  ];
+  return (
+    <Checkerboard size={8}>
+      {pieces.sort((a, b) => plane(a[0], a[1])[1] - plane(b[0], b[1])[1]).map(([col, row, piece]) => {
+        const [x, y] = plane(-90 + (col + .5) * 22.5, -90 + (row + .5) * 22.5);
+        return (
+          <g key={`${col}-${row}`}>
+            <ellipse cx={x} cy={y + 2} rx="10" ry="4" fill="#000" opacity=".2" />
+            <svg x={x - 13} y={y - 31} width="26" height="35"><ChessPiece cell={piece} /></svg>
+          </g>
+        );
+      })}
+    </Checkerboard>
+  );
+}
+function DamesArt() {
+  const pieces = [
+    [1, 0, "b"], [3, 0, "b"], [5, 0, "b"], [7, 0, "b"], [9, 0, "b"],
+    [0, 1, "b"], [2, 1, "b"], [6, 1, "b"], [8, 1, "b"], [5, 2, "b"], [4, 3, "b"],
+    [3, 6, "w"], [8, 5, "w"], [0, 7, "w"], [2, 7, "w"], [6, 7, "w"],
+    [1, 8, "w"], [5, 8, "w"], [7, 8, "w"], [9, 8, "w"], [0, 9, "w"], [4, 9, "w"], [8, 9, "w"],
+  ] as const;
+  return (
+    <Checkerboard size={10}>
+      {pieces.map(([col, row, piece]) => {
+        const [x, y] = plane(-90 + (col + .5) * 18, -90 + (row + .5) * 18);
+        return <svg key={`${col}-${row}`} x={x - 9} y={y - 12} width="18" height="18"><DraughtsPiece cell={piece} /></svg>;
+      })}
+    </Checkerboard>
+  );
+}
 function LoupGarouArt() {
   return (
-    <svg viewBox={VIEW} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <defs>
-        <linearGradient id="art-wolf-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#120e2e" />
-          <stop offset="1" stopColor="#3b2a6e" />
-        </linearGradient>
-      </defs>
-      <rect width="320" height="200" fill="url(#art-wolf-sky)" />
-      {STARS.map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" fill="#fff" opacity=".8" />)}
-      <circle cx="236" cy="70" r="38" fill="#fff4d0" />
-      <circle cx="222" cy="62" r="7" fill="#efe1b2" />
-      <circle cx="246" cy="84" r="5" fill="#efe1b2" />
-      <path d="M0 200V150Q60 112 120 140T240 132Q290 120 320 142V200Z" fill="#1b1638" />
-      <path d="M0 200V170Q80 150 170 172T320 166V200Z" fill="#0d0b22" />
-      <g fill="#ffd24d">
-        <ellipse cx="96" cy="166" rx="7" ry="4" transform="rotate(-12 96 166)" />
-        <ellipse cx="120" cy="166" rx="7" ry="4" transform="rotate(12 120 166)" />
-      </g>
-    </svg>
+    <Scene>
+      <circle cx="200" cy="105" r="62" fill={CREAM} />
+      <path d="M144 166L150 72L183 105H217L250 72L256 166L200 195Z" fill="#655b7b" />
+      <path d="M169 139L188 146M212 146L231 139" stroke="#d9bd66" strokeWidth="6" />
+    </Scene>
   );
 }
-
 function DiceArt() {
-  return (
-    <svg viewBox={VIEW} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <rect width="320" height="200" fill="#25324d" />
-      <rect x="128" y="68" width="64" height="64" rx="12" fill="#fff" transform="rotate(-10 160 100)" />
-    </svg>
-  );
+  return <Scene><Slab width={90} height={90}><circle r="9" fill={EDGE} /></Slab></Scene>;
 }
-
 const ARTS: Record<string, () => ReactNode> = {
-  mappa: MappaArt,
-  pioche: PiocheArt,
-  "grand-tour": GrandTourArt,
-  "loup-garou": LoupGarouArt,
+  mappa: MappaArt, pioche: PiocheArt, "grand-tour": GrandTourArt,
+  echecs: EchecsArt, dames: DamesArt, "loup-garou": LoupGarouArt,
 };
 export const boxArt = (id: string) => (ARTS[id] ?? DiceArt)();

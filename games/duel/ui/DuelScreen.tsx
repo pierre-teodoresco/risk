@@ -213,7 +213,7 @@ function Home<P>({ config, tx, lang, room }: { config: DuelConfig<P>; tx: DuelTe
   return (
     <main className="gt-entrance">
       <section className="gt-entrance-hero">
-        <h1 className="gt-logo">{config.logo}<span>.</span></h1>
+        <h1 className="gt-logo">{config.logo}</h1>
         <p>{config.tagline[lang]}</p>
         <div className="gt-entrance-board" aria-hidden="true"><Showcase /></div>
       </section>

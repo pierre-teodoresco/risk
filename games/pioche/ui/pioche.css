@@ -334,7 +334,6 @@ button.pc-seat { cursor: pointer; }
 .entrance { gap: 48px 72px; max-width: 1180px; }
 .entrance-hero { gap: 0; }
 .entrance-hero .pc-logo { font: 800 clamp(76px, 11vw, 150px)/.85 var(--f-pc); letter-spacing: -.06em; color: #f4f2ee; -webkit-text-stroke: 0; }
-.entrance-hero .pc-logo span { color: #ff7a45; }
 .entrance-hero > p { margin-top: 30px; font: 500 clamp(18px, 1.8vw, 22px) var(--f-pc); color: #8d8996; }
 .entrance-cards { height: 270px; margin-top: 56px; width: min(100%, 480px); }
 .entrance-cards::before { content: ""; position: absolute; left: 50%; bottom: -30px; width: 420px; height: 160px; translate: -50% 0; background: radial-gradient(closest-side, #ff7a4533, transparent); pointer-events: none; }

@@ -62,7 +62,7 @@ export function Home({ tx, busy, room, setRoom, preview, recent, hasRecent, onEn
   return (
     <main className="entrance">
       <section className="entrance-hero">
-        <h1 className="pc-logo">pioche<span>.</span></h1>
+        <h1 className="pc-logo">pioche</h1>
         <p>{tx.tagline}</p>
         <div className="entrance-cards" aria-hidden="true">
           {(["red-7a", "yellow-skipa", "green-draw2a", "blue-reversea", "draw4-1"] as const).map((id, i) => (

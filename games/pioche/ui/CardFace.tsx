@@ -240,7 +240,7 @@ export function CardBack() {
         strokeWidth="2.6"
         paintOrder="stroke"
       >
-        pioche<tspan fill="#ffd24d">.</tspan>
+        pioche
       </text>
       <rect x="7" y="7" width="86" height="136" rx="7.5" fill="url(#pc-gloss)" />
     </svg>
