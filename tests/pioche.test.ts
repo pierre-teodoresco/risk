@@ -313,3 +313,86 @@ test("an offline pause lifts when the active player returns, a host pause does n
   g = applyAction(g, active, { type: "heartbeat" }, rand, NOW + 64000);
   assert.equal(g.paused, true);
 });
+
+test("identical cards are played together only with the combo option", () => {
+  const off = position(table(), ["red-3a", "blue-3a", "red-1a"], "red-5a");
+  assert.throws(() => applyAction(off, off.active, { type: "play", cards: ["red-3a", "blue-3a"] }, rand, NOW + 1), /combosOff/);
+
+  let g = position(table(3, { combos: true }), ["red-3a", "blue-3a", "green-3b", "red-1a"], "red-5a");
+  const me = g.active;
+  // Only the first card must fit the pile; the last one sets the colour.
+  assert.throws(() => applyAction(g, me, { type: "play", cards: ["blue-3a", "red-3a"] }, rand, NOW + 1), /notPlayable/);
+  assert.throws(() => applyAction(g, me, { type: "play", cards: ["red-3a", "red-1a"] }, rand, NOW + 1), /notSameCard/);
+  assert.throws(() => applyAction(g, me, { type: "play", cards: ["red-3a", "red-3a"] }, rand, NOW + 1), /invalidCard/);
+  g = applyAction(g, me, { type: "play", cards: ["red-3a", "green-3b", "blue-3a"] }, rand, NOW + 1);
+  assert.deepEqual(g.discard.slice(-3).map((c) => c.id), ["red-3a", "green-3b", "blue-3a"]);
+  assert.equal(g.color, "blue");
+  assert.deepEqual(g.players.find((p) => p.id === me)!.hand.map((c) => c.id), ["red-1a"]);
+  assert.deepEqual(g.lastPlay!.cards, ["red-3a", "green-3b", "blue-3a"]);
+  assert.notEqual(g.active, me);
+});
+
+test("a lot of skips skips one player per card, and never past the one who played", () => {
+  let g = position(table(4, { combos: true }), ["red-skipa", "blue-skipa", "red-1a"], "red-5a");
+  const after = seat(g, 3).id;
+  g = applyAction(g, g.active, { type: "play", cards: ["red-skipa", "blue-skipa"] }, rand, NOW + 1);
+  assert.equal(g.active, after);
+
+  g = position(table(3, { combos: true }), ["red-skipa", "blue-skipa", "green-skipa", "red-1a"], "red-5a");
+  const me = g.active;
+  g = applyAction(g, me, { type: "play", cards: ["red-skipa", "blue-skipa", "green-skipa"] }, rand, NOW + 1);
+  assert.equal(g.active, me);
+});
+
+test("reverses cancel in pairs", () => {
+  let g = position(table(4, { combos: true }), ["red-reversea", "blue-reversea", "red-1a"], "red-5a");
+  const next = seat(g, 1).id;
+  g = applyAction(g, g.active, { type: "play", cards: ["red-reversea", "blue-reversea"] }, rand, NOW + 1);
+  assert.equal(g.direction, 1);
+  assert.equal(g.active, next);
+});
+
+test("a lot of +2 adds up and can be stacked on", () => {
+  let g = position(table(3, { combos: true }), ["red-draw2a", "blue-draw2a", "red-1a"], "red-5a");
+  const victim = seat(g, 1).id;
+  g = applyAction(g, g.active, { type: "play", cards: ["red-draw2a", "blue-draw2a"] }, rand, NOW + 1);
+  assert.equal(g.players.find((p) => p.id === victim)!.hand.length, 7);
+
+  g = position(table(3, { combos: true, stacking: true }), ["red-draw2a", "red-1a"], "red-5a", ["blue-draw2a", "green-draw2b", "blue-1a"]);
+  g = applyAction(g, g.active, { type: "play", cards: ["red-draw2a"] }, rand, NOW + 1);
+  g = applyAction(g, g.active, { type: "play", cards: ["blue-draw2a", "green-draw2b"] }, rand, NOW + 2);
+  assert.equal(g.pendingDraw, 6);
+  assert.equal(g.color, "green");
+});
+
+test("a lot of +4 is challenged as a whole", () => {
+  let g = position(table(3, { combos: true }), ["draw4-1", "draw4-2", "red-1a", "blue-2a"], "red-5a");
+  const cheater = g.active;
+  assert.throws(() => applyAction(g, cheater, { type: "play", cards: ["draw4-1", "wild1"] }, rand, NOW + 1), /invalidCard/);
+  g = applyAction(g, cheater, { type: "play", cards: ["draw4-1", "draw4-2"], color: "green" }, rand, NOW + 1);
+  assert.equal(g.pendingDraw, 8);
+  assert.equal(g.color, "green");
+  const lost = applyAction(g, g.active, { type: "challenge" }, rand, NOW + 2);
+  assert.equal(lost.players.find((p) => p.id === cheater)!.hand.length, 10);
+  assert.equal(lost.events.at(-1)!.args[2], "8");
+});
+
+test("a lot of sevens swaps hands only once", () => {
+  let g = position(table(3, { combos: true, sevenZero: true }), ["red-7a", "blue-7a", "red-1a"], "red-5a");
+  const me = g.active, target = seat(g, 1).id;
+  g = applyAction(g, me, { type: "play", cards: ["red-7a", "blue-7a"], target }, rand, NOW + 1);
+  assert.deepEqual(g.players.find((p) => p.id === target)!.hand.map((c) => c.id), ["red-1a"]);
+  assert.equal(g.events.filter((e) => e.key === "swapped").length, 1);
+});
+
+test("the drawn card may lead a lot, and a lot may end the round", () => {
+  let g = position(table(3, { combos: true }), ["blue-9b", "green-9a"], "red-5a");
+  g.deck.push(card("red-9a"));
+  const me = g.active;
+  g = applyAction(g, me, { type: "draw" }, rand, NOW + 1);
+  assert.equal(g.drawn, "red-9a");
+  assert.throws(() => applyAction(g, me, { type: "play", cards: ["blue-9b", "red-9a"] }, rand, NOW + 2), /notPlayable/);
+  g = applyAction(g, me, { type: "play", cards: ["red-9a", "blue-9b", "green-9a"] }, rand, NOW + 2);
+  assert.equal(g.phase, "finished");
+  assert.equal(g.winner, me);
+});

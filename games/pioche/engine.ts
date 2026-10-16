@@ -21,12 +21,13 @@ const KEPT_REACTIONS = 12;
 const KEPT_EVENTS = 80;
 const DRAW2 = 2;
 const DRAW4 = 4;
-const CHALLENGE_PENALTY = 2;
+export const CHALLENGE_PENALTY = 2;
 const CATCH_PENALTY = 2;
 /** End-of-round points left in a hand, shown on the winner screen. */
 export const CARD_POINTS: Record<CardKind, number> = { number: 0, skip: 20, reverse: 20, draw2: 20, wild: 50, draw4: 50 };
 
-export type Options = { stacking: boolean; drawUntilPlayable: boolean; sevenZero: boolean; timer: number };
+/** `combos`: several identical cards (same number, or same symbol) may be played together. */
+export type Options = { stacking: boolean; drawUntilPlayable: boolean; sevenZero: boolean; combos: boolean; timer: number };
 export type Player = {
   id: string;
   name: string;
@@ -76,7 +77,8 @@ export type Game = {
   pauseReason: "offline" | "host" | null;
   pausedRemaining: number | null;
   winner: string | null;
-  lastPlay: { by: string; card: string; at: number } | null;
+  /** `card` is the top card; `cards` lists the whole lot in play order (absent before combos). */
+  lastPlay: { by: string; card: string; cards?: string[]; at: number } | null;
   events: GameEvent[];
   reactions: Reaction[];
   requests?: Record<string, string[]>;
@@ -149,6 +151,9 @@ export function playable(
   return card.kind === top.kind;
 }
 
+/** Cards that may be played together as one lot: same number, or same symbol. */
+export const sameRank = (a: Card, b: Card) => a.kind === b.kind && (a.kind !== "number" || a.value === b.value);
+
 function refill(g: Game, random: () => number) {
   const top = g.discard.pop();
   g.deck = shuffle(g.discard, random);
@@ -218,7 +223,7 @@ export function createGame(code: string, input: Record<string, unknown>, hash: s
     host: p.id,
     players: [p],
     phase: "lobby",
-    options: { stacking: false, drawUntilPlayable: false, sevenZero: false, timer: 0 },
+    options: { stacking: false, drawUntilPlayable: false, sevenZero: false, combos: false, timer: 0 },
     deck: [],
     discard: [],
     color: null,
@@ -348,24 +353,39 @@ function takeDraw(g: Game, p: Player, random: () => number, now: number) {
   else advance(g, 1, now);
 }
 
+/** The cards of a play, in order: the first must fit the pile, the others must be identical to it. */
+function lot(g: Game, p: Player, action: Action) {
+  const ids: unknown[] = Array.isArray(action.cards) ? action.cards : [action.card];
+  if (!ids.length || new Set(ids).size !== ids.length) fail("invalidCard");
+  if (ids.length > 1 && !g.options.combos) fail("combosOff");
+  const cards = ids.map((id) => p.hand.find((c) => c.id === id) ?? fail("invalidCard"));
+  if (!playable(g, cards[0])) fail("notPlayable");
+  if (cards.some((c) => !sameRank(cards[0], c))) fail("notSameCard");
+  return cards;
+}
+
 function play(g: Game, p: Player, action: Action, random: () => number, now: number) {
-  const card = p.hand.find((c) => c.id === action.card) ?? fail("invalidCard");
-  if (!playable(g, card)) fail("notPlayable");
+  const cards = lot(g, p, action);
+  const card = cards[0], top = cards.at(-1)!, count = cards.length;
   const wild = card.kind === "wild" || card.kind === "draw4";
+  // The last card of a lot ends on top, so its colour is the one to follow.
   const chosen = wild
     ? CARD_COLORS.find((c) => c === action.color) ?? fail("chooseColor")
-    : card.color!;
+    : top.color!;
+  // A lot of 7s or 0s triggers its effect once: several swaps in a row would only undo each other.
   const sevenSwap = g.options.sevenZero && card.kind === "number" && card.value === 7;
   const target = sevenSwap
     ? g.players.find((x) => x.id === action.target && x.id !== p.id && !x.left) ?? fail("chooseTarget")
     : null;
   const previousColor = g.color!;
-  p.hand = p.hand.filter((c) => c.id !== card.id);
-  g.discard.push(card);
+  const played = new Set(cards.map((c) => c.id));
+  p.hand = p.hand.filter((c) => !played.has(c.id));
+  g.discard.push(...cards);
   g.color = chosen;
   g.drawn = null;
-  g.lastPlay = { by: p.id, card: card.id, at: now };
-  log(g, "played", p.name, card.id);
+  g.lastPlay = { by: p.id, card: top.id, cards: [...played], at: now };
+  for (const c of cards) log(g, "played", p.name, c.id);
+  if (count > 1) log(g, "combo", p.name, String(count));
   if (wild) log(g, "chose", p.name, chosen);
   if (!p.hand.length) return finish(g, p);
 
@@ -383,21 +403,26 @@ function play(g: Game, p: Player, action: Action, random: () => number, now: num
     log(g, "rotated");
   }
 
+  // Skips beyond the other players wrap back to the one who played them, never further.
+  const skips = Math.min(count, seated(g).length - 1);
   if (card.kind === "skip") {
-    log(g, "skipped", byId(g, nextSeat(g, p.id)).name);
-    advance(g, 2, now);
+    for (let i = 1; i <= skips; i++) log(g, "skipped", byId(g, nextSeat(g, p.id, i)).name);
+    advance(g, skips + 1, now);
   } else if (card.kind === "reverse") {
-    g.direction = g.direction === 1 ? -1 : 1;
-    log(g, "reversed");
+    // Reverses cancel in pairs; with two players each one works as a skip.
+    if (count % 2) {
+      g.direction = g.direction === 1 ? -1 : 1;
+      log(g, "reversed");
+    }
     advance(g, seated(g).length === 2 ? 2 : 1, now);
   } else if (card.kind === "draw2") {
-    g.pendingDraw += DRAW2;
+    g.pendingDraw += DRAW2 * count;
     advance(g, 1, now);
     // Without stacking there is nothing to decide: the next player pays at once.
     if (!g.options.stacking) takeDraw(g, byId(g, g.active), random, now);
   } else if (card.kind === "draw4") {
     const stacked = g.pendingDraw > 0;
-    g.pendingDraw += DRAW4;
+    g.pendingDraw += DRAW4 * count;
     advance(g, 1, now);
     g.challenge = stacked
       ? null
@@ -455,7 +480,7 @@ export function applyAction(
   if (type === "options") {
     hostOnly();
     if (g.phase === "playing") fail("alreadyStarted");
-    for (const key of ["stacking", "drawUntilPlayable", "sevenZero"] as const)
+    for (const key of ["stacking", "drawUntilPlayable", "sevenZero", "combos"] as const)
       if (action[key] !== undefined) g.options[key] = action[key] === true;
     if (action.timer !== undefined)
       g.options.timer = TIMERS.find((t) => t === action.timer) ?? fail("invalidAmount");
@@ -544,15 +569,17 @@ export function applyAction(
   } else if (type === "challenge") {
     const c = g.challenge?.to === actor ? g.challenge : fail("noChallenge");
     const accused = byId(g, c.from);
+    // A lot of +4s is challenged as a whole: the loser draws its total.
+    const owed = g.pendingDraw;
     g.challenge = null;
     g.pendingDraw = 0;
     if (c.illegal) {
-      drawCards(g, accused, DRAW4, random);
-      log(g, "challengeWon", p.name, accused.name);
+      drawCards(g, accused, owed, random);
+      log(g, "challengeWon", p.name, accused.name, String(owed));
       startTurn(g, actor, now);
     } else {
-      drawCards(g, p, DRAW4 + CHALLENGE_PENALTY, random);
-      log(g, "challengeLost", p.name, accused.name);
+      drawCards(g, p, owed + CHALLENGE_PENALTY, random);
+      log(g, "challengeLost", p.name, accused.name, String(owed + CHALLENGE_PENALTY));
       advance(g, 1, now);
     }
   } else fail("invalidAction");

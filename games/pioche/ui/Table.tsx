@@ -6,7 +6,7 @@ import EmblemBadge from "@/components/EmblemBadge";
 import { fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import type { Action } from "@/platform/contract";
-import { CARD_COLORS, REACTIONS, catchable, playable, type Card, type CardColor, type PublicGame } from "../engine";
+import { CARD_COLORS, CHALLENGE_PENALTY, REACTIONS, catchable, playable, sameRank, type Card, type CardColor, type PublicGame } from "../engine";
 import { eventText, type PiocheTexts } from "../i18n";
 import { CARD_HEX, CardBack } from "./CardFace";
 import Hand from "./Hand";
@@ -21,7 +21,9 @@ const SHAKE_MS = 900;
 const DECK_LAYERS = 3;
 const CLOCK_MS = 250;
 
-type PendingPick = { card: Card; from: DOMRect; kind: "color" | "target" };
+/** Cards on their way to the pile, with where each one left the hand. */
+type Staged = { cards: Card[]; from: Map<string, DOMRect> };
+type PendingPick = Staged & { kind: "color" | "target" };
 type Toast = { id: string; text: string };
 
 function Deck({ count, pending, enabled, label, onDraw, deckRef }: {
@@ -68,8 +70,9 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
   const challengedMe = myTurn && game.challenge?.to === game.me;
   const top = game.discard.at(-1) ?? null;
 
-  const [inFlight, setInFlight] = useState<{ card: Card; from: DOMRect; color?: CardColor } | null>(null),
+  const [inFlight, setInFlight] = useState<(Staged & { color?: CardColor }) | null>(null),
     [picking, setPicking] = useState<PendingPick | null>(null),
+    [lot, setLot] = useState<string[]>([]),
     [toasts, setToasts] = useState<Toast[]>([]),
     [shaking, setShaking] = useState(new Map<string, number>()),
     [now, setNow] = useState(() => Date.now());
@@ -120,47 +123,77 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
     (card: Card) => myTurn && !busy && !inFlight && !picking && playable(game, card),
     [myTurn, busy, inFlight, picking, game],
   );
+  const canJoin = useCallback(
+    (lead: Card, card: Card) => !!game.options.combos && lead.id !== card.id && sameRank(lead, card) && canPlay(lead),
+    [game.options.combos, canPlay],
+  );
 
-  async function send(card: Card, from: DOMRect, extra: Partial<Action> = {}) {
+  async function send(staged: Staged, extra: Partial<Action> = {}) {
     setPicking(null);
-    setInFlight({ card, from, color: CARD_COLORS.find((c) => c === extra.color) });
-    await act({ type: "play", card: card.id, ...extra });
+    setInFlight({ ...staged, color: CARD_COLORS.find((c) => c === extra.color) });
+    await act({ type: "play", cards: staged.cards.map((c) => c.id), ...extra });
     setInFlight(null);
   }
-  function onPlay(card: Card, from: DOMRect) {
+  function onPlay(cards: Card[], from: Map<string, DOMRect>) {
+    const lead = cards[0];
     cue("play");
-    if (card.kind === "wild" || card.kind === "draw4") return setPicking({ card, from, kind: "color" });
-    if (game.options.sevenZero && card.kind === "number" && card.value === 7)
-      return setPicking({ card, from, kind: "target" });
-    void send(card, from);
+    setLot([]);
+    if (lead.kind === "wild" || lead.kind === "draw4") return setPicking({ cards, from, kind: "color" });
+    if (game.options.sevenZero && lead.kind === "number" && lead.value === 7)
+      return setPicking({ cards, from, kind: "target" });
+    void send({ cards, from });
+  }
+  function cancelPick() {
+    // The lot comes back as it was chosen, ready to be played again.
+    if (picking && picking.cards.length > 1) setLot(picking.cards.map((c) => c.id));
+    setPicking(null);
   }
 
-  // A card waiting for its colour or target already lies on the pile; cancelling returns it to the hand.
+  const lotCards = lot.map((id) => me.hand.find((c) => c.id === id)).filter((c): c is Card => !!c);
+  const lead = lotCards[0];
+  const lotReady = lotCards.length > 1 && canPlay(lead) && lotCards.slice(1).every((c) => canJoin(lead, c));
+  const partners = lotCards.length === 1 && me.hand.some((c) => canJoin(lead, c));
+  function playLot() {
+    const from = new Map<string, DOMRect>();
+    for (const c of lotCards) {
+      const el = handEl.current?.querySelector(`[data-card="${c.id}"]`);
+      if (el) from.set(c.id, el.getBoundingClientRect());
+    }
+    onPlay(lotCards, from);
+  }
+
+  // Cards waiting for a colour or target already lie on the pile; cancelling returns them to the hand.
   const staged = inFlight ?? picking;
+  const stagedIds = new Set(staged?.cards.map((c) => c.id));
   const originOf = useCallback(
     (card: Card) => {
-      if (staged?.card.id === card.id) return staged.from;
-      if (game.lastPlay?.card !== card.id) return null;
-      if (game.lastPlay.by === game.me) return handEl.current?.getBoundingClientRect() ?? null;
-      return seatEls.current.get(game.lastPlay.by)?.getBoundingClientRect() ?? null;
+      const fromHand = staged?.from.get(card.id);
+      if (fromHand) return fromHand;
+      const last = game.lastPlay;
+      if (!last || !(last.cards ?? [last.card]).includes(card.id)) return null;
+      if (last.by === game.me) return handEl.current?.getBoundingClientRect() ?? null;
+      return seatEls.current.get(last.by)?.getBoundingClientRect() ?? null;
     },
     [staged, game.lastPlay, game.me],
   );
-  const pileCards = staged && !game.discard.some((c) => c.id === staged.card.id) ? [...game.discard, staged.card] : game.discard;
-  const hand = me.hand.filter((c) => c.id !== staged?.card.id);
+  const pileCards = [...game.discard, ...(staged?.cards.filter((c) => !game.discard.some((d) => d.id === c.id)) ?? [])];
+  const hand = me.hand.filter((c) => !stagedIds.has(c.id));
   // A wild on top shows the colour chosen for it: ours as soon as we pick it, others' from the server.
   const pileTop = pileCards.at(-1);
-  const topTint = pileTop && !pileTop.color ? (inFlight?.card.id === pileTop.id ? inFlight.color ?? null : picking ? null : game.color) : null;
+  const topTint = pileTop && !pileTop.color ? (inFlight?.cards.some((c) => c.id === pileTop.id) ? inFlight.color ?? null : picking ? null : game.color) : null;
 
   const canDraw = myTurn && !busy && !inFlight && !picking && (!game.drawn || game.pendingDraw > 0);
   const activePlayer = game.players.find((p) => p.id === game.active);
   const challenger = game.challenge ? game.players.find((p) => p.id === game.challenge!.from) : null;
-  let prompt = myTurn ? tx.playHint : fmt(tx.theirTurn, { name: activePlayer?.name ?? "" });
+  let prompt = myTurn ? (game.options.combos ? tx.playHintCombos : tx.playHint) : fmt(tx.theirTurn, { name: activePlayer?.name ?? "" });
   if (myTurn && game.drawn) prompt = tx.drawnHint;
   if (myTurn && game.drawing && !game.drawn) prompt = tx.keepDrawingHint;
   if (myTurn && game.pendingDraw > 0 && !challengedMe)
     prompt = fmt(tx.stackHint, { card: top?.kind === "draw4" ? "+4" : "+2", n: game.pendingDraw });
-  if (challengedMe) prompt = fmt(tx.challengeHint, { name: challenger?.name ?? "" });
+  if (challengedMe)
+    prompt = fmt(tx.challengeHint, { name: challenger?.name ?? "", n: game.pendingDraw, m: game.pendingDraw + CHALLENGE_PENALTY });
+  if (partners) prompt = fmt(tx.comboHint, { card: lead.kind === "number" ? String(lead.value) : tx.kinds[lead.kind] });
+  if (lotReady) prompt = tx.lotHint;
   if (picking) prompt = picking.kind === "color" ? tx.chooseColor : tx.chooseTarget;
   // "Pioche!" is a race open as long as a player sits on one card without having called it.
   const canCall = playing && catchable(me);
@@ -170,14 +203,14 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
   const myReaction = lastReaction(game.reactions, game.me, now);
 
   return (
-    <div className={"table" + (myTurn ? " my-turn" : "")}>
+    <div className={"table" + (myTurn ? " my-turn" : "") + (lotReady ? " lot-ready" : "")}>
       <Seats
         game={game}
         tx={tx}
         now={now}
         shaking={shaking}
         choosing={picking?.kind === "target"}
-        onChoose={(id) => picking && void send(picking.card, picking.from, { target: id })}
+        onChoose={(id) => picking && void send(picking, { target: id })}
         onCatch={(id) => void act({ type: "catch", player: id })}
         register={(id, el) => {
           if (el) seatEls.current.set(id, el);
@@ -213,7 +246,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
                 className="petal"
                 style={{ "--petal": CARD_HEX[c], "--i": i } as CSSProperties}
                 aria-label={tx.colors[c]}
-                onClick={() => void send(picking.card, picking.from, { color: c })}
+                onClick={() => void send(picking, { color: c })}
               />
             ))}
           </div>
@@ -227,7 +260,16 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
           {challengedMe && (
             <>
               <button className="btn red" disabled={busy} onClick={() => void act({ type: "challenge" })}>{tx.challenge}</button>
-              <button className="btn ghost" disabled={busy} onClick={() => void act({ type: "draw" })}>{tx.acceptDraw}</button>
+              <button className="btn ghost" disabled={busy} onClick={() => void act({ type: "draw" })}>{fmt(tx.drawN, { n: game.pendingDraw })}</button>
+            </>
+          )}
+          {lotReady && !picking && (
+            <>
+              <button className="btn go lot-play" disabled={busy} onClick={playLot}>
+                <span className="lot-stack" aria-hidden="true">{lotCards.map((c) => <i key={c.id} />)}</span>
+                {fmt(tx.playLot, { n: lotCards.length })}
+              </button>
+              <button className="btn ghost" onClick={() => setLot([])}>{tx.cancel}</button>
             </>
           )}
           {myTurn && game.drawn && !game.pendingDraw && (
@@ -238,7 +280,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
               {tx.catch}
             </button>
           )}
-          {picking && <button className="btn ghost" onClick={() => setPicking(null)}>{tx.cancel}</button>}
+          {picking && <button className="btn ghost" onClick={cancelPick}>{tx.cancel}</button>}
         </div>
       </div>
 
@@ -254,6 +296,9 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
           highlight={game.drawn}
           drawOrigin={() => deckEl.current?.getBoundingClientRect() ?? null}
           dropZone={() => pileEl.current}
+          selected={lot}
+          onSelect={setLot}
+          canJoin={canJoin}
           onPlay={onPlay}
           onCue={cue}
           tx={tx}

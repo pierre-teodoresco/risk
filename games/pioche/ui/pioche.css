@@ -77,7 +77,9 @@
 .table { position: relative; z-index: 2; min-height: 0; }
 .pc-seats { position: absolute; left: 0; right: 0; top: 0; height: 44%; }
 .centre { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); width: calc(var(--card-w) * 4); height: calc(var(--card-h) * 1.6); display: flex; align-items: center; justify-content: center; gap: calc(var(--card-w) * .7); }
-.prompt { position: absolute; left: 50%; bottom: calc(var(--card-h) * 1.42 + 8px); transform: translateX(-50%); width: min(92%, 620px); display: grid; justify-items: center; gap: 6px; text-align: center; color: var(--muted); font-weight: 700; z-index: 5; }
+.prompt { position: absolute; left: 50%; bottom: calc(var(--card-h) * 1.42 + 8px); transform: translateX(-50%); width: min(92%, 620px); display: grid; justify-items: center; gap: 6px; text-align: center; color: var(--muted); font-weight: 700; z-index: 5; transition: bottom .25s cubic-bezier(.2,.8,.2,1); }
+/* A lot rises above the hand: its actions move up so the lifted cards never cover them. */
+.table.lot-ready .prompt { bottom: calc(var(--card-h) * 1.5 + 8px); }
 .prompt-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .prompt-actions .btn { padding: 9px 16px; }
 .turn-flag { padding: 4px 14px; border-radius: 999px; background: var(--gold); color: var(--ink); font: 17px var(--f-display); font-weight: 400; box-shadow: 0 4px 0 #b8901f; animation: flag-pop .5s cubic-bezier(.2,1.6,.4,1) both; }
@@ -131,6 +133,19 @@
 .hand-card:hover .card-flip, .hand-card.selected .card-flip { box-shadow: 0 26px 30px #0008; }
 .hand-card:focus-visible .card-flip { box-shadow: 0 0 0 4px var(--gold), 0 26px 30px #0008; }
 .table.my-turn .hand-card:not(.playable) .card-side.front { filter: brightness(.6) saturate(.65); transition: filter .25s; }
+/* Lots of identical cards: the chosen ones carry their order, their twins invite a click. */
+.table.my-turn .hand-card:is(.joinable, .in-lot) .card-side.front { filter: none; }
+.hand-card.joinable .card-flip { animation: join-glow 1.2s ease-in-out infinite; }
+@keyframes join-glow { 50% { box-shadow: 0 0 0 3px var(--gold), 0 0 22px #ffd24d99, 0 10px 16px #0007; } }
+.hand-card.joinable::after { content: "+"; position: absolute; top: -10px; right: -8px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--cream); color: var(--ink); border: 2px solid var(--ink); font: 18px/1 var(--f-display); box-shadow: 0 3px 0 #0006; animation: flag-pop .3s cubic-bezier(.2,1.6,.4,1) both; pointer-events: none; }
+.hand-card.selected .card-flip { box-shadow: 0 0 0 3px var(--gold), 0 26px 30px #0008; }
+.lot-badge { position: absolute; top: -12px; left: 50%; z-index: 2; translate: -50% 0; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; background: var(--gold); color: var(--ink); border: 3px solid var(--ink); font: 17px/1 var(--f-display); box-shadow: 0 3px 0 #0006; animation: flag-pop .35s cubic-bezier(.2,1.6,.4,1) both; pointer-events: none; }
+.prompt-actions .lot-play { display: inline-flex; align-items: center; gap: 10px; animation: flag-pop .35s cubic-bezier(.2,1.6,.4,1) both; }
+.lot-stack { position: relative; width: 22px; height: 24px; }
+.lot-stack i { position: absolute; left: 3px; top: 1px; width: 15px; height: 21px; border-radius: 3px; background: var(--cream); border: 2px solid var(--ink); }
+.lot-stack i:nth-child(1) { transform: rotate(-14deg) translateX(-3px); }
+.lot-stack i:nth-child(2) { transform: rotate(0deg); }
+.lot-stack i:nth-child(n + 3) { transform: rotate(14deg) translateX(3px); }
 .table.my-turn .hand-card.playable .card-flip { box-shadow: 0 0 0 2px #ffd24d99, 0 10px 16px #0007; }
 .hand-card.drawn .card-flip { animation: drawn-glow 1.4s ease-in-out infinite; }
 @keyframes drawn-glow { 50% { box-shadow: 0 0 0 4px var(--gold), 0 0 26px #ffd24daa; } }
@@ -184,6 +199,10 @@ button.pc-seat { cursor: pointer; }
 .pioche-rules .rule-card { width: 46px; height: 69px; filter: drop-shadow(0 4px 6px #0007); transform: rotate(-4deg); }
 .pioche-rules .rule-options li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 8px 0; border-top: 1px solid #ffffff10; }
 .pioche-rules .rule-options li > div:first-child { min-width: 0; flex: 1 1 220px; }
+.pioche-rules .rule-options .rule-details { margin: 8px 0 0; padding: 0 0 0 18px; display: grid; gap: 4px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.pioche-rules .rule-options .rule-details li { display: list-item; padding: 0; border: 0; }
+.pioche-rules .rule-details li::marker { color: var(--gold); }
+.pioche-rules .rule-options li:has(.rule-details) { align-items: flex-start; }
 .pioche-rules .rule-options b { display: block; }
 .pioche-rules .switch:disabled, .pioche-rules .seg button:disabled { opacity: .55; cursor: default; }
 .pioche-rules .rule-options small { display: block; color: var(--muted); font-size: 13px; line-height: 1.35; }
@@ -229,5 +248,5 @@ button.pc-seat { cursor: pointer; }
   .pioche-top .seg { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .direction-spin, .pc-deck.ready, .call, .seat-catch, .prompt-actions .shout, .pc-seat.choosable .seat-medal, .entrance-cards span, .hand-card.drawn .card-flip { animation: none; }
+  .direction-spin, .pc-deck.ready, .call, .seat-catch, .prompt-actions .shout, .pc-seat.choosable .seat-medal, .entrance-cards span, .hand-card.drawn .card-flip, .hand-card.joinable .card-flip { animation: none; }
 }

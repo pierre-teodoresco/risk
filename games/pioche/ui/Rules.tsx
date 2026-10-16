@@ -19,6 +19,7 @@ const OPTIONS = [
   ["stacking", "stacking", "stackingHint"],
   ["drawUntilPlayable", "drawUntilPlayable", "drawUntilPlayableHint"],
   ["sevenZero", "sevenZero", "sevenZeroHint"],
+  ["combos", "combos", "combosHint"],
 ] as const;
 
 export default function Rules({ tx, game, busy, act, onClose }: {
@@ -97,6 +98,11 @@ export default function Rules({ tx, game, busy, act, onClose }: {
                   <div>
                     <b>{tx[title]}</b>
                     <small>{tx[hint]}</small>
+                    {key === "combos" && (
+                      <ul className="rule-details">
+                        {tx.combosRules.map((line) => <li key={line}>{line}</li>)}
+                      </ul>
+                    )}
                   </div>
                   {game ? (
                     <button

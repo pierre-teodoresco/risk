@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { Spring, SPRINGS, createLoop, prefersReducedMotion } from "@/platform/spring";
 import type { Card } from "../engine";
 import { CardBack, CardFace } from "./CardFace";
+import { fmt } from "@/lib/i18n";
 import { cardLabel, type PiocheTexts } from "../i18n";
 import type { Cue } from "./sound";
 
@@ -17,7 +18,12 @@ type Props = {
   drawOrigin: () => DOMRect | null;
   /** Dropping a dragged card over this element plays it; it lights up while a card hovers it. */
   dropZone: () => HTMLElement | null;
-  onPlay: (card: Card, from: DOMRect) => void;
+  /** Selected cards in play order: one card, or a lot of identical cards led by a playable one. */
+  selected: string[];
+  onSelect: (ids: string[]) => void;
+  /** Whether `card` may join a lot led by `lead`; always false without the combo option. */
+  canJoin: (lead: Card, card: Card) => boolean;
+  onPlay: (cards: Card[], from: Map<string, DOMRect>) => void;
   onCue: (cue: Cue) => void;
   tx: PiocheTexts;
 };
@@ -48,6 +54,10 @@ type Motion = {
 
 const LIFT_HOVER = 0.14;
 const LIFT_SELECTED = 0.26;
+/** Cards of a lot rise less than a lone selection, keeping clear of the actions above the hand. */
+const LIFT_LOT = 0.2;
+/** A card that may join the selected lot rises a little, inviting the click. */
+const LIFT_JOINABLE = 0.05;
 const SCALE_HOVER = 1.07;
 const SCALE_SELECTED = 1.1;
 const TILT_MAX_DEG = 18;
@@ -70,6 +80,9 @@ const MAX_STEP_RATIO = 0.72;
 const FAN_DEG = 40;
 const FAN_MAX_STEP_DEG = 5;
 const ARC_RATIO = 0.07;
+/** The other cards of a dragged lot trail behind it like a held fan. */
+const TRAIL_STEP_PX = 14;
+const TRAIL_STEP_DEG = 7;
 
 function slot(i: number, n: number, width: number, cardW: number) {
   const centre = i - (n - 1) / 2;
@@ -79,9 +92,8 @@ function slot(i: number, n: number, width: number, cardW: number) {
   return { x: centre * step, y: norm * norm * cardW * 1.5 * ARC_RATIO, rot: centre * Math.min(FAN_MAX_STEP_DEG, FAN_DEG / n) };
 }
 
-export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, onPlay, onCue, tx }: Props) {
-  const [order, setOrder] = useState<string[]>([]),
-    [selected, setSelected] = useState<string | null>(null);
+export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, selected, onSelect, canJoin, onPlay, onCue, tx }: Props) {
+  const [order, setOrder] = useState<string[]>([]);
   const host = useRef<HTMLDivElement>(null),
     els = useRef(new Map<string, HTMLButtonElement>()),
     motion = useRef(new Map<string, Motion>()),
@@ -91,13 +103,15 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
     departed = useRef(new Map<string, { motion: Motion; at: number }>()),
     clock = useRef(0),
     mounted = useRef(false),
-    live = useRef({ order, selected, highlight }),
+    live = useRef({ order, selected, joinable: new Set<string>() }),
     originRef = useRef(drawOrigin),
     loop = useRef<ReturnType<typeof createLoop> | null>(null);
-  live.current = { order, selected, highlight };
   originRef.current = drawOrigin;
 
   const byId = new Map(cards.map((c) => [c.id, c]));
+  const lead = byId.get(selected[0]);
+  const joinable = new Set(lead ? cards.filter((c) => !selected.includes(c.id) && canJoin(lead, c)).map((c) => c.id) : []);
+  live.current = { order, selected, joinable };
   // Keep the player's own arrangement across refreshes; new cards go to the right.
   useEffect(() => {
     setOrder((prev) => {
@@ -105,7 +119,8 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
       const kept = prev.filter((id) => ids.includes(id));
       return [...kept, ...ids.filter((id) => !kept.includes(id))];
     });
-    if (selected && !cards.some((c) => c.id === selected)) setSelected(null);
+    const present = selected.filter((id) => cards.some((c) => c.id === id));
+    if (present.length !== selected.length) onSelect(present);
   }, [cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // New cards fly in from the deck, face down, and turn over on the way.
@@ -154,9 +169,10 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
       const el = host.current;
       if (!el) return true;
       const width = el.clientWidth;
-      const { order: ids, selected: sel } = live.current;
+      const { order: ids, selected: sel, joinable: join } = live.current;
       const d = drag.current?.active ? drag.current : null;
-      const layout = ids.filter((id) => id !== d?.id);
+      const trail = d && sel.length > 1 && sel.includes(d.id) ? sel.filter((id) => id !== d.id) : [];
+      const layout = ids.filter((id) => id !== d?.id && !trail.includes(id));
       ids.forEach((id) => {
         const m = motion.current.get(id), card = els.current.get(id);
         if (!m || !card) return;
@@ -168,6 +184,11 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
             m.y.set(d.y);
             d.vx *= Math.exp(-DRAG_LEAN_DECAY * dt);
             m.rot.target = Math.max(-DRAG_LEAN_MAX_DEG, Math.min(DRAG_LEAN_MAX_DEG, d.vx * DRAG_LEAN_DEG_PER_PX_S));
+          } else if (d && trail.includes(id)) {
+            const k = trail.indexOf(id) + 1;
+            m.x.target = d.x - k * TRAIL_STEP_PX;
+            m.y.target = d.y + k * TRAIL_STEP_PX * 0.3;
+            m.rot.target = -k * TRAIL_STEP_DEG;
           } else {
             const s = slot(layout.indexOf(id), layout.length, width, cardW);
             const sway = reduced ? 0 : Math.sin(clock.current * 1.4 + m.phase);
@@ -176,9 +197,10 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
             m.rot.target = s.rot + sway * SWAY_DEG;
           }
           m.flip.target = 1;
-          const up = d?.id === id ? 0 : sel === id ? LIFT_SELECTED : hover.current === id ? LIFT_HOVER : 0;
+          const held = d?.id === id || trail.includes(id);
+          const up = held ? 0 : sel.includes(id) ? (sel.length > 1 ? LIFT_LOT : LIFT_SELECTED) : hover.current === id ? LIFT_HOVER : join.has(id) ? LIFT_JOINABLE : 0;
           m.lift.target = -up * cardH;
-          m.scale.target = d?.id === id ? DRAG_SCALE : sel === id ? SCALE_SELECTED : hover.current === id ? SCALE_HOVER : 1;
+          m.scale.target = held ? DRAG_SCALE : sel.includes(id) ? SCALE_SELECTED : hover.current === id ? SCALE_HOVER : 1;
           if (hover.current !== id && d?.id !== id) m.tiltX.target = m.tiltY.target = 0;
         }
         for (const s of [m.x, m.y, m.rot, m.lift, m.scale, m.tiltX, m.tiltY, m.flip]) s.step(dt);
@@ -186,7 +208,15 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
           `translate3d(${m.x.value}px, ${m.y.value + m.lift.value}px, 0) rotate(${m.rot.value}deg) ` +
           `rotateX(${m.tiltX.value}deg) rotateY(${m.tiltY.value}deg) scale(${m.scale.value})`;
         if (returning.current === id && ![m.x, m.y].some((s) => s.value !== s.target || s.velocity !== 0)) returning.current = null;
-        card.style.zIndex = String(d?.id === id || returning.current === id ? 200 : sel === id || hover.current === id ? 100 : layout.indexOf(id) + 1);
+        const trailing = trail.indexOf(id);
+        card.style.zIndex = String(
+          d?.id === id || returning.current === id ? 200
+          : trailing >= 0 ? 199 - trailing
+          : sel.includes(id) ? 100 + sel.indexOf(id)
+          : hover.current === id ? 100
+          : join.has(id) ? 50 + layout.indexOf(id)
+          : layout.indexOf(id) + 1,
+        );
         card.style.setProperty("--flip", String(m.flip.value));
       });
       // The idle sway keeps the loop alive; with reduced motion it sleeps once everything rests.
@@ -211,19 +241,41 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
     loop.current?.kick();
   }
 
-  function choose(card: Card) {
-    const el = els.current.get(card.id);
-    if (selected === card.id && canPlay(card) && el) {
-      onPlay(card, el.getBoundingClientRect());
-      return;
+  function play(group: Card[]) {
+    const from = new Map<string, DOMRect>();
+    for (const c of group) {
+      const el = els.current.get(c.id);
+      if (el) from.set(c.id, el.getBoundingClientRect());
     }
-    if (selected === card.id) setSelected(null);
-    else {
-      setSelected(card.id);
-      onCue(canPlay(card) ? "select" : "error");
-    }
-    loop.current?.kick();
+    onPlay(group, from);
   }
+  /** A lot keeps a playable card first: removing its lead hands the lead to the next one that fits. */
+  function withPlayableLead(ids: string[]) {
+    const i = ids.findIndex((id) => {
+      const c = byId.get(id);
+      return !!c && canPlay(c);
+    });
+    return i <= 0 ? ids : [ids[i], ...ids.slice(0, i), ...ids.slice(i + 1)];
+  }
+  function choose(card: Card) {
+    loop.current?.kick();
+    if (selected.includes(card.id)) {
+      if (selected.length === 1 && canPlay(card)) return play([card]);
+      return onSelect(withPlayableLead(selected.filter((id) => id !== card.id)));
+    }
+    if (joinable.has(card.id)) {
+      onSelect([...selected, card.id]);
+      return onCue("select");
+    }
+    onSelect([card.id]);
+    onCue(canPlay(card) ? "select" : "error");
+  }
+  /** What a drag carries: the whole lot when the held card belongs to one, else the card alone. */
+  function dragged(card: Card) {
+    if (selected.length < 2 || !selected.includes(card.id)) return [card];
+    return selected.map((id) => byId.get(id)).filter((c): c is Card => !!c);
+  }
+  const groupFits = (group: Card[]) => canPlay(group[0]) && group.slice(1).every((c) => canJoin(group[0], c));
 
   function dropState(clientX: number, clientY: number) {
     const zone = dropZone();
@@ -267,7 +319,7 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
       // The hover lift becomes part of the held position, so the card does not slide off the cursor.
       m.lift.set(0);
       m.tiltX.target = m.tiltY.target = 0;
-      setSelected(null);
+      if (dragged(card).length === 1) onSelect([]);
     }
     const dt = Math.max(1, e.timeStamp - d.lastT) / 1000;
     d.vx += ((e.clientX - d.lastX) / dt - d.vx) * DRAG_SPEED_SMOOTHING;
@@ -278,9 +330,10 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
 
     const { zone, over } = dropState(e.clientX, e.clientY);
     d.over = over;
-    lightZone(zone, over, canPlay(card));
+    const group = dragged(card);
+    lightZone(zone, over, groupFits(group));
     // Reorder only while the pointer stays in the band of cards, not on the way to the pile.
-    if (e.clientY > box.top + el.offsetTop + el.offsetHeight * REORDER_BAND) {
+    if (group.length === 1 && e.clientY > box.top + el.offsetTop + el.offsetHeight * REORDER_BAND) {
       const rest = order.filter((x) => x !== card.id);
       const relX = e.clientX - (box.left + box.width / 2);
       let index = rest.length;
@@ -304,7 +357,8 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
     if (!d || d.id !== card.id) return;
     if (!d.active) return choose(card);
     const { over } = dropState(e.clientX, e.clientY);
-    if (over && canPlay(card)) onPlay(card, e.currentTarget.getBoundingClientRect());
+    const group = dragged(card);
+    if (over && groupFits(group)) play(group);
     else {
       returning.current = card.id;
       if (over) onCue("error");
@@ -314,6 +368,11 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
     loop.current?.kick();
   }
   function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, id: string) {
+    if (e.key === "Escape" && selected.length) {
+      e.preventDefault();
+      loop.current?.kick();
+      return onSelect([]);
+    }
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     e.preventDefault();
     const i = order.indexOf(id) + (e.key === "ArrowRight" ? 1 : -1);
@@ -326,17 +385,20 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
         const card = byId.get(id);
         if (!card) return null;
         const ok = canPlay(card);
+        const place = selected.length > 1 ? selected.indexOf(id) + 1 : 0;
+        const classes = ["hand-card", ok && "playable", selected.includes(id) && "selected", place > 0 && "in-lot", joinable.has(id) && "joinable", highlight === id && "drawn"];
         return (
           <button
             key={id}
+            data-card={id}
             ref={(el) => {
               if (el) els.current.set(id, el);
               else els.current.delete(id);
             }}
-            className={"hand-card" + (ok ? " playable" : "") + (selected === id ? " selected" : "") + (highlight === id ? " drawn" : "")}
+            className={classes.filter(Boolean).join(" ")}
             style={{ "--flip": 1 } as CSSProperties}
-            aria-label={`${cardLabel(card, tx)}${ok ? ", " + tx.playable : ""}`}
-            aria-pressed={selected === id}
+            aria-label={[cardLabel(card, tx), ok && tx.playable, place && fmt(tx.inLot, { n: place })].filter(Boolean).join(", ")}
+            aria-pressed={selected.includes(id)}
             onPointerEnter={() => {
               hover.current = id;
               onCue("hover");
@@ -366,6 +428,7 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
               <span className="card-side back"><CardBack /></span>
               <span className="card-sheen" />
             </span>
+            {place > 0 && <span className="lot-badge" key={place} aria-hidden="true">{place}</span>}
           </button>
         );
       })}

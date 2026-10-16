@@ -119,6 +119,7 @@ export function Lobby({ game, tx, busy, act, copied, onCopy }: {
     ["stacking", tx.stacking, tx.stackingHint],
     ["drawUntilPlayable", tx.drawUntilPlayable, tx.drawUntilPlayableHint],
     ["sevenZero", tx.sevenZero, tx.sevenZeroHint],
+    ["combos", tx.combos, tx.combosHint],
   ] as const;
   return (
     <main className="pc-lobby">

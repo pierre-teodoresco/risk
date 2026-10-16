@@ -13,6 +13,8 @@ const ARRIVAL_SCALE = 1.22;
 /** A card thrown from far spins fully; one dropped onto the pile only settles. */
 const SPIN_DEG_PER_PX = 0.45;
 const SCALE_PER_PX = 0.0006;
+/** Cards of a lot leave one after the other, so each lands visibly on the previous one. */
+const LOT_STAGGER_S = 0.11;
 
 function hash(id: string) {
   let h = 2166136261;
@@ -25,7 +27,7 @@ export const restingPose = (id: string) => ({
   y: (hash(id + "y") - 0.5) * 2 * JITTER_PX,
 });
 
-type Flight = { x: Spring; y: Spring; rot: Spring; scale: Spring };
+type Flight = { x: Spring; y: Spring; rot: Spring; scale: Spring; wait: number };
 
 export default function Pile({
   cards,
@@ -46,6 +48,7 @@ export default function Pile({
     els = useRef(new Map<string, HTMLDivElement>()),
     flights = useRef(new Map<string, Flight>()),
     seen = useRef<Set<string> | null>(null),
+    clock = useRef(0),
     loop = useRef<ReturnType<typeof createLoop> | null>(null);
 
   useLayoutEffect(() => {
@@ -56,6 +59,7 @@ export default function Pile({
       return;
     }
     const box = host.current?.getBoundingClientRect();
+    let delay = 0;
     for (const card of cards) {
       if (seen.current.has(card.id)) continue;
       seen.current.add(card.id);
@@ -71,7 +75,9 @@ export default function Pile({
         y: new Spring(dy, SPRINGS.soft, rest.y),
         rot: new Spring(rest.rot - spin, SPRINGS.soft, rest.rot),
         scale: new Spring(Math.min(ARRIVAL_SCALE, 1 + distance * SCALE_PER_PX + 0.06), SPRINGS.wobbly, 1),
+        wait: clock.current + delay,
       });
+      delay += LOT_STAGGER_S;
     }
     seen.current = new Set(ids);
     // Place flying cards at their start before the browser paints the resting pose.
@@ -84,8 +90,13 @@ export default function Pile({
 
   useEffect(() => {
     const l = createLoop((dt) => {
+      clock.current += dt;
       let moving = false;
       for (const [id, f] of flights.current) {
+        if (clock.current < f.wait) {
+          moving = true;
+          continue;
+        }
         const el = els.current.get(id);
         const busy = [f.x, f.y, f.rot, f.scale].map((s) => s.step(dt)).some(Boolean);
         if (el) el.style.transform = `translate(${f.x.value}px, ${f.y.value}px) rotate(${f.rot.value}deg) scale(${f.scale.value})`;
