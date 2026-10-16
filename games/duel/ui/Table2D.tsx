@@ -17,8 +17,6 @@ import { playSound, type Sound } from "./sound";
 
 const CONFIRM_MS = 3000;
 const LOW_MS = 20000;
-/** Like the big chess sites: up to five moves can be queued in advance. */
-const MAX_PREMOVES = 5;
 
 export type Game2D<P, M> = {
   size: number;
@@ -147,7 +145,7 @@ export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy }
   const legal = useMemo(() => (myTurn ? R.legal(real) : []), [R, real, myTurn]);
   const boardMoves = useMemo<BoardMove[]>(() => {
     if (myTurn) return legal.map((m, id) => ({ ...R.ends(m), id }));
-    if (!premoving || queue.length >= MAX_PREMOVES) return [];
+    if (!premoving) return [];
     const out: BoardMove[] = [];
     virtual.forEach((c, from) => {
       if (c?.[0] !== side) return;

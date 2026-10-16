@@ -34,7 +34,11 @@ function material(cells: BoardCell[]) {
   return { taken, score };
 }
 
-/** Where the piece on `from` could go if nothing else moved; blockers are ignored, as they may leave. */
+/**
+ * Where the piece on `from` could go if the opponent's move changes the board: blockers are
+ * ignored as they may leave, and squares held by the player's own pieces count too, since the
+ * opponent may take there first (premoving the recapture of a piece about to be taken).
+ */
 function premoveTargets(cells: BoardCell[], from: number, real: Position) {
   const c = cells[from]!, color = c[0] as Side, kind = c[1];
   const f0 = file(from), r0 = rank(from);
@@ -42,7 +46,7 @@ function premoveTargets(cells: BoardCell[], from: number, real: Position) {
   const add = (f: number, r: number) => {
     if (f < 0 || f > 7 || r < 0 || r > 7) return;
     const s = sq(f, r);
-    if (cells[s]?.[0] !== color) out.push(s);
+    if (s !== from) out.push(s);
   };
   if (kind === "p") {
     const dir = color === "w" ? 1 : -1;
