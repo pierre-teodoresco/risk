@@ -50,7 +50,7 @@ export const GAMES: GameEntry[] = [
   {
     id: "grand-tour",
     name: "Grand Tour",
-    status: "soon",
+    status: "live",
     players: { min: 2, max: 6 },
     minutes: { min: 30, max: 60 },
     tagline: { fr: "Achète, construis, ruine la table.", en: "Buy, build, bankrupt the table." },

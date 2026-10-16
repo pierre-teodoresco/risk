@@ -6,6 +6,8 @@ import type { Lang } from "@/lib/world";
 import { GAMES, HUB_NAME, gamePath, type GameEntry } from "@/games/registry";
 import { CardDefs, CardFace } from "@/games/pioche/ui/CardFace";
 import type { Card } from "@/games/pioche/engine";
+import Board from "@/games/grand-tour/ui/Board";
+import { DEMO, DEMO_COLOR } from "@/games/grand-tour/ui/Screens";
 
 type HallTexts = ReturnType<typeof hallTexts>;
 type Recent = { game: GameEntry; code: string };
@@ -34,10 +36,19 @@ function PiocheVisual() {
   );
 }
 
+// Grand Tour shows its real board, mid-game.
+function GrandTourVisual({ lang }: { lang: Lang }) {
+  return (
+    <span className="gt-vars poster-gt">
+      <Board lang={lang} holdings={DEMO.holdings} pawns={DEMO.pawns} move={null} ownerColor={DEMO_COLOR} interactive={false} autoRotate showcase />
+    </span>
+  );
+}
+
 function Poster({ game, art, lang, h }: { game: GameEntry; art: ReactNode; lang: Lang; h: HallTexts }) {
   return (
     <a className="poster" href={gamePath(game.id)} style={{ "--accent": game.accent } as CSSProperties} title={game.pitch[lang]}>
-      <span className={"poster-visual " + game.id}>{game.id === "pioche" ? <PiocheVisual /> : art}</span>
+      <span className={"poster-visual " + game.id}>{game.id === "pioche" ? <PiocheVisual /> : game.id === "grand-tour" ? <GrandTourVisual lang={lang} /> : art}</span>
       <span className="poster-info">
         <span className="poster-text">
           <span className="poster-name">{game.name}</span>

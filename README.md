@@ -63,6 +63,20 @@ Options choisies par l’hôte dans la salle d’attente :
 - **Lots de cartes identiques** : poser d’un coup plusieurs cartes au même chiffre ou au même symbole. La première doit pouvoir se poser, la dernière donne la couleur, et les effets s’additionnent (Passes, +2, +4 ; deux Inversions s’annulent).
 - **Temps par tour** : libre, 15, 30 ou 60 secondes.
 
+Chaque joueur choisit son décor de table (Arcade ou Bistrot) ; ce choix ne change rien pour les autres.
+
+## Grand Tour
+
+Jeu d’immobilier autour du monde pour **2 à 6 joueurs**, sur un plateau en 3D de 40 cases : 22 villes en 8 couleurs, 4 aéroports, 2 compagnies, cartes Chance et Trésor. On lance deux dés, on achète, on encaisse des loyers (doublés sur une couleur complète), on construit maisons et hôtels de façon égale, on hypothèque, on échange avec les autres joueurs. Trois doubles d’affilée envoient à la douane. Le dernier joueur qui n’a pas fait faillite gagne.
+
+Options choisies par l’hôte dans la salle d’attente :
+
+- **Argent de départ** : 1 000, 1 500 ou 2 000.
+- **Enchères** : une case refusée part aux enchères ; la meilleure offre l’emporte dix secondes après la dernière mise.
+- **Cagnotte de l’Escale** : taxes et amendes s’accumulent sur l’Escale pour qui s’y arrête.
+
+Simplification : la carte « anniversaire » ne met jamais un autre joueur en dette ; il donne ce qu’il a.
+
 ## Vérifier
 
 ```sh
@@ -75,7 +89,7 @@ npm run test:integration
 MAPPA_TEST_URL=https://votre-domaine.vercel.app npm run test:integration
 ```
 
-L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
+L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, et une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
 
 ## Déploiement
 

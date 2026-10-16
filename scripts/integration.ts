@@ -182,4 +182,34 @@ for (const count of [3, 6]) {
   assert.equal(drawn.status, 200, JSON.stringify(drawn));
   console.log("PASS Pioche: routing, privacy, deal and draw");
 }
+{
+  // Grand Tour: routing, the hidden card order, a roll, and a trade seen only by its two players.
+  const gt = (path: string) => path + (path.includes("?") ? "&" : "?") + "game=grand-tour";
+  const create = await req(gt("/api/rooms"), undefined, { game: "grand-tour", name: "QA Tour", emblem: 0 });
+  assert.equal(create.status, 200, JSON.stringify(create));
+  const code = create.game.code;
+  console.log("Created Grand Tour test room " + code);
+  const joins = [];
+  for (const name of ["QA Tour 2", "QA Tour 3"]) {
+    const j = await req(gt("/api/rooms/" + code), undefined, { type: "join", name, emblem: 0 });
+    assert.equal(j.status, 200, JSON.stringify(j));
+    joins.push(j);
+  }
+  assert.equal((await req("/api/rooms/" + code)).error, "roomNotFound");
+  const started = await req(gt("/api/rooms/" + code), create.token, { type: "start" });
+  assert.equal(started.status, 200, JSON.stringify(started));
+  const tokens = new Map([[create.game.me, create.token], ...joins.map((j) => [j.game.me, j.token] as [string, string])]);
+  const seen = (await req(gt("/api/rooms/" + code), joins[0].token)).game;
+  assert.equal(typeof seen.decks.chance, "number");
+  assert.ok(!JSON.stringify(seen).includes("tokenHash"));
+  const rolled = await req(gt("/api/rooms/" + code), tokens.get(seen.active), { type: "roll" });
+  assert.equal(rolled.status, 200, JSON.stringify(rolled));
+  assert.ok(rolled.game.dice && rolled.game.lastMove);
+  const [a, b, c] = [...tokens.keys()];
+  const offer = await req(gt("/api/rooms/" + code), tokens.get(a), { type: "offer", to: b, give: { cash: 10 }, want: {} });
+  assert.equal(offer.status, 200, JSON.stringify(offer));
+  assert.equal((await req(gt("/api/rooms/" + code), tokens.get(b))).game.trades.length, 1);
+  assert.equal((await req(gt("/api/rooms/" + code), tokens.get(c))).game.trades.length, 0);
+  console.log("PASS Grand Tour: routing, privacy, roll and private trades");
+}
 console.log("Integration suite passed against " + base);

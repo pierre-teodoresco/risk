@@ -32,6 +32,13 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 - `games/pioche/ui/` contient l’écran : `Hand.tsx` (éventail, survol, sélection d’un lot, glisser-déposer, clavier) et `Pile.tsx` (arrivées échelonnées d’un lot) écrivent leurs transformations dans le DOM depuis une boucle de ressorts, hors du rendu React. La sélection du lot vit dans `Table.tsx`, qui la passe à `Hand.tsx`. Les classes CSS propres à Pioche portent le préfixe `pc-` quand elles risquent d’entrer en collision avec `app/globals.css`.
 - Textes et erreurs dans `games/pioche/i18n.ts`, en français et en anglais. Tests : `tests/pioche.test.ts`, et un passage Pioche dans `npm run test:integration`.
 
+## Grand Tour
+
+- `games/grand-tour/board.ts` décrit les 40 cases (prix, loyers, maisons) et les cartes Chance et Trésor ; `engine.ts` porte les règles et `publicGame`, qui masque l’ordre des cartes et ne montre une proposition d’échange qu’à ses deux joueurs.
+- Un tour suit `step` : `roll`, `buy`, `auction`, `debt`, `end`. Une enchère se clôt par `maintenance` après son échéance (`deadline`), comme un temps par tour. Construire, vendre, hypothéquer et échanger se font à tout moment de la partie, par le propriétaire.
+- `games/grand-tour/ui/engine3d.ts` dessine le plateau en three.js, hors de React ; `Board.tsx` lui transmet l’état et pose les actions du tour en HTML au centre du plateau. Les géométries partagées (`SHARED`) ne sont jamais libérées avec une instance : l’accueil et l’entrée du jeu en affichent aussi un.
+- Textes, noms de cases, cartes et erreurs dans `games/grand-tour/i18n.ts`. Tests : `tests/grand-tour.test.ts`, dont des parties aléatoires complètes qui contrôlent la cohérence des comptes, et un passage Grand Tour dans `npm run test:integration`.
+
 ## Répartition des responsabilités (Mappa)
 
 - `lib/game.ts` porte les règles, les transitions et la projection `publicGame`. Conserver le moteur indépendant du réseau et du stockage, avec le temps et l’aléatoire injectables pour les tests.
