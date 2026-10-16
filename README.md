@@ -79,6 +79,16 @@ Options choisies par l’hôte dans la salle d’attente :
 - **Enchères** : une case refusée part aux enchères ; la meilleure offre l’emporte dix secondes après la dernière mise.
 - **Cagnotte de l’Escale** : taxes et amendes s’accumulent sur l’Escale pour qui s’y arrête.
 
+**Mode fun** (règles rapides des jeux de plateau en ligne, toutes activées d’un coup, chacune désactivable) :
+
+- **Construction libre** : on construit sur toute ville achetée, sans avoir la couleur complète ni construire de façon égale.
+- **Rachat forcé** : après avoir payé le loyer d’une ville adverse sans hôtel, on peut la racheter à son propriétaire au double de sa valeur (prix et maisons).
+- **Tour du monde** : la case Contrôle n’envoie plus à la douane ; on s’envole vers une case libre ou à soi.
+- **Festival à l’Escale** : qui s’arrête à l’Escale choisit une de ses villes, dont le loyer double.
+- **Victoires éclair** : on gagne aussitôt avec les quatre aéroports, trois couleurs complètes ou toutes les villes d’un côté.
+
+**Durée de la partie** : libre, 20, 30 ou 45 minutes ; à la fin du temps, la plus grosse fortune gagne.
+
 Simplification : la carte « anniversaire » ne met jamais un autre joueur en dette ; il donne ce qu’il a.
 
 ## Échecs et Dames

@@ -4,7 +4,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, Check, Link2, X } from "lucide-react";
 import { fmt } from "@/lib/i18n";
 import type { Action } from "@/platform/contract";
-import { EMBLEM_COUNT, MIN_PLAYERS, START_CASH, type PublicGame } from "../engine";
+import { EMBLEM_COUNT, MIN_PLAYERS, START_CASH, TIME_LIMITS, type PublicGame } from "../engine";
+
+const FAST_OPTIONS = ["freeBuild", "buyout", "worldTour", "festival", "quickWins"] as const;
 import { PAWN_HEX, type GtTexts } from "../i18n";
 import Board, { Pawn } from "./Board";
 import type { Lang } from "@/lib/world";
@@ -115,6 +117,9 @@ export function Lobby({ game, tx, busy, act, copied, onCopy }: {
   copied: boolean;
   onCopy: () => void;
 }) {
+  const [funOpen, setFunOpen] = useState(false);
+  const onCount = FAST_OPTIONS.filter((k) => game.options[k] === true).length;
+  const fun = onCount === FAST_OPTIONS.length ? "all" : onCount ? "some" : "none";
   const isHost = game.host === game.me;
   const me = game.players.find((p) => p.id === game.me)!;
   return (
@@ -163,6 +168,38 @@ export function Lobby({ game, tx, busy, act, copied, onCopy }: {
             <button className="gt-switch" aria-pressed={game.options[key]} aria-label={title} disabled={!isHost || busy} onClick={() => void act({ type: "options", [key]: !game.options[key] })} />
           </div>
         ))}
+        {/* Fun mode: one switch for every fast rule, and a sub-menu to turn some back off. */}
+        <div className="gt-option gt-fun">
+          <div><b>{tx.funMode}</b><small>{tx.funModeHint}</small></div>
+          <button
+            className={"gt-switch" + (fun === "some" ? " mixed" : "")}
+            aria-pressed={fun === "all" ? true : fun === "some" ? "mixed" : false}
+            aria-label={tx.funMode}
+            disabled={!isHost || busy}
+            onClick={() => void act({ type: "options", ...Object.fromEntries(FAST_OPTIONS.map((k) => [k, fun !== "all"])) })}
+          />
+        </div>
+        <button className="gt-link gt-fun-more" aria-expanded={funOpen} onClick={() => setFunOpen(!funOpen)}>
+          {funOpen ? tx.funHide : fmt(tx.funShow, { n: FAST_OPTIONS.filter((k) => game.options[k] === true).length })}
+        </button>
+        {funOpen && (
+          <div className="gt-fun-list">
+            {FAST_OPTIONS.map((key) => (
+              <div className="gt-option" key={key}>
+                <div><b>{tx[key]}</b><small>{tx[`${key}Hint`]}</small></div>
+                <button className="gt-switch" aria-pressed={game.options[key] === true} aria-label={tx[key]} disabled={!isHost || busy} onClick={() => void act({ type: "options", [key]: game.options[key] !== true })} />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="gt-option">
+          <div><b>{tx.timeLimit}</b><small>{tx.timeLimitHint}</small></div>
+          <div className="gt-seg" role="group" aria-label={tx.timeLimit}>
+            {TIME_LIMITS.map((m) => (
+              <button key={m} aria-pressed={(game.options.timeLimit ?? 0) === m} disabled={!isHost || busy} onClick={() => void act({ type: "options", timeLimit: m })}>{m ? fmt(tx.minutes, { n: m }) : tx.noLimit}</button>
+            ))}
+          </div>
+        </div>
         {isHost ? (
           <button className="gt-btn go big" disabled={busy || game.players.length < MIN_PLAYERS} onClick={() => void act({ type: "start" })}>
             {tx.start} <ArrowRight size={18} />
@@ -215,6 +252,10 @@ export function Rules({ tx, game, onClose }: { tx: GtTexts; game: PublicGame | n
               <li><b>{tx.startCash}</b><span>{fmt("{n}", { n: game.options.startCash })}</span></li>
               <li><b>{tx.auctions}</b><span>{game.options.auctions ? tx.optionOn : tx.optionOff}</span></li>
               <li><b>{tx.parkingPot}</b><span>{game.options.parkingPot ? tx.optionOn : tx.optionOff}</span></li>
+              {FAST_OPTIONS.map((key) => (
+                <li key={key}><b>{tx[key]}</b><span>{game.options[key] === true ? tx.optionOn : tx.optionOff}</span></li>
+              ))}
+              <li><b>{tx.timeLimit}</b><span>{game.options.timeLimit ? fmt(tx.minutes, { n: game.options.timeLimit }) : tx.noLimit}</span></li>
             </ul>
           </>
         )}

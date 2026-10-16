@@ -6,6 +6,7 @@ import {
   applyAction,
   createGame,
   joinGame,
+  buyoutPrice,
   liquidity,
   publicGame,
   rent,
@@ -226,7 +227,8 @@ test("random full games never break the books", () => {
   const pick = <T,>(a: T[]) => a[Math.floor(rand() * a.length)];
   let finished = 0;
   for (let n = 0; n < 30; n++) {
-    let g = table(2 + (n % 5), { parkingPot: n % 2 === 0, auctions: n % 3 !== 0, startCash: 1000 });
+    const fast = n % 3 === 1;
+    let g = table(2 + (n % 5), { parkingPot: n % 2 === 0, auctions: n % 3 !== 0, startCash: 1000, freeBuild: fast, buyout: fast, worldTour: fast, festival: fast, quickWins: fast && n % 2 === 0 });
     let at = NOW;
     for (let step = 0; step < 6000 && g.phase === "playing"; step++) {
       at += 50;
@@ -273,6 +275,14 @@ test("random full games never break the books", () => {
           const raised = owned.some((i) => tryAct(q.id, { type: "sell", square: i }) || tryAct(q.id, { type: "mortgage", square: i }));
           if (!raised) tryAct(q.id, { type: "bankrupt" });
         }
+      } else if (g.step === "buyout") {
+        if (rand() < 0.5 || !tryAct(q.id, { type: "buyout" })) tryAct(q.id, { type: "skip" });
+      } else if (g.step === "travel") {
+        const free = Array.from({ length: 40 }, (_, i) => i).filter((i) => i !== q.pos && (!g.holdings[String(i)] || g.holdings[String(i)].owner === q.id));
+        tryAct(q.id, { type: "travel", square: pick(free) });
+      } else if (g.step === "festival") {
+        const own = Object.keys(g.holdings).filter((i) => g.holdings[i].owner === q.id).map(Number);
+        if (!own.length || !tryAct(q.id, { type: "festival", square: pick(own) })) tryAct(q.id, { type: "skip" });
       } else assert.fail("a turn waited on step " + g.step);
       void p;
       for (const x of g.players) {
@@ -291,4 +301,96 @@ test("random full games never break the books", () => {
   }
   // The random tables must actually reach bankruptcies and winners, not just wander.
   assert.ok(finished >= 15, `only ${finished} games finished`);
+});
+
+// ---------- Fast online rules (host options) ----------
+test("free building: a house on a lone city, no even building", () => {
+  let g = table(2, { freeBuild: true });
+  const a = active(g);
+  g.holdings = { "1": { owner: a.id, houses: 0, mortgaged: false } };
+  g = act(g, a.id, { type: "build", square: 1 });
+  g = act(g, a.id, { type: "build", square: 1 });
+  assert.equal(g.holdings["1"].houses, 2);
+  assert.equal(rent(g, 1, 7), 30);
+  let h = table(2);
+  const b = active(h);
+  h.holdings = { "1": { owner: b.id, houses: 0, mortgaged: false } };
+  assert.throws(() => act(h, b.id, { type: "build", square: 1 }), /needFullGroup/);
+});
+
+test("buyout: after paying rent, the payer may buy the city at twice its worth", () => {
+  let g = table(2, { buyout: true });
+  const a = active(g).id, b = other(g).id;
+  g.holdings = { "3": { owner: b, houses: 1, mortgaged: false } };
+  g = act(g, a, { type: "roll" }, dice(1, 2)); // Marrakech, 1 house: rent 20
+  assert.equal(g.step, "buyout");
+  assert.equal(g.offer!.price, buyoutPrice(g, 3));
+  assert.equal(g.offer!.price, 2 * (60 + 50));
+  g = act(g, a, { type: "buyout" });
+  assert.equal(g.holdings["3"].owner, a);
+  assert.equal(byId(g, a).cash, 1500 - 20 - 220);
+  assert.equal(byId(g, b).cash, 1500 + 20 + 220);
+  assert.notEqual(g.active, a);
+  // A hotel cannot be bought out, and without the option nothing is offered.
+  let h = table(2, { buyout: true });
+  const c = active(h).id;
+  h.holdings = { "3": { owner: other(h).id, houses: 5, mortgaged: false } };
+  h = act(h, c, { type: "roll" }, dice(1, 2));
+  assert.notEqual(h.step, "buyout");
+  let k = table(2);
+  const d = active(k).id;
+  k.holdings = { "3": { owner: other(k).id, houses: 0, mortgaged: false } };
+  k = act(k, d, { type: "roll" }, dice(1, 2));
+  assert.notEqual(k.step, "buyout");
+});
+
+test("world tour: the Check square flies to a free square instead of customs", () => {
+  let g = table(2, { worldTour: true });
+  const a = active(g), b = other(g);
+  a.pos = 25;
+  g.holdings = { "39": { owner: b.id, houses: 0, mortgaged: false } };
+  g = act(g, a.id, { type: "roll" }, dice(2, 3)); // 30: Check
+  assert.equal(g.step, "travel");
+  assert.ok(!byId(g, a.id).jailed);
+  assert.throws(() => act(g, a.id, { type: "travel", square: 39 }), /notFree/);
+  g = act(g, a.id, { type: "travel", square: 37 }); // New York, for sale
+  assert.equal(byId(g, a.id).pos, 37);
+  assert.equal(g.step, "buy");
+});
+
+test("festival: the Stopover doubles the rent of a city of one's choice", () => {
+  let g = table(2, { festival: true });
+  const a = active(g);
+  a.pos = 15;
+  g.holdings = { "1": { owner: a.id, houses: 0, mortgaged: false } };
+  g = act(g, a.id, { type: "roll" }, dice(2, 3)); // 20: Stopover
+  assert.equal(g.step, "festival");
+  g = act(g, a.id, { type: "festival", square: 1 });
+  assert.equal(g.festival, 1);
+  assert.equal(rent(g, 1, 7), 4);
+  assert.notEqual(g.active, a.id);
+});
+
+test("quick wins: the four airports end the game at once", () => {
+  let g = table(3, { quickWins: true });
+  const a = active(g), b = other(g);
+  g.holdings = { "5": { owner: a.id, houses: 0, mortgaged: false }, "15": { owner: a.id, houses: 0, mortgaged: false }, "25": { owner: a.id, houses: 0, mortgaged: false } };
+  a.pos = 32;
+  g = act(g, a.id, { type: "roll" }, dice(1, 2)); // 35: West airport, for sale
+  g = act(g, a.id, { type: "buy" });
+  assert.equal(g.phase, "finished");
+  assert.equal(g.winner, a.id);
+  assert.equal(g.winReason, "airports");
+  void b;
+});
+
+test("a timed game ends on time and the richest player wins", () => {
+  let g = table(2, { timeLimit: 20 });
+  const a = active(g), b = other(g);
+  assert.equal(g.endsAt, NOW + 20 * 60000);
+  g.holdings = { "39": { owner: b.id, houses: 0, mortgaged: false } };
+  g = act(g, a.id, { type: "heartbeat" }, rand, NOW + 20 * 60000 + 1);
+  assert.equal(g.phase, "finished");
+  assert.equal(g.winner, b.id);
+  assert.equal(g.winReason, "time");
 });

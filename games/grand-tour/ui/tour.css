@@ -217,3 +217,13 @@
 @media (prefers-reduced-motion: reduce) {
   .gt.gt-tour, .gt-roll, .gt-seat.on::after, .gt-dots i { animation: none; }
 }
+
+/* Fast rules: the lobby group, the game clock */
+.gt-timeleft { position: absolute; left: 50%; top: 18px; z-index: 6; translate: -50% 0; padding: 7px 16px; border-radius: 999px; background: #ffffff; box-shadow: var(--gt-card-shadow); font: 16px var(--f-gt-display); font-variant-numeric: tabular-nums; }
+.gt-timeleft.low { background: var(--gt-red); color: #fff; animation: gt-dot 1s ease-in-out infinite; }
+.gt-toasts.below { top: 64px; }
+.gt-tour .gt-fun b { font: 17px var(--f-gt-display); color: #ff8a1f; }
+.gt-tour .gt-fun-more { justify-self: start; margin-top: -6px; }
+.gt-tour .gt-fun-list { display: grid; margin-left: 12px; padding-left: 12px; border-left: 3px solid #ffd9b3; }
+.gt-tour .gt-switch.mixed { background: #ffc98a; }
+.gt-tour .gt-switch.mixed::after { transform: translateX(9px); background: #fff; }

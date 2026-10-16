@@ -33,8 +33,33 @@ export const MAX_TRADES = 12;
 const OFFLINE_MS = 60000;
 const KEPT_EVENTS = 80;
 
-/** `parkingPot`: taxes and fines pile up on the Stopover square for whoever lands there. */
-export type Options = { startCash: number; parkingPot: boolean; auctions: boolean };
+/**
+ * `parkingPot`: taxes and fines pile up on the Stopover square for whoever lands there.
+ * The fast online rules, all optional: `freeBuild` builds without the whole colour or even
+ * building; `buyout` lets a player who just paid rent on a city buy it from its owner at twice
+ * its worth (not a hotel); `worldTour` turns the Check square into a flight to any free square
+ * or one of the player's own; `festival` lets whoever stops at the Stopover double the rent of one
+ * of their cities; `quickWins` ends the game at once for a player holding the four airports,
+ * three whole colours, or every city on one side; `timeLimit` (minutes, 0 for none) ends it on
+ * time and the richest player wins.
+ */
+export type Options = {
+  startCash: number;
+  parkingPot: boolean;
+  auctions: boolean;
+  freeBuild: boolean;
+  buyout: boolean;
+  worldTour: boolean;
+  festival: boolean;
+  quickWins: boolean;
+  timeLimit: number;
+};
+export const TIME_LIMITS = [0, 20, 30, 45] as const;
+/** What a buyout costs, as a multiple of the city's price and buildings. */
+export const BUYOUT_FACTOR = 2;
+const FAST_RULES = ["freeBuild", "buyout", "worldTour", "festival", "quickWins"] as const;
+/** Options of rooms saved before a rule existed read as off. */
+export const opt = (g: Pick<Game, "options">, key: (typeof FAST_RULES)[number]) => g.options[key] === true;
 export type Player = {
   id: string;
   name: string;
@@ -58,9 +83,11 @@ export type Trade = { id: string; from: string; to: string; give: Bundle; want: 
 /**
  * Where the active player's turn stands:
  * roll — must roll (or leave jail); buy — may buy the square they stand on;
- * auction — everyone may bid for it; debt — must raise cash or go bankrupt; end — may end the turn.
+ * auction — everyone may bid for it; debt — must raise cash or go bankrupt; buyout — may buy the
+ * opponent's city they just paid rent on; travel — picks where to fly (World Tour); festival —
+ * picks a city whose rent doubles; end — the turn is over and passes on.
  */
-export type Step = "roll" | "buy" | "auction" | "debt" | "end";
+export type Step = "roll" | "buy" | "auction" | "debt" | "buyout" | "travel" | "festival" | "end";
 export type GameEvent = { id: string; key: string; args: string[]; at: number };
 export type Phase = "lobby" | "playing" | "finished";
 export type Game = {
@@ -97,6 +124,14 @@ export type Game = {
   pauseReason: "offline" | "host" | null;
   pausedRemaining: number | null;
   winner: string | null;
+  /** How the game was won: "bankrupt", "time", "airports", "colours" or "side". */
+  winReason?: string | null;
+  /** The city hosting the festival: its rent is doubled. */
+  festival?: number | null;
+  /** The city the active player may buy out, and its price. */
+  offer?: { square: number; price: number } | null;
+  /** When a timed game ends. */
+  endsAt?: number | null;
   turnNumber: number;
   events: GameEvent[];
   requests?: Record<string, string[]>;
@@ -136,12 +171,27 @@ export function fullGroup(g: Pick<Game, "holdings">, i: number, owner: string) {
   return groupSquares(s.group).every((j) => g.holdings[String(j)]?.owner === owner);
 }
 /** Rent due on square `i` for a dice total of `dice`; 0 when unowned or mortgaged. */
-export function rent(g: Pick<Game, "holdings">, i: number, dice: number) {
+export function rent(g: Pick<Game, "holdings"> & { festival?: number | null }, i: number, dice: number) {
   const s = property(i), h = g.holdings[String(i)];
   if (!s || !h || h.mortgaged) return 0;
-  if (s.kind === "city") return h.houses ? s.rents[h.houses] : s.rents[0] * (fullGroup(g, i, h.owner) ? 2 : 1);
+  const festival = g.festival === i ? 2 : 1;
+  if (s.kind === "city") return (h.houses ? s.rents[h.houses] : s.rents[0] * (fullGroup(g, i, h.owner) ? 2 : 1)) * festival;
   const mine = kindSquares(s.kind).filter((j) => g.holdings[String(j)]?.owner === h.owner).length;
   return s.kind === "airport" ? AIRPORT_RENTS[mine - 1] : dice * UTILITY_FACTORS[mine - 1];
+}
+/** What a city is worth to buy out: twice its price and buildings. */
+export function buyoutPrice(g: Pick<Game, "holdings">, i: number) {
+  const s = property(i), h = g.holdings[String(i)];
+  if (s?.kind !== "city" || !h) return 0;
+  return BUYOUT_FACTOR * (s.price + h.houses * s.house);
+}
+/** A player's fortune: cash, squares at their price (half when mortgaged), buildings at cost. */
+export function worth(g: Pick<Game, "holdings" | "players">, id: string) {
+  const p = g.players.find((x) => x.id === id);
+  return (p?.cash ?? 0) + ownedBy(g, id).reduce((sum, i) => {
+    const s = property(i)!, h = g.holdings[String(i)];
+    return sum + (h.mortgaged ? mortgageValue(s) : s.price) + (s.kind === "city" ? h.houses * s.house : 0);
+  }, 0);
 }
 /** Cash a player could raise right now by selling every building and mortgaging every square. */
 export function liquidity(g: Pick<Game, "holdings">, owner: string) {
@@ -182,7 +232,7 @@ export function createGame(code: string, input: Record<string, unknown>, hash: s
     host: p.id,
     players: [p],
     phase: "lobby",
-    options: { startCash: 1500, parkingPot: false, auctions: true },
+    options: { startCash: 1500, parkingPot: false, auctions: true, freeBuild: false, buyout: false, worldTour: false, festival: false, quickWins: false, timeLimit: 0 },
     holdings: {},
     active: p.id,
     step: "roll",
@@ -229,6 +279,10 @@ function start(g: Game, random: () => number) {
   g.trades = [];
   g.pot = 0;
   g.winner = null;
+  g.winReason = null;
+  g.festival = null;
+  g.offer = null;
+  g.endsAt = g.options.timeLimit ? g.updated + g.options.timeLimit * 60000 : null;
   g.phase = "playing";
   g.turnNumber = 0;
   beginTurn(g, g.players[0].id);
@@ -241,6 +295,7 @@ function beginTurn(g: Game, id: string) {
   g.again = false;
   g.debt = null;
   g.auction = null;
+  g.offer = null;
   g.deadline = null;
   g.turnNumber++;
 }
@@ -253,7 +308,7 @@ function nextPlayer(g: Game) {
 }
 /** Once the square is settled: a double plays again, otherwise the turn may end. */
 function settle(g: Game) {
-  if (g.debt || g.step === "buy" || g.step === "auction") return;
+  if (g.debt || ["buy", "auction", "buyout", "travel", "festival"].includes(g.step)) return;
   const p = byId(g, g.active);
   g.step = g.again && !p.jailed && inGame(p) ? "roll" : "end";
 }
@@ -309,7 +364,12 @@ function jump(g: Game, p: Player, to: number, dice: number, random: () => number
 
 function land(g: Game, p: Player, dice: number, random: () => number, rentFactor = 1): void {
   const s = BOARD[p.pos];
-  if (s.kind === "toJail") return sendToJail(g, p);
+  if (s.kind === "toJail") {
+    if (!opt(g, "worldTour")) return sendToJail(g, p);
+    g.step = "travel";
+    log(g, "worldTour", p.name);
+    return;
+  }
   if (s.kind === "tax") {
     log(g, "tax", p.name, s.amount);
     return pay(g, p, null, s.amount);
@@ -320,6 +380,7 @@ function land(g: Game, p: Player, dice: number, random: () => number, rentFactor
       collect(g, p, g.pot);
       g.pot = 0;
     }
+    if (opt(g, "festival") && ownedBy(g, p.id).some((i) => property(i)!.kind === "city" && !holding(g, i)!.mortgaged)) g.step = "festival";
     return;
   }
   if (s.kind === "chance" || s.kind === "chest") return drawCard(g, p, s.kind, dice, random);
@@ -335,6 +396,14 @@ function land(g: Game, p: Player, dice: number, random: () => number, rentFactor
   const due = rent(g, p.pos, dice) * rentFactor;
   log(g, "rent", p.name, owner.name, due, p.pos);
   pay(g, p, owner, due);
+  // Rent paid in full on a city without a hotel: the payer may buy it out.
+  if (opt(g, "buyout") && !g.debt && BOARD[p.pos].kind === "city" && h.houses < HOTEL) {
+    const price = buyoutPrice(g, p.pos);
+    if (p.cash >= price) {
+      g.offer = { square: p.pos, price };
+      g.step = "buyout";
+    }
+  }
 }
 
 function drawCard(g: Game, p: Player, deck: "chance" | "chest", dice: number, random: () => number): void {
@@ -473,11 +542,15 @@ function closeAuction(g: Game) {
 function build(g: Game, p: Player, i: number) {
   const s = sq(i), h = holding(g, i);
   if (s.kind !== "city" || !h || h.owner !== p.id) fail("notOwner");
-  if (!fullGroup(g, i, p.id)) fail("needFullGroup");
-  const group = groupSquares(s.group).map((j) => holding(g, j)!);
-  if (group.some((x) => x.mortgaged)) fail("groupMortgaged");
   if (h.houses >= HOTEL) fail("maxBuildings");
-  if (h.houses > Math.min(...group.map((x) => x.houses))) fail("buildEvenly");
+  if (opt(g, "freeBuild")) {
+    if (h.mortgaged) fail("groupMortgaged");
+  } else {
+    if (!fullGroup(g, i, p.id)) fail("needFullGroup");
+    const group = groupSquares(s.group).map((j) => holding(g, j)!);
+    if (group.some((x) => x.mortgaged)) fail("groupMortgaged");
+    if (h.houses > Math.min(...group.map((x) => x.houses))) fail("buildEvenly");
+  }
   if (p.cash < s.house) fail("notEnoughCash");
   p.cash -= s.house;
   h.houses++;
@@ -487,8 +560,10 @@ function sell(g: Game, p: Player, i: number) {
   const s = sq(i), h = holding(g, i);
   if (s.kind !== "city" || !h || h.owner !== p.id) fail("notOwner");
   if (!h.houses) fail("noBuildings");
-  const group = groupSquares(s.group).map((j) => holding(g, j)!);
-  if (h.houses < Math.max(...group.map((x) => x.houses))) fail("buildEvenly");
+  if (!opt(g, "freeBuild")) {
+    const group = groupSquares(s.group).map((j) => holding(g, j)!);
+    if (h.houses < Math.max(...group.map((x) => x.houses))) fail("buildEvenly");
+  }
   h.houses--;
   p.cash += s.house / 2;
   log(g, "sold", p.name, i, h.houses);
@@ -497,7 +572,7 @@ function mortgage(g: Game, p: Player, i: number) {
   const s = sq(i), h = holding(g, i);
   if (!h || h.owner !== p.id) fail("notOwner");
   if (h.mortgaged) fail("alreadyMortgaged");
-  if (s.kind === "city" && groupSquares(s.group).some((j) => holding(g, j)?.houses)) fail("sellBuildingsFirst");
+  if (s.kind === "city" && (opt(g, "freeBuild") ? h.houses : groupSquares(s.group).some((j) => holding(g, j)?.houses))) fail("sellBuildingsFirst");
   h.mortgaged = true;
   p.cash += mortgageValue(s);
   log(g, "mortgaged", p.name, i);
@@ -544,16 +619,31 @@ function bankrupt(g: Game, p: Player, to: Player | null) {
   if (g.debt?.player === p.id) g.debt = null;
   if (g.active === p.id) nextPlayer(g);
 }
-function finish(g: Game, winner: Player) {
+function finish(g: Game, winner: Player, reason = "bankrupt") {
   g.phase = "finished";
   g.winner = winner.id;
+  g.winReason = reason;
   g.step = "end";
   g.deadline = null;
   g.auction = null;
   g.debt = null;
   g.paused = false;
   g.pauseReason = null;
-  log(g, "won", winner.name);
+  g.offer = null;
+  log(g, reason === "bankrupt" ? "won" : "wonBy", winner.name, reason);
+}
+
+/** The fast wins: four airports, three whole colours, or every city on one side of the board. */
+function quickWin(g: Game) {
+  if (!opt(g, "quickWins") || g.phase !== "playing") return;
+  const sides = [[1, 9], [11, 19], [21, 29], [31, 39]].map(([a, b]) => BOARD.flatMap((s, i) => (s.kind === "city" && i >= a && i <= b ? [i] : [])));
+  const groups = [...new Set(BOARD.flatMap((s) => (s.kind === "city" ? [s.group] : [])))];
+  for (const p of alive(g)) {
+    const mine = (i: number) => holding(g, i)?.owner === p.id;
+    if (kindSquares("airport").every(mine)) return finish(g, p, "airports");
+    if (groups.filter((gr) => groupSquares(gr).every(mine)).length >= 3) return finish(g, p, "colours");
+    if (sides.some((side) => side.every(mine))) return finish(g, p, "side");
+  }
 }
 
 function bundle(v: unknown): Bundle {
@@ -580,7 +670,16 @@ function transfer(g: Game, from: Player, to: Player, b: Bundle) {
 
 /** A settled turn passes on by itself: nobody has to press "end of turn". */
 function advance(g: Game) {
+  quickWin(g);
   if (g.phase === "playing" && g.step === "end") nextPlayer(g);
+}
+/** A timed game ends on time: the richest player still in wins. */
+function timeUp(g: Game, now: number) {
+  if (g.phase !== "playing" || !g.endsAt || now < g.endsAt) return false;
+  const best = alive(g).toSorted((a, b) => worth(g, b.id) - worth(g, a.id))[0];
+  log(g, "timeUp");
+  finish(g, best, "time");
+  return true;
 }
 
 export function maintenance(g: Game, now: number) {
@@ -590,6 +689,7 @@ export function maintenance(g: Game, now: number) {
 }
 function upkeep(g: Game, now: number) {
   let changed = false;
+  if (!g.paused && timeUp(g, now)) return true;
   const online = g.players.toSorted((a, b) => a.joined - b.joined).filter((p) => !p.left && now - p.lastSeen < OFFLINE_MS);
   if (!online.some((p) => p.id === g.host) && online.length) {
     g.host = online[0].id;
@@ -677,7 +777,8 @@ function run(input: Game, actor: string, action: Action, random: () => number, n
       hostOnly();
       if (g.phase !== "lobby") fail("alreadyStarted");
       if (action.startCash !== undefined) g.options.startCash = START_CASH.find((c) => c === action.startCash) ?? fail("invalidAmount");
-      for (const key of ["parkingPot", "auctions"] as const) if (action[key] !== undefined) g.options[key] = action[key] === true;
+      for (const key of ["parkingPot", "auctions", ...FAST_RULES] as const) if (action[key] !== undefined) g.options[key] = action[key] === true;
+      if (action.timeLimit !== undefined) g.options.timeLimit = TIME_LIMITS.find((m) => m === action.timeLimit) ?? fail("invalidAmount");
       return g;
     }
     case "start":
@@ -826,6 +927,49 @@ function run(input: Game, actor: string, action: Action, random: () => number, n
     case "decline":
       myTurn("buy");
       decline(g, p, now);
+      return g;
+    case "buyout": {
+      myTurn("buyout");
+      const o = g.offer!, h = holding(g, o.square)!;
+      const owner = byId(g, h.owner);
+      if (p.cash < o.price) fail("notEnoughCash");
+      p.cash -= o.price;
+      owner.cash += o.price;
+      h.owner = p.id;
+      g.trades = g.trades.filter((t) => ![...t.give.squares, ...t.want.squares].includes(o.square));
+      log(g, "boughtOut", p.name, owner.name, o.square, o.price);
+      g.offer = null;
+      g.step = "end";
+      settle(g);
+      return g;
+    }
+    case "travel": {
+      myTurn("travel");
+      const to = integer(action.square, 0, SQUARES - 1);
+      if (to === p.pos) fail("invalidSquare");
+      const h = holding(g, to);
+      if (h && h.owner !== p.id) fail("notFree");
+      log(g, "flew", p.name, to);
+      g.step = "end";
+      jump(g, p, to, g.dice ? g.dice[0] + g.dice[1] : 7, random);
+      settle(g);
+      return g;
+    }
+    case "festival": {
+      myTurn("festival");
+      const i = square(), h = holding(g, i);
+      if (property(i)?.kind !== "city" || !h || h.owner !== p.id || h.mortgaged) fail("notOwner");
+      g.festival = i;
+      log(g, "festival", p.name, i);
+      g.step = "end";
+      settle(g);
+      return g;
+    }
+    case "skip":
+      myTurn("buyout", "travel", "festival");
+      g.offer = null;
+      g.step = "end";
+      settle(g);
       return g;
     case "payDebt": {
       myTurn("debt");

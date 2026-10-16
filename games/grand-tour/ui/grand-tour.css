@@ -37,7 +37,7 @@
 .gt-orb svg { width: 19px; height: 19px; }
 .gt-orb.danger { background: var(--gt-danger); color: #fff; border-color: transparent; }
 .gt-seg { display: flex; padding: 3px; border-radius: 999px; background: #0a1830; }
-.gt-seg button { padding: 6px 12px; border-radius: 999px; font: 700 13px var(--f-gt); color: var(--gt-grey); }
+.gt-seg button { padding: 6px 12px; border-radius: 999px; font: 700 13px var(--f-gt); color: var(--gt-grey); white-space: nowrap; }
 .gt-seg button[aria-pressed="true"] { background: var(--gt-text); color: var(--gt-bg); }
 .gt-seg button:disabled { cursor: default; }
 
@@ -93,7 +93,7 @@
 .gt-entrance-board { position: relative; margin-top: 20px; width: min(100%, 600px); aspect-ratio: 4 / 3; border-radius: 26px; overflow: hidden; box-shadow: 0 0 0 3px #2b4f80, 0 0 0 6px #0a183099, 0 30px 60px #0009; }
 
 /* Waiting room */
-.gt-lobby { position: relative; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 420px)); justify-content: center; align-content: center; align-items: start; gap: 20px; padding: 12px var(--gt-gutter) 32px; }
+.gt-lobby { position: relative; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 420px)); justify-content: center; align-content: safe center; align-items: start; gap: 20px; padding: 12px var(--gt-gutter) 32px; }
 .gt-code { font: clamp(44px, 7vw, 60px)/1 var(--f-gt-display); letter-spacing: .1em; color: var(--gt-accent); -webkit-text-stroke: 5px #0a1830; paint-order: stroke fill; text-align: center; margin: 2px 0 4px; }
 .gt-lobby-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .gt-lobby-players li { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 12px; background: var(--gt-bg); border: 1px solid #ffffff12; font-weight: 700; }

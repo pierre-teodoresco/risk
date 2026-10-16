@@ -63,6 +63,7 @@ function DiceIcon() {
 export default function Table({ game, tx, lang, act, busy }: Props) {
   const [now, setNow] = useState(() => Date.now()),
     [selected, setSelected] = useState<number | null>(null),
+    [target, setTarget] = useState<number | null>(null),
     [trading, setTrading] = useState<string | null>(null),
     [drawer, setDrawer] = useState(false),
     [holding, setHolding] = useState(false),
@@ -214,6 +215,11 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
     return () => clearTimeout(t);
   }, [rolled]);
 
+  const picking = game.active === game.me && (game.step === "travel" || game.step === "festival");
+  useEffect(() => {
+    setTarget(null);
+  }, [game.step, game.active]);
+  const timeLeft = game.endsAt && game.phase === "playing" ? Math.max(0, game.endsAt - now - skew.current) : null;
   const auction = game.auction;
   const remaining = game.deadline ? Math.max(0, (game.deadline - now - skew.current) / 1000) : 0;
   const card = game.lastCard && settled && now + skew.current - game.lastCard.at < CARD_SHOWN_MS ? game.lastCard : null;
@@ -285,6 +291,40 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
         </div>
       </div>
     );
+  } else if (myTurn && game.step === "buyout" && game.offer && settled) {
+    const o = game.offer, s = BOARD[o.square];
+    const owner = game.players.find((p) => p.id === game.holdings[String(o.square)]?.owner);
+    dock = (
+      <div className="gt-postcard" style={{ "--band": s.kind === "city" ? GROUP_HEX[s.group] : "#3d7ff0" } as CSSProperties} key={"bo" + o.square}>
+        <header>
+          <span className="gt-flag">{flagOf(o.square) ?? "🏙"}</span>
+          <span><small>{tx.buyout}</small><b>{fmt(tx.buyoutTitle, { city: squareName(o.square, lang) })}</b></span>
+        </header>
+        <p>{fmt(tx.buyoutText, { name: owner?.name ?? "", price: money(o.price) })}</p>
+        <div className="gt-actions">
+          <button className="gt-btn go big" disabled={busy || me.cash < o.price} onClick={() => void act({ type: "buyout" })}>{fmt(tx.buyoutGo, { price: money(o.price) })}</button>
+          <button className="gt-btn ghost" disabled={busy} onClick={() => void act({ type: "skip" })}>{tx.skip}</button>
+        </div>
+      </div>
+    );
+  } else if (myTurn && (game.step === "travel" || game.step === "festival") && settled) {
+    const travel = game.step === "travel";
+    const ok = target !== null && (travel ? target !== me.pos && (!game.holdings[String(target)] || game.holdings[String(target)].owner === me.id) : BOARD[target].kind === "city" && game.holdings[String(target)]?.owner === me.id && !game.holdings[String(target)].mortgaged);
+    dock = (
+      <div className="gt-postcard" style={{ "--band": travel ? "#3d7ff0" : "#ff8a1f" } as CSSProperties}>
+        <header>
+          <span className="gt-flag">{travel ? <Plane /> : "🎉"}</span>
+          <span><b>{travel ? tx.travelTitle : tx.festivalTitle}</b></span>
+        </header>
+        <p>{travel ? tx.travelText : tx.festivalText}</p>
+        <div className="gt-actions">
+          <button className="gt-btn go big" disabled={busy || !ok} onClick={() => void act(travel ? { type: "travel", square: target } : { type: "festival", square: target })}>
+            {ok ? fmt(travel ? tx.travelGo : tx.festivalGo, { city: squareName(target!, lang) }) : travel ? tx.travelTitle : tx.festivalTitle}
+          </button>
+          <button className="gt-btn ghost" disabled={busy} onClick={() => void act({ type: "skip" })}>{tx.skip}</button>
+        </div>
+      </div>
+    );
   } else if (myTurn && game.step === "roll") {
     dock = (
       <div className="gt-roll-dock">
@@ -346,7 +386,9 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
         selected={selected}
         onSelect={(i) => {
           setSelected(i);
-          setDrawer(true);
+          // Picking a destination or a festival city chooses the square; otherwise it opens its deed.
+          if (picking) setTarget(i);
+          else setDrawer(true);
         }}
         dice={game.dice ? { values: game.dice, key: rollKey } : null}
         active={game.phase === "playing" ? game.active : null}
@@ -385,7 +427,12 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
         ))}
       </div>
 
-      <div className="gt-toasts" aria-live="polite">
+      {timeLeft !== null && (
+        <span className={"gt-timeleft" + (timeLeft < 60000 ? " low" : "")}>
+          ⏱ {fmt(tx.timeLeft, { t: `${Math.floor(timeLeft / 60000)}:${String(Math.floor((timeLeft % 60000) / 1000)).padStart(2, "0")}` })}
+        </span>
+      )}
+      <div className={"gt-toasts" + (timeLeft !== null ? " below" : "")} aria-live="polite">
         {toasts.map((t) => <p key={t.id}>{t.text}</p>)}
       </div>
 
@@ -482,7 +529,7 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
           <div className="gt-dialog gt-end">
             <Crown size={44} />
             <h2 id="gt-winner">{fmt(tx.winnerTitle, { name: game.players.find((p) => p.id === game.winner)?.name ?? "" })}</h2>
-            <p className="gt-hint">{tx.winnerText}</p>
+            <p className="gt-hint">{tx.winReason[(game.winReason ?? "bankrupt") as keyof GtTexts["winReason"]] ?? tx.winnerText}</p>
             <ol className="gt-ranking">
               {game.players.toSorted((a, b) => (b.id === game.winner ? 1 : 0) - (a.id === game.winner ? 1 : 0) || worth(b) - worth(a)).map((p) => (
                 <li key={p.id}>
@@ -518,7 +565,8 @@ function SquareCard({ i, game, tx, lang, act, busy, money, onClose }: {
   const mine = h?.owner === game.me && game.phase === "playing";
   const band = s.kind === "city" ? GROUP_HEX[s.group] : "#2a2830";
   const groupHouses = s.kind === "city" ? groupSquares(s.group).map((j) => game.holdings[String(j)]?.houses ?? 0) : [];
-  const canBuild = mine && s.kind === "city" && fullGroup(game, i, game.me) && h.houses < 5 && h.houses <= Math.min(...groupHouses);
+  const free = game.options.freeBuild === true;
+  const canBuild = mine && s.kind === "city" && h.houses < 5 && (free ? !h.mortgaged : fullGroup(game, i, game.me) && h.houses <= Math.min(...groupHouses));
   const hint = s.kind === "tax" ? tx.squareHint[s.label] : !p ? tx.squareHint[s.kind as keyof GtTexts["squareHint"]] : null;
   return (
     <section className="gt-panel gt-deed" style={{ "--band": band } as CSSProperties}>
@@ -547,13 +595,13 @@ function SquareCard({ i, game, tx, lang, act, busy, money, onClose }: {
       )}
       {mine && p && (
         <div className="gt-actions">
-          {s.kind === "city" && !h.mortgaged && fullGroup(game, i, game.me) && (
+          {s.kind === "city" && !h.mortgaged && (free || fullGroup(game, i, game.me)) && (
             <button className="gt-btn ghost small" disabled={busy || !canBuild} onClick={() => void act({ type: "build", square: i })}>{fmt(tx.build, { cost: money(s.house) })}</button>
           )}
           {s.kind === "city" && h.houses > 0 && (
             <button className="gt-btn ghost small" disabled={busy} onClick={() => void act({ type: "sell", square: i })}>{fmt(tx.sell, { gain: money(s.house / 2) })}</button>
           )}
-          {!h.mortgaged && !groupHouses.some(Boolean) && (
+          {!h.mortgaged && (free ? !h.houses : !groupHouses.some(Boolean)) && (
             <button className="gt-btn ghost small" disabled={busy} onClick={() => void act({ type: "mortgage", square: i })}>{fmt(tx.mortgage, { gain: money(mortgageValue(p)) })}</button>
           )}
           {h.mortgaged && (
