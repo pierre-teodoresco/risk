@@ -211,6 +211,11 @@ function fitLines(g: CanvasRenderingContext2D, text: string, width: number, max:
   return { size, lines };
 }
 const money = (n: number) => `₲${n}`;
+/** `hex` mixed with white: k = 0 keeps the colour, 1 is white. */
+function tint(hex: string, k: number) {
+  const c = new THREE.Color(hex).lerp(new THREE.Color("#ffffff"), k);
+  return `#${c.getHexString()}`;
+}
 
 type Built = { obj: THREE.Object3D; born: number };
 type Tile = {
@@ -354,13 +359,15 @@ export class TourBoard {
 
   // ---------- Build ----------
   private buildBoard() {
-    const slab = new THREE.Mesh(this.keep(new RoundedBoxGeometry(TOTAL + 0.5, SLAB_H, TOTAL + 0.5, 5, 0.22)), plastic("#e9eef6", { roughness: 0.6, clearcoat: 0.2 }));
+    const slab = new THREE.Mesh(this.keep(new RoundedBoxGeometry(TOTAL + 0.5, SLAB_H, TOTAL + 0.5, 5, 0.22)), plastic("#dfe5ee", { roughness: 0.6, clearcoat: 0.2 }));
     slab.position.y = -SLAB_H / 2;
     slab.castShadow = slab.receiveShadow = true;
     this.scene.add(slab);
     // A darker lip under the slab, like the edge of a game box.
-    const lip = new THREE.Mesh(this.keep(new RoundedBoxGeometry(TOTAL + 0.2, 0.2, TOTAL + 0.2, 3, 0.08)), plastic("#9fb3cc", { roughness: 0.7, clearcoat: 0 }));
-    lip.position.y = -SLAB_H - 0.05;
+    // A thick darker base under the slab, like the side of a game box.
+    const lip = new THREE.Mesh(this.keep(new RoundedBoxGeometry(TOTAL + 0.3, 0.42, TOTAL + 0.3, 3, 0.1)), plastic("#6c7686", { roughness: 0.75, clearcoat: 0 }));
+    lip.position.y = -SLAB_H - 0.17;
+    lip.castShadow = true;
     this.scene.add(lip);
 
     for (let i = 0; i < SQUARES; i++) {
@@ -499,10 +506,19 @@ export class TourBoard {
           g.fillStyle = k % 2 ? "#7cc653" : "#8fd565";
           g.fillRect(k * (W / 16), 0, W / 16, H);
         }
+        // A road all round the lawn, with its dashed line.
+        g.strokeStyle = "#8e98a6";
+        g.lineWidth = 64;
+        g.strokeRect(32, 32, W - 64, H - 64);
+        g.strokeStyle = "#ffffff";
+        g.lineWidth = 6;
+        g.setLineDash([26, 22]);
+        g.strokeRect(32, 32, W - 64, H - 64);
+        g.setLineDash([]);
         g.strokeStyle = "#f3e2b0";
         g.lineWidth = 46;
         g.beginPath();
-        g.roundRect(120, 120, W - 240, H - 240, 120);
+        g.roundRect(150, 150, W - 300, H - 300, 120);
         g.stroke();
         g.fillStyle = "#f3e2b0";
         g.beginPath();
@@ -515,7 +531,7 @@ export class TourBoard {
         g.stroke();
         // Flower beds in the corners.
         const dots = ["#ff7aa2", "#ffd84a", "#ffffff", "#ff8a3d"];
-        for (const [cx, cy] of [[70, 70], [W - 70, 70], [70, H - 70], [W - 70, H - 70]])
+        for (const [cx, cy] of [[115, 115], [W - 115, 115], [115, H - 115], [W - 115, H - 115]])
           for (let k = 0; k < 26; k++) {
             g.fillStyle = dots[k % 4];
             g.beginPath();
@@ -591,6 +607,52 @@ export class TourBoard {
     this.piles.chance.position.copy(right.clone().multiplyScalar(-2.5)).add(new THREE.Vector3(-0.5, 0, -0.5));
     this.piles.chest.position.copy(right.clone().multiplyScalar(2.5)).add(new THREE.Vector3(-0.5, 0, -0.5));
     this.potGroup.position.set(-0.2, 0.1, -0.2);
+
+    // Stacks of banknotes beside the board, as on a real games night.
+    const bill = this.keep(
+      canvasTexture(256, 128, (c, W, H) => {
+        c.fillStyle = "#5cbf5a";
+        c.fillRect(0, 0, W, H);
+        c.strokeStyle = "#e8f7d9";
+        c.lineWidth = 8;
+        c.strokeRect(10, 10, W - 20, H - 20);
+        c.fillStyle = "#e8f7d9";
+        c.beginPath();
+        c.ellipse(W / 2, H / 2, 34, 34, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#3e9a3d";
+        c.font = `56px ${DISPLAY}`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillText("₲", W / 2, H / 2 + 3);
+      }),
+    );
+    const top = this.keep(new THREE.MeshPhysicalMaterial({ map: bill, roughness: 0.7 }));
+    const edge = plastic("#e9f3df", { roughness: 0.8, clearcoat: 0 });
+    const band = plastic("#ffd23f", { roughness: 0.5 });
+    const billGeo = this.keep(new THREE.BoxGeometry(1.1, 0.09, 0.55));
+    const bandGeo = this.keep(new THREE.BoxGeometry(0.14, 0.095, 0.56));
+    const outside = HALF + 1.15;
+    [[0, outside], [outside, 0], [0, -outside], [-outside, 0]].forEach(([x, z], k) => {
+      const stack = new THREE.Group();
+      for (let col = 0; col < 3; col++)
+        for (let n = 0; n < 4 + ((col + k) % 3); n++) {
+          const b = new THREE.Mesh(billGeo, [edge, edge, top, edge, edge, edge]);
+          b.position.set((col - 1) * 0.3, -SLAB_H - 0.3 + n * 0.095, (col % 2) * 0.62 - 0.3);
+          b.rotation.y = (n % 2 ? 0.04 : -0.03) + col * 0.05;
+          b.castShadow = true;
+          stack.add(b);
+          if (n % 2 === 0) {
+            const s2 = new THREE.Mesh(bandGeo, band);
+            s2.position.copy(b.position);
+            s2.rotation.y = b.rotation.y;
+            stack.add(s2);
+          }
+        }
+      stack.position.set(x, 0, z);
+      stack.rotation.y = Math.atan2(x, z);
+      this.scene.add(stack);
+    });
     this.scene.add(this.potGroup);
   }
 
@@ -678,8 +740,15 @@ export class TourBoard {
     // One clean card per square: a colour band (cities), one big symbol (the others), the name,
     // and the price on the outer edge. Nothing else, so it reads from across the table.
     const band = s.groupColors[i];
+    // Like the big online board games: each region's squares in a pale wash of its colour, an
+    // owned square in its owner's.
+    const wash = h && ownerColor && !h.mortgaged ? tint(ownerColor, 0.72) : band ? tint(band, 0.8) : null;
+    if (wash) {
+      g.fillStyle = wash;
+      g.fillRect(0, 0, W, H);
+    }
     if (band) {
-      const [by, bh] = box(0, H * 0.26);
+      const [by, bh] = box(0, H * 0.2);
       g.fillStyle = band;
       g.fillRect(0, by, W, bh);
     } else {
@@ -691,20 +760,20 @@ export class TourBoard {
     {
       const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W - 24, band ? 44 : 36, 18, (px) => `${px}px ${DISPLAY}`);
       g.fillStyle = INK;
-      const mid = y(band ? H * 0.47 : H * 0.53);
+      const mid = y(band ? H * 0.38 : H * 0.5);
       lines.forEach((l, k) => g.fillText(l, W / 2, mid + (k - (lines.length - 1) / 2) * size));
     }
     const price = s.prices[i];
     if (price !== null) {
       // An owned square shows its rent on a strip of its owner's colour.
-      const [py, ph] = box(H * 0.78, H);
+      const [py, ph] = box(H * 0.62, H);
       const rent = h ? s.rents[i] : null;
       if (h && ownerColor) {
         g.fillStyle = h.mortgaged ? "#b8bcc6" : ownerColor;
         g.fillRect(0, py, W, ph);
       }
       const text = sq.kind === "tax" ? `−${money(price)}` : h?.mortgaged ? "✕" : rent ?? money(price);
-      g.font = `${Math.min(58, W * 0.25)}px ${DISPLAY}`;
+      g.font = `${Math.min(84, W * 0.34)}px ${DISPLAY}`;
       g.fillStyle = h ? "#ffffff" : sq.kind === "tax" ? "#e2373f" : INK;
       g.fillText(text, W / 2, py + ph / 2, W - 20);
     }
