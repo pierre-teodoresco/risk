@@ -35,6 +35,7 @@ const other = (g: Game, offset = 1) => {
   const i = g.players.findIndex((p) => p.id === g.active);
   return g.players[(i + offset) % g.players.length];
 };
+const byId = (g: Game, id: string) => g.players.find((p) => p.id === id)!;
 const act = (g: Game, who: string, action: Record<string, unknown>, r: () => number = rand, at = NOW) =>
   applyAction(g, who, action as { type: string }, r, at);
 
@@ -48,7 +49,7 @@ test("a game starts with the chosen cash, everyone on Start, and the first playe
   assert.equal(BOARD.length, 40);
 });
 
-test("rolling walks the token, offers the square, and buying ends the turn", () => {
+test("rolling walks the token, offers the square, and buying passes the turn on by itself", () => {
   let g = table();
   const a = active(g).id;
   g = act(g, a, { type: "roll" }, dice(1, 2)); // 3: Marrakech
@@ -56,11 +57,10 @@ test("rolling walks the token, offers the square, and buying ends the turn", () 
   assert.equal(g.step, "buy");
   g = act(g, a, { type: "buy" });
   assert.equal(g.holdings["3"].owner, a);
-  assert.equal(active(g).cash, 1500 - 60);
-  assert.equal(g.step, "end");
-  assert.throws(() => act(g, a, { type: "roll" }), /invalidStep/);
-  g = act(g, a, { type: "end" });
+  assert.equal(byId(g, a).cash, 1500 - 60);
   assert.notEqual(g.active, a);
+  assert.equal(g.step, "roll");
+  assert.throws(() => act(g, a, { type: "roll" }), /notYourTurn/);
 });
 
 test("rent doubles on a full group, climbs with houses, and building must stay even", () => {
@@ -87,8 +87,8 @@ test("landing on an owned square pays its owner", () => {
   g.holdings = { "5": { owner: b.id, houses: 0, mortgaged: false } };
   g = act(g, a, { type: "roll" }, dice(2, 3)); // airport
   assert.equal(g.players.find((p) => p.id === b.id)!.cash, 1500 + 25);
-  assert.equal(active(g).cash, 1500 - 25);
-  assert.equal(g.step, "end");
+  assert.equal(byId(g, a).cash, 1500 - 25);
+  assert.notEqual(g.active, a);
 });
 
 test("a double plays again; a third double in a row sends to jail", () => {
@@ -100,9 +100,9 @@ test("a double plays again; a third double in a row sends to jail", () => {
   g = act(g, a, { type: "roll" }, dice(3, 3)); // 10: just visiting
   assert.equal(g.step, "roll");
   g = act(g, a, { type: "roll" }, dice(1, 1));
-  assert.equal(active(g).pos, JAIL);
-  assert.ok(active(g).jailed);
-  assert.equal(g.step, "end");
+  assert.equal(byId(g, a).pos, JAIL);
+  assert.ok(byId(g, a).jailed);
+  assert.notEqual(g.active, a);
 });
 
 test("jail: a double frees the player, three misses cost the fine", () => {
@@ -111,11 +111,11 @@ test("jail: a double frees the player, three misses cost the fine", () => {
   a.pos = JAIL;
   a.jailed = true;
   g = act(g, a.id, { type: "roll" }, dice(1, 2));
-  assert.ok(active(g).jailed);
-  assert.equal(g.step, "end");
-  g.step = "roll";
+  assert.ok(byId(g, a.id).jailed);
+  assert.notEqual(g.active, a.id);
+  g.active = a.id;
   g = act(g, a.id, { type: "roll" }, dice(1, 2));
-  g.step = "roll";
+  g.active = a.id;
   g = act(g, a.id, { type: "roll" }, dice(1, 2)); // third miss: pays and walks 3
   assert.ok(!active(g).jailed);
   assert.equal(active(g).pos, 13);
@@ -154,7 +154,8 @@ test("a declined square goes to auction and the best bid wins when the clock run
   g = act(g, b, { type: "heartbeat" }, rand, NOW + AUCTION_MS + 1);
   assert.equal(g.holdings["3"].owner, c);
   assert.equal(g.players.find((p) => p.id === c)!.cash, 1500 - 45);
-  assert.equal(g.step, "end");
+  assert.notEqual(g.active, a);
+  assert.equal(g.step, "roll");
 });
 
 test("a debt can be settled by mortgaging, or ends in bankruptcy to the creditor", () => {
@@ -272,7 +273,7 @@ test("random full games never break the books", () => {
           const raised = owned.some((i) => tryAct(q.id, { type: "sell", square: i }) || tryAct(q.id, { type: "mortgage", square: i }));
           if (!raised) tryAct(q.id, { type: "bankrupt" });
         }
-      } else tryAct(q.id, { type: "end" });
+      } else assert.fail("a turn waited on step " + g.step);
       void p;
       for (const x of g.players) {
         assert.ok(x.cash >= 0, `negative cash for ${x.name}`);

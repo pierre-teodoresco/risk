@@ -1,22 +1,22 @@
 "use client";
-// The board, drawn in 3D by engine3d.ts. The centre of the board hosts the turn's actions,
-// as plain HTML floating over the canvas. Pawn() is the flat token used in the side panels.
+// The board, drawn in 3D by engine3d.ts. Pawn() is the flat token used in the players' cards.
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { EmblemShapes } from "@/components/Crest";
 import { EMBLEM_INK, EMBLEM_OUTLINE, emblemOf } from "@/lib/emblems";
 import type { Lang } from "@/lib/world";
 import { BOARD } from "../board";
 import { GROUP_HEX, PAWN_HEX, squareName } from "../i18n";
-import { TourBoard, type TourMove } from "./engine3d";
+import { TourBoard, type TourCallbacks, type TourMove } from "./engine3d";
 
 export type BoardHolding = { owner: string; houses: number; mortgaged: boolean };
 export type BoardPawn = { id: string; emblem: number; pos: number; out: boolean };
 export type BoardMove = TourMove;
+export type { TourBoard };
 
 export function Pawn({ emblem, size = 30 }: { emblem: number; size?: number }) {
   return (
     <svg className="gt-pawn-face" viewBox="0 0 64 64" width={size} height={size} aria-hidden="true">
-      <circle cx="32" cy="32" r="30" fill={PAWN_HEX[emblem % PAWN_HEX.length]} stroke="#0e0d11" strokeWidth="4" />
+      <circle cx="32" cy="32" r="30" fill={PAWN_HEX[emblem % PAWN_HEX.length]} stroke="#ffffff" strokeWidth="4" />
       <g transform="translate(32 33) scale(.82)" fill="#fff" stroke={EMBLEM_INK} strokeWidth={EMBLEM_OUTLINE} strokeLinejoin="round">
         <EmblemShapes emblem={emblemOf(emblem)} />
       </g>
@@ -24,15 +24,27 @@ export function Pawn({ emblem, size = 30 }: { emblem: number; size?: number }) {
   );
 }
 
+/** The country of each city, drawn on its square. */
+const FLAGS: Record<string, string> = {
+  "Le Caire": "🇪🇬", Marrakech: "🇲🇦", Lima: "🇵🇪", Bogotá: "🇨🇴", Mexico: "🇲🇽", Hanoï: "🇻🇳", Manille: "🇵🇭", Bangkok: "🇹🇭",
+  Athènes: "🇬🇷", Istanbul: "🇹🇷", Rome: "🇮🇹", "Buenos Aires": "🇦🇷", Rio: "🇧🇷", Sydney: "🇦🇺", Berlin: "🇩🇪", Amsterdam: "🇳🇱",
+  Barcelone: "🇪🇸", Séoul: "🇰🇷", Singapour: "🇸🇬", "Hong Kong": "🇭🇰", "New York": "🇺🇸", Paris: "🇫🇷",
+};
+export const flagOf = (i: number) => {
+  const s = BOARD[i];
+  return s?.kind === "city" ? FLAGS[s.name] ?? null : null;
+};
 const PRICES = BOARD.map((s) => (s.kind === "city" || s.kind === "airport" || s.kind === "utility" ? s.price : s.kind === "tax" ? s.amount : null));
 const GROUPS = BOARD.map((s) => (s.kind === "city" ? GROUP_HEX[s.group] : null));
+const FLAG_LIST = BOARD.map((_, i) => flagOf(i));
+const NO_RENTS: (string | null)[] = BOARD.map(() => null);
 
-export default function Board({ lang, holdings, pawns, move, ownerColor, selected = null, onSelect, dice = null, interactive = true, autoRotate = false, showcase = false, children }: {
+export default function Board({ lang, holdings, pawns, move, ownerColor, selected = null, onSelect, dice = null, interactive = true, autoRotate = false, showcase = false, active = null, pot = 0, rents = NO_RENTS, card = null, events, onReady, children }: {
   lang: Lang;
   holdings: Record<string, BoardHolding>;
   pawns: BoardPawn[];
   move: BoardMove;
-  /** Colour of a player id, for the owner chip. */
+  /** Colour of a player id, for the owner's flag and buildings. */
   ownerColor: (id: string) => string;
   selected?: number | null;
   onSelect?: (i: number) => void;
@@ -40,20 +52,42 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
   interactive?: boolean;
   autoRotate?: boolean;
   showcase?: boolean;
+  active?: string | null;
+  pot?: number;
+  rents?: (string | null)[];
+  card?: { deck: "chance" | "chest"; at: number } | null;
+  events?: Omit<TourCallbacks, "onSelect">;
+  /** Gives the engine to the table, for the dice and the floating amounts. */
+  onReady?: (board: TourBoard | null) => void;
   children?: ReactNode;
 }) {
   const host = useRef<HTMLDivElement>(null),
     board = useRef<TourBoard | null>(null),
-    select = useRef(onSelect);
+    select = useRef(onSelect),
+    handlers = useRef(events);
   select.current = onSelect;
+  handlers.current = events;
   const labels = useMemo(() => BOARD.map((_, i) => squareName(i, lang)), [lang]);
   const tokens = pawns.map((p) => ({ id: p.id, color: PAWN_HEX[p.emblem % PAWN_HEX.length], pos: p.pos, out: p.out }));
   const pawnKey = JSON.stringify(tokens);
+  const state = () => ({ holdings, pawns: tokens, move, ownerColor, dice, selected, labels, prices: PRICES, rents, groupColors: GROUPS, flags: FLAG_LIST, active, pot, card });
 
   useEffect(() => {
-    const b = new TourBoard(host.current!, { onSelect: (i) => select.current?.(i) }, { interactive, autoRotate, showcase });
+    const b = new TourBoard(
+      host.current!,
+      {
+        onSelect: (i) => select.current?.(i),
+        onDice: (v) => handlers.current?.onDice?.(v),
+        onHop: (id, i, k) => handlers.current?.onHop?.(id, i, k),
+        onArrive: (id, i) => handlers.current?.onArrive?.(id, i),
+        onThud: (k) => handlers.current?.onThud?.(k),
+      },
+      { interactive, autoRotate, showcase },
+    );
     board.current = b;
+    onReady?.(b);
     return () => {
+      onReady?.(null);
       b.dispose();
       board.current = null;
     };
@@ -62,22 +96,22 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
   }, []);
   useEffect(() => {
     board.current?.setOptions({ interactive, autoRotate, showcase });
-  }, [interactive, autoRotate]);
+  }, [interactive, autoRotate, showcase]);
   useEffect(() => {
-    board.current?.setState({ holdings, pawns: tokens, move, ownerColor, dice, selected, labels, prices: PRICES, groupColors: GROUPS });
+    board.current?.setState(state());
     // Compared by value: the server sends fresh objects with every state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(holdings), pawnKey, move?.at, dice?.key, selected, labels]);
+  }, [JSON.stringify(holdings), pawnKey, move?.at, dice?.key, selected, labels, active, pot, rents.join(), card?.at]);
   // Fonts load after the first paint; redraw the square names once they are in.
   useEffect(() => {
-    document.fonts?.ready.then(() => board.current?.setState({ holdings, pawns: tokens, move, ownerColor, dice, selected, labels: [...labels], prices: PRICES, groupColors: GROUPS }));
+    document.fonts?.ready.then(() => board.current?.setState({ ...state(), labels: [...labels] }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="gt-board3d">
       <div className="gt-canvas" ref={host} />
-      {children && <div className="gt-overlay"><div className="gt-centre">{children}</div></div>}
+      {children}
     </div>
   );
 }

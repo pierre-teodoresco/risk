@@ -1,0 +1,220 @@
+/* Grand Tour's own skin, bright like an online board game: a sky with drifting tiles behind the
+   board, white cards with coloured banners, chunky buttons, a red roll button that is held and
+   let go. Scoped under .gt-tour (the page) and .gt-tour-board (any 3D board, the hub poster too). */
+.gt.gt-tour {
+  --gt-bg: #d8eeff;
+  --gt-raise: #ffffff;
+  --gt-raise-2: #eef4fb;
+  --gt-line: #1f2a4414;
+  --gt-text: #1f2a44;
+  --gt-grey: #5d6a85;
+  --gt-dim: #8d98b0;
+  --gt-accent: #ffc928;
+  --gt-accent-edge: #d49a00;
+  --gt-blue: #2b6fd6;
+  --gt-red: #e8333b;
+  --gt-green: #22a356;
+  --gt-card-shadow: 0 6px 0 #1f2a4418, 0 18px 40px #1f3a6633;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='3' opacity='.55'%3E%3Crect x='30' y='40' width='44' height='44' rx='8' transform='rotate(18 52 62)'/%3E%3Crect x='150' y='140' width='30' height='30' rx='6' transform='rotate(-24 165 155)'/%3E%3Crect x='140' y='20' width='20' height='20' rx='4' transform='rotate(40 150 30)'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 220px 220px,
+    linear-gradient(180deg, #a9dbff 0%, #d9efff 55%, #eef8ff 100%);
+  color: var(--gt-text);
+  animation: gt-drift 80s linear infinite;
+}
+@keyframes gt-drift { to { background-position: 220px 440px, 0 0; } }
+.gt-tour .gt-canvas { -webkit-mask-image: none; mask-image: none; }
+.gt-vars .gt-canvas, .poster-gt .gt-canvas { -webkit-mask-image: none; mask-image: none; background: linear-gradient(180deg, #a9dbff, #e6f5ff); }
+
+/* Shared controls in the bright skin */
+.gt-tour .gt-orb { background: #ffffff; border: 0; color: var(--gt-blue); box-shadow: 0 4px 0 #1f2a441f, 0 8px 20px #1f3a6626; }
+.gt-tour .gt-orb:hover { background: #f1f7ff; color: var(--gt-blue); }
+.gt-tour .gt-orb.danger { background: var(--gt-red); color: #fff; }
+.gt-tour .gt-seg { background: #ffffff; box-shadow: 0 4px 0 #1f2a441f; }
+.gt-tour .gt-seg button { color: var(--gt-grey); }
+.gt-tour .gt-seg button[aria-pressed="true"] { background: var(--gt-blue); color: #fff; }
+.gt-tour .gt-btn.go { background: linear-gradient(180deg, #5fd17e, var(--gt-green)); color: #fff; box-shadow: 0 5px 0 #15703a, inset 0 2px 0 #ffffff66; text-shadow: 0 2px 0 #0003; }
+.gt-tour .gt-btn.go:active:not(:disabled) { box-shadow: 0 2px 0 #15703a, inset 0 2px 0 #ffffff66; }
+.gt-tour .gt-btn.ghost { background: #ffffff; color: var(--gt-text); box-shadow: 0 4px 0 #1f2a4426; border: 2px solid #e3eaf4; }
+.gt-tour .gt-btn.ghost:hover:not(:disabled) { background: #f4f8fd; }
+.gt-tour .gt-btn.danger { background: #fff0f0; color: var(--gt-red); border: 2px solid #ffd0d2; }
+.gt-tour .gt-icon-btn { background: #eef3f9; color: var(--gt-grey); }
+.gt-tour .gt-card-panel, .gt-tour .gt-panel, .gt-tour .gt-dialog { background: #ffffff; border: 0; box-shadow: var(--gt-card-shadow); color: var(--gt-text); }
+.gt-tour .gt-panel h3 { color: var(--gt-dim); }
+.gt-tour input:not([type="checkbox"]) { background: #f3f7fc; border: 2px solid #e1e8f2; color: var(--gt-text); }
+.gt-tour .gt-lobby-players li { background: #f3f7fc; border: 0; }
+.gt-tour .gt-lobby-players small, .gt-tour .gt-who b small { background: #e6eef8; color: var(--gt-grey); }
+.gt-tour .gt-option { border-top-color: #1f2a4412; }
+.gt-tour .gt-switch { background: #dfe6ef; }
+.gt-tour .gt-switch[aria-pressed="true"] { background: var(--gt-green); }
+.gt-tour .gt-switch[aria-pressed="true"]::after { background: #fff; }
+.gt-tour .gt-code { color: var(--gt-blue); -webkit-text-stroke: 6px #ffffff; text-shadow: 0 5px 0 #1f2a4422; }
+.gt-tour .gt-logo { color: var(--gt-blue); -webkit-text-stroke: 10px #ffffff; text-shadow: 0 8px 0 #1f3a6626; }
+.gt-tour .gt-logo span { color: #ff8a1f; }
+.gt-tour .gt-entrance-hero > p { color: var(--gt-grey); }
+.gt-tour .gt-entrance-board { box-shadow: 0 0 0 6px #ffffff, 0 24px 60px #1f3a6640; }
+.gt-tour .gt-veil { background: #1f3a6655; }
+.gt-tour .gt-loading { color: var(--gt-grey); }
+.gt-tour .gt-loader i { background: var(--gt-red); }
+.gt-tour .gt-loader i::after { background: #fff; }
+.gt-tour .gt-note.lost { background: #1f2a44; color: #fff; }
+.gt-tour .gt-ranking li { background: #f3f7fc; }
+.gt-tour .gt-trade-side { background: #f7fafd; }
+.gt-tour .gt-trade-side label { background: #ffffff; }
+.gt-tour .gt-end > svg { color: var(--gt-accent); filter: drop-shadow(0 3px 0 var(--gt-accent-edge)); }
+
+/* ---------- The table ---------- */
+.gt-play { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
+.gt-play .gt-board3d { position: absolute; inset: 0; }
+
+/* Players' cards in the corners */
+.gt-seats { position: absolute; inset: 0; pointer-events: none; }
+.gt-seat {
+  --w: clamp(190px, 17vw, 240px);
+  position: absolute;
+  width: var(--w);
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 8px 10px 8px 8px;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: var(--gt-card-shadow);
+  pointer-events: auto;
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
+}
+.gt-seat.s0 { left: 20px; bottom: 20px; }
+.gt-seat.s1 { left: 20px; top: 20px; }
+.gt-seat.s2 { right: 20px; top: 76px; }
+.gt-seat.s3 { right: 20px; bottom: 20px; }
+.gt-seat.s4 { left: 20px; top: 50%; translate: 0 -50%; }
+.gt-seat.s5 { right: 20px; top: 50%; translate: 0 -50%; }
+.gt-seat.on { transform: scale(1.06); box-shadow: 0 0 0 4px var(--pc), var(--gt-card-shadow); }
+.gt-seat.on::after { content: ""; position: absolute; inset: -4px; border-radius: 22px; box-shadow: 0 0 0 4px var(--pc); animation: gt-pulse 1.4s ease-out infinite; pointer-events: none; }
+@keyframes gt-pulse { from { opacity: .7; } to { opacity: 0; transform: scale(1.12); } }
+.gt-seat.out { opacity: .55; filter: grayscale(.8); }
+.gt-seat-face { grid-row: 1 / 4; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 16px; background: var(--pc); box-shadow: inset 0 -5px 0 #0002; }
+.gt-seat-name { grid-column: 2 / 4; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 3px 9px; border-radius: 8px; background: var(--pc); color: #fff; font: 15px var(--f-gt-display); text-shadow: 0 1px 0 #0003; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gt-seat-name small { padding: 0 5px; border-radius: 5px; background: #ffffff38; font: 800 10px var(--f-gt); letter-spacing: .06em; text-transform: uppercase; }
+.gt-seat-cash { grid-column: 2; margin-top: 5px; font: 20px var(--f-gt-display); color: var(--gt-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gt-seat-meta { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; font: 700 12px var(--f-gt); color: var(--gt-grey); }
+.gt-seat-meta i { font-style: normal; }
+.gt-seat-trade { grid-column: 3; grid-row: 2; width: 32px; height: 32px; margin-top: 5px; display: grid; place-items: center; border-radius: 10px; background: #eef3f9; color: var(--gt-blue); }
+.gt-seat-trade:hover { background: var(--gt-blue); color: #fff; }
+
+/* Bottom dock */
+.gt-dock { position: absolute; left: 50%; bottom: 24px; z-index: 5; translate: -50% 0; display: grid; justify-items: center; width: min(440px, calc(100% - 32px)); pointer-events: none; }
+.gt-dock > * { pointer-events: auto; }
+.gt-roll-dock { display: grid; justify-items: center; gap: 8px; }
+.gt-tour .gt-roll {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 30px 16px 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff6a6f, var(--gt-red));
+  color: #fff;
+  font: 24px var(--f-gt-display);
+  text-shadow: 0 2px 0 #0003;
+  box-shadow: 0 7px 0 #a3192a, 0 18px 40px #e8333b55, inset 0 3px 0 #ffffff55;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: gt-roll-ready 1.6s ease-in-out infinite;
+  transition: transform .08s, box-shadow .08s;
+}
+.gt-roll svg { width: 60px; height: 38px; filter: drop-shadow(0 2px 0 #0003); }
+.gt-tour .gt-roll:disabled { filter: grayscale(.4) brightness(.95); animation: none; cursor: default; }
+.gt-tour .gt-roll.held { transform: translateY(4px) scale(.97); box-shadow: 0 3px 0 #a3192a, 0 10px 30px #e8333b66, inset 0 3px 0 #ffffff55; animation: gt-roll-shake .09s linear infinite; }
+.gt-roll-ring { position: absolute; inset: -7px; border-radius: inherit; pointer-events: none; }
+.gt-roll.held .gt-roll-ring { border: 4px solid #ffd34d; clip-path: inset(0 100% 0 0 round 999px); animation: gt-roll-charge 1.2s ease-out forwards; }
+@keyframes gt-roll-charge { to { clip-path: inset(0 0 0 0 round 999px); } }
+@keyframes gt-roll-ready { 50% { transform: translateY(-3px); } }
+@keyframes gt-roll-shake { 25% { translate: -2px 1px; } 50% { translate: 2px -1px; } 75% { translate: -1px -1px; } }
+.gt-roll-hint { padding: 3px 12px; border-radius: 999px; background: #ffffffcc; color: var(--gt-grey); font: 700 12px var(--f-gt); }
+.gt-jail-options { display: grid; justify-items: center; gap: 8px; padding: 10px 14px; border-radius: 16px; background: #ffffff; box-shadow: var(--gt-card-shadow); font: 700 13px var(--f-gt); }
+.gt-jail-options > span { display: flex; align-items: center; gap: 6px; }
+.gt-waiting { display: inline-flex; align-items: center; gap: 10px; padding: 8px 18px 8px 8px; border-radius: 999px; background: #ffffff; box-shadow: var(--gt-card-shadow); font: 17px var(--f-gt-display); }
+.gt-dots { display: inline-flex; gap: 4px; }
+.gt-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--pc, var(--gt-blue)); animation: gt-dot 1s ease-in-out infinite; }
+.gt-dots i:nth-child(2) { animation-delay: .15s; }
+.gt-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes gt-dot { 50% { transform: translateY(-5px); } }
+
+/* The postcard: a city for sale, an auction, a debt */
+.gt-postcard { --band: var(--gt-blue); width: 100%; display: grid; gap: 12px; padding: 0 0 16px; border-radius: 22px; background: #ffffff; box-shadow: var(--gt-card-shadow); overflow: hidden; animation: gt-postcard .5s cubic-bezier(.2,.9,.25,1.2) both; }
+@keyframes gt-postcard { from { transform: translateY(60px) rotate(-6deg) scale(.85); opacity: 0; } }
+.gt-postcard header { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--band); color: #fff; text-shadow: 0 2px 0 #0003; }
+.gt-postcard header b { display: block; font: 26px/1 var(--f-gt-display); }
+.gt-postcard header small { display: block; font: 800 11px var(--f-gt); letter-spacing: .14em; text-transform: uppercase; opacity: .9; }
+.gt-flag { width: 58px; height: 58px; flex: none; display: grid; place-items: center; border-radius: 50%; background: #ffffff; font-size: 36px; line-height: 1; color: var(--band); box-shadow: 0 4px 0 #0002; text-shadow: none; }
+.gt-flag svg { width: 30px; height: 30px; }
+.gt-postcard dl { display: grid; gap: 4px; margin: 0; padding: 0 20px; }
+.gt-postcard dl > div { display: flex; justify-content: space-between; font-size: 15px; }
+.gt-postcard dt { color: var(--gt-grey); font-weight: 700; }
+.gt-postcard dd { margin: 0; font: 17px var(--f-gt-display); }
+.gt-postcard > p { padding: 0 20px; color: var(--gt-grey); font-weight: 700; }
+.gt-postcard .gt-actions { padding: 0 16px; }
+.gt-postcard.danger { --band: var(--gt-red); }
+.gt-bid { text-align: center; font: 18px var(--f-gt-display) !important; color: var(--gt-text) !important; }
+.gt-timer { height: 8px; margin: 0 20px; border-radius: 999px; background: #eef3f9; overflow: hidden; }
+.gt-timer i { display: block; height: 100%; width: calc(var(--k) * 100%); border-radius: inherit; background: linear-gradient(90deg, #ff8a1f, #ffc928); transition: width .25s linear; }
+
+/* Feedback in the middle of the screen */
+.gt-toasts { position: absolute; left: 50%; top: 18px; z-index: 6; translate: -50% 0; display: grid; justify-items: center; gap: 6px; width: min(520px, calc(100% - 520px)); pointer-events: none; }
+.gt-toasts p { padding: 7px 16px; border-radius: 999px; background: #ffffffee; box-shadow: 0 4px 14px #1f3a6622; font: 700 14px var(--f-gt); text-align: center; animation: gt-toast .35s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes gt-toast { from { transform: translateY(-10px); opacity: 0; } }
+.gt-banner { position: absolute; left: 50%; top: 36%; z-index: 7; translate: -50% -50%; font: clamp(40px, 6vw, 76px) var(--f-gt-display); color: #fff; -webkit-text-stroke: 10px var(--gt-blue); paint-order: stroke fill; text-shadow: 0 8px 0 #1f3a6640; white-space: nowrap; pointer-events: none; animation: gt-banner 1.6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes gt-banner { 0% { transform: scale(.4) rotate(-8deg); opacity: 0; } 18% { transform: scale(1.08) rotate(2deg); opacity: 1; } 30% { transform: scale(1) rotate(0); } 80% { opacity: 1; } 100% { transform: translateY(-30px); opacity: 0; } }
+.gt-rolled { position: absolute; left: 50%; top: 28%; z-index: 7; translate: -50% -50%; display: grid; justify-items: center; pointer-events: none; animation: gt-rolled 1.6s cubic-bezier(.2,.8,.2,1) both; }
+.gt-rolled b { width: 92px; height: 92px; display: grid; place-items: center; border-radius: 50%; background: #ffffff; color: var(--gt-red); font: 54px var(--f-gt-display); box-shadow: 0 6px 0 #1f2a4422, 0 0 0 6px #ffffff88; }
+.gt-rolled small { margin-top: 6px; padding: 3px 12px; border-radius: 999px; background: var(--gt-accent); color: #3a2a00; font: 16px var(--f-gt-display); }
+@keyframes gt-rolled { 0% { transform: scale(.2); opacity: 0; } 15% { transform: scale(1.15); opacity: 1; } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
+.gt-drawn { position: absolute; left: 50%; top: 42%; z-index: 7; translate: -50% -50%; width: 250px; display: grid; justify-items: center; gap: 6px; padding: 18px 20px 22px; border-radius: 20px; background: #ff8a1f; color: #fff; text-align: center; box-shadow: 0 0 0 6px #fff inset, 0 24px 50px #1f3a6655; animation: gt-flip .7s cubic-bezier(.2,.8,.2,1) both; pointer-events: none; }
+.gt-drawn.chest { background: var(--gt-blue); }
+.gt-drawn span { font: 54px/1 var(--f-gt-display); }
+.gt-drawn small { font: 800 12px var(--f-gt); letter-spacing: .16em; text-transform: uppercase; opacity: .9; }
+.gt-drawn p { padding: 10px 12px; border-radius: 12px; background: #ffffff; color: var(--gt-text); font: 700 16px/1.35 var(--f-gt); }
+@keyframes gt-flip { from { transform: perspective(800px) rotateY(100deg) scale(.6); opacity: 0; } }
+.gt-pot { position: absolute; left: 50%; bottom: 150px; z-index: 4; translate: -50% 0; padding: 5px 14px; border-radius: 999px; background: #fff7d6; color: #8a6200; font: 15px var(--f-gt-display); box-shadow: 0 4px 0 #d49a0044; pointer-events: none; }
+
+/* Trade offers and the drawer */
+.gt-offers { position: absolute; right: 20px; top: 50%; z-index: 6; translate: 0 -50%; display: grid; gap: 10px; width: min(300px, calc(100% - 40px)); }
+.gt-offers .gt-offer { padding: 14px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 3px var(--pc), var(--gt-card-shadow); animation: gt-postcard .45s cubic-bezier(.2,.9,.25,1.2) both; }
+.gt-drawer-btn { position: absolute; right: 20px; top: 50%; z-index: 8; translate: 0 calc(-50% - 80px); width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: #ffffff; color: var(--gt-blue); box-shadow: var(--gt-card-shadow); }
+.gt-drawer-btn i { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px; padding: 0 5px; display: grid; place-items: center; border-radius: 999px; background: var(--gt-red); color: #fff; font: 800 12px var(--f-gt); font-style: normal; }
+.gt-drawer { position: absolute; right: 80px; top: 76px; bottom: 20px; z-index: 8; width: min(360px, calc(100% - 100px)); display: grid; align-content: start; gap: 12px; overflow-y: auto; padding: 2px 4px 8px; animation: gt-drawer .3s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes gt-drawer { from { transform: translateX(30px); opacity: 0; } }
+.gt-tour .gt-deeds button { background: #f3f7fc; border-color: transparent; }
+.gt-tour .gt-journal li { color: var(--gt-grey); }
+.gt-tour .gt-journal li:first-child { color: var(--gt-text); }
+.gt-tour .gt-deed { border-top: 8px solid var(--band); }
+
+@media (max-width: 980px) {
+  .gt-seat { --w: 180px; grid-template-columns: 44px minmax(0, 1fr) auto; padding: 6px 8px 6px 6px; }
+  .gt-seat-face { width: 44px; height: 44px; border-radius: 12px; }
+  .gt-seat-face svg { width: 36px; height: 36px; }
+  .gt-seat-cash { font-size: 16px; }
+  .gt-toasts { width: min(420px, calc(100% - 40px)); top: 70px; }
+}
+@media (max-width: 700px) {
+  /* Phones: the cards line up along the top, the dock stays at the bottom. */
+  .gt-seats { position: absolute; inset: 64px 8px auto; display: flex; flex-wrap: wrap; gap: 6px; }
+  .gt-seat { position: relative; inset: auto !important; translate: none !important; --w: auto; flex: 1 1 140px; grid-template-columns: 34px minmax(0, 1fr); grid-template-rows: auto auto; padding: 5px 7px 5px 5px; }
+  .gt-seat.on { transform: none; }
+  .gt-seat-face { width: 34px; height: 34px; grid-row: 1 / 3; }
+  .gt-seat-face svg { width: 28px; height: 28px; }
+  .gt-seat-name { font-size: 12px; grid-column: 2; }
+  .gt-seat-cash { font-size: 14px; margin: 0; }
+  .gt-seat-meta, .gt-seat-trade { display: none; }
+  .gt-toasts { top: auto; bottom: 150px; }
+  .gt-roll { font-size: 19px; padding: 13px 22px 13px 16px; }
+  .gt-drawer { right: 8px; left: 8px; width: auto; top: 64px; }
+  .gt-drawer-btn { top: auto; bottom: 130px; right: 12px; translate: none; }
+  .gt-offers { top: auto; bottom: 120px; translate: none; right: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gt.gt-tour, .gt-roll, .gt-seat.on::after, .gt-dots i { animation: none; }
+}

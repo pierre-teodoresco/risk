@@ -67,7 +67,7 @@ Chaque joueur choisit son décor de table (Arcade ou Bistrot) ; ce choix ne chan
 
 ## Grand Tour
 
-Jeu d’immobilier autour du monde pour **2 à 6 joueurs**, sur un plateau en 3D de 40 cases : 22 villes en 8 couleurs, 4 aéroports, 2 compagnies, cartes Chance et Trésor. On lance deux dés, on achète, on encaisse des loyers (doublés sur une couleur complète), on construit maisons et hôtels de façon égale, on hypothèque, on échange avec les autres joueurs. Trois doubles d’affilée envoient à la douane. Le dernier joueur qui n’a pas fait faillite gagne.
+Jeu d’immobilier autour du monde pour **2 à 6 joueurs**, sur un plateau en 3D de 40 cases : 22 villes en 8 couleurs, 4 aéroports, 2 compagnies, cartes Chance et Trésor. On lance deux dés, on achète, on encaisse des loyers (doublés sur une couleur complète), on construit maisons et hôtels de façon égale, on hypothèque, on échange avec les autres joueurs. Trois doubles d’affilée envoient à la douane. Le dernier joueur qui n’a pas fait faillite gagne. On lance les dés en maintenant le bouton (ou la barre d’espace) puis en le lâchant ; le tour passe tout seul au joueur suivant une fois la case réglée.
 
 Options choisies par l’hôte dans la salle d’attente :
 

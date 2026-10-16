@@ -578,7 +578,17 @@ function transfer(g: Game, from: Player, to: Player, b: Bundle) {
   for (const i of b.squares) holding(g, i)!.owner = to.id;
 }
 
+/** A settled turn passes on by itself: nobody has to press "end of turn". */
+function advance(g: Game) {
+  if (g.phase === "playing" && g.step === "end") nextPlayer(g);
+}
+
 export function maintenance(g: Game, now: number) {
+  const changed = upkeep(g, now);
+  advance(g);
+  return changed;
+}
+function upkeep(g: Game, now: number) {
   let changed = false;
   const online = g.players.toSorted((a, b) => a.joined - b.joined).filter((p) => !p.left && now - p.lastSeen < OFFLINE_MS);
   if (!online.some((p) => p.id === g.host) && online.length) {
@@ -620,6 +630,11 @@ export function applyAction(
   random: () => number = Math.random,
   now = Date.now(),
 ): Game {
+  const g = run(input, actor, action, random, now);
+  advance(g);
+  return g;
+}
+function run(input: Game, actor: string, action: Action, random: () => number, now: number): Game {
   const g = structuredClone(input);
   g.updated = now;
   const p = byId(g, actor);
@@ -829,10 +844,6 @@ export function applyAction(
       bankrupt(g, p, d.to ? byId(g, d.to) : null);
       return g;
     }
-    case "end":
-      myTurn("end");
-      nextPlayer(g);
-      return g;
   }
   fail("invalidAction");
 }

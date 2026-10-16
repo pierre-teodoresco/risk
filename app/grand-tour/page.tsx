@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/games/grand-tour/ui/grand-tour.css";
+import "@/games/grand-tour/ui/tour.css";
 import GrandTour from "@/games/grand-tour/ui/GrandTour";
 export const metadata: Metadata = {
   title: "Grand Tour — Achète, construis, ruine la table.",

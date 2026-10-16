@@ -59,7 +59,7 @@ export default function GrandTour() {
 
   const pausedBy = g?.paused ? g.players.find((p) => p.id === g.active) : null;
   return (
-    <div className="gt">
+    <div className="gt gt-tour">
       <header className="gt-top">
         <nav>
           <a className="gt-orb" href="/" aria-label={tx.allGames} title={tx.allGames}><LayoutGrid /></a>

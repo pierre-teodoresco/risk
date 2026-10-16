@@ -1,5 +1,6 @@
 import "./hub.css";
 import "@/games/grand-tour/ui/grand-tour.css";
+import "@/games/grand-tour/ui/tour.css";
 import "@/games/echecs/ui/echecs.css";
 import Hub from "@/components/hub/Hub";
 import { boxArt } from "@/components/hub/art";
