@@ -90,9 +90,9 @@
 @keyframes gt-pulse { from { opacity: .7; } to { opacity: 0; transform: scale(1.12); } }
 .gt-seat.out { opacity: .55; filter: grayscale(.8); }
 .gt-seat-face { grid-row: 1 / 4; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 16px; background: var(--pc); box-shadow: inset 0 -5px 0 #0002; }
-.gt-seat-name { grid-column: 2 / 4; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 3px 9px; border-radius: 8px; background: var(--app-raised); color: var(--app-text); font: 15px var(--f-gt-display); text-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gt-seat-name { grid-column: 2 / 4; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 3px 9px; border-radius: 8px; background: var(--app-raised); color: var(--app-text); font: 800 15px var(--f-gt-display); text-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gt-seat-name small { padding: 0 5px; border-radius: 5px; background: var(--app-panel); font: 800 10px var(--f-gt); letter-spacing: .06em; text-transform: uppercase; }
-.gt-seat-cash { grid-column: 2; margin-top: 5px; font: 20px var(--f-gt-display); color: var(--gt-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gt-seat-cash { grid-column: 2; margin-top: 5px; font: 800 20px var(--f-gt-display); color: var(--gt-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .gt-seat-meta { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; font: 700 12px var(--f-gt); color: var(--gt-grey); }
 .gt-seat-meta i { font-style: normal; }
 .gt-seat-trade { grid-column: 3; grid-row: 2; width: 32px; height: 32px; margin-top: 5px; display: grid; place-items: center; border-radius: 10px; background: var(--app-raised); color: var(--gt-blue); }
@@ -111,7 +111,7 @@
   border-radius: 999px;
   background: var(--app-danger-fill);
   color: #fff;
-  font: 24px var(--f-gt-display);
+  font: 800 24px var(--f-gt-display);
   text-shadow: none;
   box-shadow: 0 4px 0 #742a25;
   touch-action: none;
@@ -131,7 +131,7 @@
 .gt-roll-hint { padding: 3px 12px; border-radius: 999px; background: var(--app-panel); color: var(--gt-grey); font: 700 12px var(--f-gt); }
 .gt-jail-options { display: grid; justify-items: center; gap: 8px; padding: 10px 14px; border-radius: 16px; background: var(--app-panel); box-shadow: var(--gt-card-shadow); font: 700 13px var(--f-gt); }
 .gt-jail-options > span { display: flex; align-items: center; gap: 6px; }
-.gt-waiting { display: inline-flex; align-items: center; gap: 10px; padding: 8px 18px 8px 8px; border-radius: 999px; background: var(--app-panel); box-shadow: var(--gt-card-shadow); font: 17px var(--f-gt-display); }
+.gt-waiting { display: inline-flex; align-items: center; gap: 10px; padding: 8px 18px 8px 8px; border-radius: 999px; background: var(--app-panel); box-shadow: var(--gt-card-shadow); font: 800 17px var(--f-gt-display); }
 .gt-dots { display: inline-flex; gap: 4px; }
 .gt-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--pc, var(--gt-blue)); animation: gt-dot 1s ease-in-out infinite; }
 .gt-dots i:nth-child(2) { animation-delay: .15s; }
@@ -142,18 +142,18 @@
 .gt-postcard { --band: var(--gt-blue); width: 100%; display: grid; gap: 12px; padding: 0 0 16px; border-radius: 22px; background: var(--app-panel); box-shadow: var(--gt-card-shadow); overflow: hidden; animation: gt-postcard .5s cubic-bezier(.2,.9,.25,1.2) both; }
 @keyframes gt-postcard { from { transform: translateY(60px) rotate(-6deg) scale(.85); opacity: 0; } }
 .gt-postcard header { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--app-raised); color: var(--app-text); text-shadow: none; }
-.gt-postcard header b { display: block; font: 26px/1 var(--f-gt-display); }
+.gt-postcard header b { display: block; font: 800 26px/1 var(--f-gt-display); }
 .gt-postcard header small { display: block; font: 800 11px var(--f-gt); letter-spacing: .14em; text-transform: uppercase; opacity: .9; }
 .gt-flag { width: 58px; height: 58px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--app-panel); font-size: 36px; line-height: 1; color: var(--band); box-shadow: 0 4px 0 #0002; text-shadow: none; }
 .gt-flag svg { width: 30px; height: 30px; }
 .gt-postcard dl { display: grid; gap: 4px; margin: 0; padding: 0 20px; }
 .gt-postcard dl > div { display: flex; justify-content: space-between; font-size: 15px; }
 .gt-postcard dt { color: var(--gt-grey); font-weight: 700; }
-.gt-postcard dd { margin: 0; font: 17px var(--f-gt-display); }
+.gt-postcard dd { margin: 0; font: 800 17px var(--f-gt-display); }
 .gt-postcard > p { padding: 0 20px; color: var(--gt-grey); font-weight: 700; }
 .gt-postcard .gt-actions { padding: 0 16px; }
 .gt-postcard.danger { --band: var(--gt-red); }
-.gt-bid { text-align: center; font: 18px var(--f-gt-display) !important; color: var(--gt-text) !important; }
+.gt-bid { text-align: center; font: 800 18px var(--f-gt-display) !important; color: var(--gt-text) !important; }
 .gt-timer { height: 8px; margin: 0 20px; border-radius: 999px; background: var(--app-raised); overflow: hidden; }
 .gt-timer i { display: block; height: 100%; width: calc(var(--k) * 100%); border-radius: inherit; background: linear-gradient(90deg, #ff8a1f, #ffc928); transition: width .25s linear; }
 
@@ -161,19 +161,19 @@
 .gt-toasts { position: absolute; left: 50%; top: 18px; z-index: 6; translate: -50% 0; display: grid; justify-items: center; gap: 6px; width: min(520px, calc(100% - 520px)); pointer-events: none; }
 .gt-toasts p { padding: 7px 16px; border-radius: 999px; background: var(--app-panel); box-shadow: 0 4px 14px #1f3a6622; font: 700 14px var(--f-gt); text-align: center; animation: gt-toast .35s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes gt-toast { from { transform: translateY(-10px); opacity: 0; } }
-.gt-banner { position: absolute; left: 50%; top: 36%; z-index: 7; translate: -50% -50%; font: clamp(40px, 6vw, 76px) var(--f-gt-display); color: var(--app-text); -webkit-text-stroke: 0; paint-order: stroke fill; text-shadow: none; white-space: nowrap; pointer-events: none; animation: gt-banner 1.6s cubic-bezier(.2,.8,.2,1) both; }
+.gt-banner { position: absolute; left: 50%; top: 36%; z-index: 7; translate: -50% -50%; font: 800 clamp(40px, 6vw, 76px) var(--f-gt-display); color: var(--app-text); -webkit-text-stroke: 0; paint-order: stroke fill; text-shadow: none; white-space: nowrap; pointer-events: none; animation: gt-banner 1.6s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes gt-banner { 0% { transform: scale(.4) rotate(-8deg); opacity: 0; } 18% { transform: scale(1.08) rotate(2deg); opacity: 1; } 30% { transform: scale(1) rotate(0); } 80% { opacity: 1; } 100% { transform: translateY(-30px); opacity: 0; } }
 .gt-rolled { position: absolute; left: 50%; top: 28%; z-index: 7; translate: -50% -50%; display: grid; justify-items: center; pointer-events: none; animation: gt-rolled 1.6s cubic-bezier(.2,.8,.2,1) both; }
-.gt-rolled b { width: 92px; height: 92px; display: grid; place-items: center; border-radius: 50%; background: var(--app-panel); color: var(--gt-red); font: 54px var(--f-gt-display); box-shadow: 0 6px 0 #1f2a4422, 0 0 0 6px #ffffff88; }
-.gt-rolled small { margin-top: 6px; padding: 3px 12px; border-radius: 999px; background: var(--app-selected); color: var(--app-text); font: 16px var(--f-gt-display); }
+.gt-rolled b { width: 92px; height: 92px; display: grid; place-items: center; border-radius: 50%; background: var(--app-panel); color: var(--gt-red); font: 800 54px var(--f-gt-display); box-shadow: 0 6px 0 #1f2a4422, 0 0 0 6px #ffffff88; }
+.gt-rolled small { margin-top: 6px; padding: 3px 12px; border-radius: 999px; background: var(--app-selected); color: var(--app-text); font: 800 16px var(--f-gt-display); }
 @keyframes gt-rolled { 0% { transform: scale(.2); opacity: 0; } 15% { transform: scale(1.15); opacity: 1; } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
 .gt-drawn { position: absolute; left: 50%; top: 42%; z-index: 7; translate: -50% -50%; width: 250px; display: grid; justify-items: center; gap: 6px; padding: 18px 20px 22px; border-radius: 20px; background: var(--app-panel); color: var(--app-text); text-align: center; box-shadow: 0 0 0 6px #fff inset, 0 24px 50px #1f3a6655; animation: gt-flip .7s cubic-bezier(.2,.8,.2,1) both; pointer-events: none; }
 .gt-drawn.chest { background: var(--app-panel); }
-.gt-drawn span { font: 54px/1 var(--f-gt-display); }
+.gt-drawn span { font: 800 54px/1 var(--f-gt-display); }
 .gt-drawn small { font: 800 12px var(--f-gt); letter-spacing: .16em; text-transform: uppercase; opacity: .9; }
 .gt-drawn p { padding: 10px 12px; border-radius: 12px; background: var(--app-panel); color: var(--gt-text); font: 700 16px/1.35 var(--f-gt); }
 @keyframes gt-flip { from { transform: perspective(800px) rotateY(100deg) scale(.6); opacity: 0; } }
-.gt-pot { position: absolute; left: 50%; bottom: 150px; z-index: 4; translate: -50% 0; padding: 5px 14px; border-radius: 999px; background: var(--app-panel); color: var(--app-gold); font: 15px var(--f-gt-display); box-shadow: 0 4px 0 #d49a0044; pointer-events: none; }
+.gt-pot { position: absolute; left: 50%; bottom: 150px; z-index: 4; translate: -50% 0; padding: 5px 14px; border-radius: 999px; background: var(--app-panel); color: var(--app-gold); font: 800 15px var(--f-gt-display); box-shadow: 0 4px 0 #d49a0044; pointer-events: none; }
 
 /* Trade offers and the drawer */
 .gt-offers { position: absolute; right: 20px; top: 50%; z-index: 6; translate: 0 -50%; display: grid; gap: 10px; width: min(300px, calc(100% - 40px)); }
@@ -215,10 +215,10 @@
 }
 
 /* Fast rules: the lobby group, the game clock */
-.gt-timeleft { position: absolute; left: 50%; top: 18px; z-index: 6; translate: -50% 0; padding: 7px 16px; border-radius: 999px; background: var(--app-panel); box-shadow: var(--gt-card-shadow); font: 16px var(--f-gt-display); font-variant-numeric: tabular-nums; }
+.gt-timeleft { position: absolute; left: 50%; top: 18px; z-index: 6; translate: -50% 0; padding: 7px 16px; border-radius: 999px; background: var(--app-panel); box-shadow: var(--gt-card-shadow); font: 800 16px var(--f-gt-display); font-variant-numeric: tabular-nums; }
 .gt-timeleft.low { background: var(--gt-red); color: #fff; animation: gt-dot 1s ease-in-out infinite; }
 .gt-toasts.below { top: 64px; }
-.gt-tour .gt-fun b { font: 17px var(--f-gt-display); color: var(--app-accent); }
+.gt-tour .gt-fun b { font: 800 17px var(--f-gt-display); color: var(--app-accent); }
 .gt-tour .gt-fun-more { justify-self: start; margin-top: -6px; }
 .gt-tour .gt-fun-list { display: grid; margin-left: 12px; padding-left: 12px; border-left: 3px solid var(--app-line); }
 .gt-tour .gt-switch.mixed { background: var(--app-action); }

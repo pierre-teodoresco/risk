@@ -17,7 +17,7 @@
   --cc-green-hi: var(--app-success-hover);
   --cc-green-edge: var(--app-success-edge);
   --cc-red: var(--app-danger-fill);
-  --f-cc: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f-cc: var(--font-app);
 }
 
 /* ---------- Page and shared controls ---------- */
@@ -30,8 +30,8 @@
   --gt-dim: var(--cc-dim);
   --gt-accent: var(--cc-green);
   --gt-accent-edge: var(--cc-green-edge);
-  --f-gt: var(--f-cc);
-  --f-gt-display: var(--f-cc);
+  --f-gt: var(--font-app);
+  --f-gt-display: var(--font-app);
   background: var(--cc-page);
   font-family: var(--f-cc);
 }

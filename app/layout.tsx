@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "./typography.css";
 import "./globals.css";
 import "./theme.css";
 import { THEME_INIT } from "@/lib/theme-init";
@@ -15,7 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: THEME_INIT }} /></head>
+      <head>
+        <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

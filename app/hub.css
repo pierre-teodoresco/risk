@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&display=swap");
 /* The library is the main screen: a compact room-code form and the games immediately below.
    Scoped under .hall; game illustrations are rendered by the server. */
 .hall {
@@ -10,7 +9,7 @@
   --hall-accent: var(--app-accent);
   --hall-gutter: clamp(16px, 4vw, 56px);
   --hall-width: 1240px;
-  --f-hall: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-hall: var(--font-app);
   height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;

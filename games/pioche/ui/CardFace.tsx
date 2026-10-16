@@ -2,6 +2,7 @@
 // Two decks share the layout: "arcade" (chunky toy cards, ink outlines) and "bistrot" (printed
 // cards on paper). The deck follows the table the player picked, through SkinContext.
 import { createContext, useContext } from "react";
+import { APP_FONT_FAMILY } from "@/lib/typography";
 import type { Card, CardColor } from "../engine";
 
 export const SKINS = ["arcade", "bistrot"] as const;
@@ -66,7 +67,7 @@ export function CardDefs() {
   );
 }
 
-function Symbol({ card, fill, size, ink = INK, font = "'Paytone One', sans-serif" }: {
+function Symbol({ card, fill, size, ink = INK, font = APP_FONT_FAMILY }: {
   card: Card; fill: string; size: number; ink?: string; font?: string;
 }) {
   const INK = ink;
@@ -75,6 +76,7 @@ function Symbol({ card, fill, size, ink = INK, font = "'Paytone One', sans-serif
       textAnchor="middle"
       dominantBaseline="central"
       fontFamily={font}
+      fontWeight="800"
       fontSize={size}
       fill={fill}
       stroke={INK}
@@ -136,7 +138,7 @@ function Symbol({ card, fill, size, ink = INK, font = "'Paytone One', sans-serif
 function PrintedFace({ card, tint }: { card: Card; tint: CardColor | null }) {
   const wild = !card.color;
   const panel = wild ? (tint ? PRINT_HEX[tint] : PRINT_INK) : PRINT_HEX[card.color!];
-  const font = "'Bagel Fat One', 'Paytone One', sans-serif";
+  const font = APP_FONT_FAMILY;
   const size = card.kind === "number" ? 62 : 40;
   return (
     <svg className="card-face" viewBox="0 0 100 150" aria-hidden="true">
@@ -217,7 +219,7 @@ export function CardBack() {
         <rect x="6" y="6" width="88" height="138" rx="5.5" fill="url(#pc-dots)" />
         <rect x="11" y="11" width="78" height="128" rx="3.5" fill="none" stroke={BRASS} strokeWidth="1.2" />
         <rect x="14" y="14" width="72" height="122" rx="2.5" fill="none" stroke={BRASS} strokeOpacity=".5" strokeWidth=".8" />
-        <text x="50" y="80" textAnchor="middle" dominantBaseline="central" fontFamily="'Bagel Fat One', sans-serif" fontSize="44" fill={BRASS}>P</text>
+        <text x="50" y="80" textAnchor="middle" dominantBaseline="central" fontFamily={APP_FONT_FAMILY} fontWeight="800" fontSize="44" fill={BRASS}>P</text>
         <rect x=".75" y=".75" width="98.5" height="148.5" rx="9" fill="url(#pc-paper)" />
       </svg>
     );
@@ -233,7 +235,8 @@ export function CardBack() {
         textAnchor="middle"
         dominantBaseline="central"
         transform="rotate(-62 50 75)"
-        fontFamily="'Paytone One', sans-serif"
+        fontFamily={APP_FONT_FAMILY}
+        fontWeight="800"
         fontSize="21"
         fill={CREAM}
         stroke={INK}

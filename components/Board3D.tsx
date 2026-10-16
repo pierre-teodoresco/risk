@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
 import type { TroopChange } from "@/lib/game-feedback";
+import { useAppFontReady } from "@/lib/useAppFontReady";
 import { useTheme } from "@/lib/theme";
 import { LocateFixed } from "lucide-react";
 import { hudTexts } from "@/lib/i18n";
@@ -58,6 +59,7 @@ export default function Board3D({
   onHover: (id: string | null, x: number, y: number) => void;
 }) {
   const { theme } = useTheme();
+  const fontReady = useAppFontReady();
   const host = useRef<HTMLDivElement>(null),
     engine = useRef<BoardEngine | null>(null),
     badgeEls = useRef<(HTMLDivElement | null)[]>([]),
@@ -66,6 +68,7 @@ export default function Board3D({
   callbacks.current = { onSelect, onHover };
 
   useEffect(() => {
+    if (!fontReady) return;
     const e = new BoardEngine(
       host.current!,
       {
@@ -89,30 +92,29 @@ export default function Board3D({
     );
     engine.current = e;
     e.setLands(lands, true);
-    document.fonts?.ready.then(() => engine.current?.refreshText());
     return () => {
       e.dispose();
       engine.current = null;
     };
     // The engine lives for the component's lifetime; later props flow through the effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fontReady]);
 
   useEffect(() => {
     engine.current?.setLands(lands);
-  }, [lands]);
+  }, [fontReady, lands]);
   useEffect(() => {
     engine.current?.setOptions({ ...options, theme });
-  }, [options, theme]);
+  }, [fontReady, options, theme]);
   useEffect(() => {
     if (battle) engine.current?.battle(battle);
     // Only a new battle (new timestamp) triggers effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [battle?.at]);
+  }, [fontReady, battle?.at]);
   useEffect(() => {
     if (pulse) engine.current?.pulse(pulse.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pulse?.at]);
+  }, [fontReady, pulse?.at]);
 
   // Rapid placements add up in one float; gains and losses stay distinct.
   const floats = useMemo(() => {

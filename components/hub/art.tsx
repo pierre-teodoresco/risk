@@ -97,8 +97,8 @@ function PiocheArt() {
             <rect x="-40" y="-68" width="80" height="120" rx="8" fill={CREAM} stroke={EDGE} strokeWidth="1.3" />
             <rect x="-34" y="-62" width="68" height="108" rx="5" fill={color} />
             <ellipse cx="0" cy="-8" rx="24" ry="40" transform="rotate(24 0 -8)" fill={CREAM} />
-            <text x="0" y="2" textAnchor="middle" fontFamily="system-ui, sans-serif" fontWeight="800" fontSize={symbol.length > 1 ? 26 : 38} fill={color}>{symbol}</text>
-            <text x="-28" y="-44" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="11" fill={CREAM}>{symbol}</text>
+            <text x="0" y="2" textAnchor="middle" fontFamily="var(--font-app)" fontWeight="800" fontSize={symbol.length > 1 ? 26 : 38} fill={color}>{symbol}</text>
+            <text x="-28" y="-44" fontFamily="var(--font-app)" fontWeight="700" fontSize="11" fill={CREAM}>{symbol}</text>
           </g>
         ))}
       </g>

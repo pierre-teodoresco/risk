@@ -1,6 +1,7 @@
 // Three.js board: extruded territory pieces, plastic army figures, coins, arrow and effects.
 // React-free on purpose: components/Board3D.tsx owns one instance and feeds it state.
 import * as THREE from "three";
+import { APP_FONT_FAMILY } from "@/lib/typography";
 import { MapControls } from "three/examples/jsm/controls/MapControls.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
@@ -530,7 +531,7 @@ export class BoardEngine {
     hl.addColorStop(1, "#ffffff00");
     g.fillStyle = hl; g.beginPath(); g.ellipse(64, 40, 36, 22, 0, 0, Math.PI * 2); g.fill();
     const text = String(land.troops);
-    g.font = `${text.length > 2 ? 44 : text.length > 1 ? 54 : 62}px 'Paytone One', sans-serif`;
+    g.font = `800 ${text.length > 2 ? 44 : text.length > 1 ? 54 : 62}px ${APP_FONT_FAMILY}`;
     g.textAlign = "center"; g.textBaseline = "middle";
     g.lineWidth = 10; g.strokeStyle = "#0b0f17"; g.lineJoin = "round"; g.strokeText(text, 64, 64);
     g.fillStyle = "#fff"; g.fillText(text, 64, 64);
@@ -571,7 +572,7 @@ export class BoardEngine {
       const { canvas, tex } = this.names[t];
       const g = canvas.getContext("2d")!;
       g.clearRect(0, 0, 512, 96);
-      g.font = "800 50px 'Nunito Sans', sans-serif";
+      g.font = `800 50px ${APP_FONT_FAMILY}`;
       g.textAlign = "center"; g.textBaseline = "middle";
       g.lineWidth = 12; g.strokeStyle = "#fff7e8"; g.lineJoin = "round";
       const label = WORLD[t][this.opts.lang];

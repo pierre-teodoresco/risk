@@ -1,6 +1,7 @@
 "use client";
 // The board, drawn in 3D by engine3d.ts. Pawn() is the flat token used in the players' cards.
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useAppFontReady } from "@/lib/useAppFontReady";
 import { EmblemShapes } from "@/components/Crest";
 import { EMBLEM_INK, EMBLEM_OUTLINE, emblemOf } from "@/lib/emblems";
 import type { Lang } from "@/lib/world";
@@ -61,6 +62,7 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
   onReady?: (board: TourBoard | null) => void;
   children?: ReactNode;
 }) {
+  const fontReady = useAppFontReady();
   const host = useRef<HTMLDivElement>(null),
     board = useRef<TourBoard | null>(null),
     select = useRef(onSelect),
@@ -73,6 +75,7 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
   const state = () => ({ holdings, pawns: tokens, move, ownerColor, dice, selected, labels, prices: PRICES, rents, groupColors: GROUPS, flags: FLAG_LIST, active, pot, card });
 
   useEffect(() => {
+    if (!fontReady) return;
     const b = new TourBoard(
       host.current!,
       {
@@ -93,20 +96,15 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
     };
     // One engine for the component's life; later props flow through the effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fontReady]);
   useEffect(() => {
     board.current?.setOptions({ interactive, autoRotate, showcase });
-  }, [interactive, autoRotate, showcase]);
+  }, [fontReady, interactive, autoRotate, showcase]);
   useEffect(() => {
     board.current?.setState(state());
     // Compared by value: the server sends fresh objects with every state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(holdings), pawnKey, move?.at, dice?.key, selected, labels, active, pot, rents.join(), card?.at]);
-  // Fonts load after the first paint; redraw the square names once they are in.
-  useEffect(() => {
-    document.fonts?.ready.then(() => board.current?.setState({ ...state(), labels: [...labels] }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fontReady, JSON.stringify(holdings), pawnKey, move?.at, dice?.key, selected, labels, active, pot, rents.join(), card?.at]);
 
   return (
     <div className="gt-board3d">

@@ -4,6 +4,7 @@
 // square by square, and two red dice that are shaken, thrown and bounce before the pawn moves.
 // React-free on purpose: Board.tsx owns one instance and feeds it state.
 import * as THREE from "three";
+import { APP_FONT_FAMILY } from "@/lib/typography";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { BOARD, SQUARES } from "../board";
@@ -53,8 +54,6 @@ const LAND_MS = 1150;
 const PX = 256;
 const INK = "#20232e";
 const WHITE = "#fbfaf6";
-const DISPLAY = "'Paytone One', 'Arial Rounded MT Bold', system-ui, sans-serif";
-const UI = "'Nunito Sans', system-ui, sans-serif";
 
 const trackStart = (n: number) => (n === 1 ? 0 : CORNER + (n - 2));
 const trackSize = (n: number) => (n === 1 || n === 11 ? CORNER : 1);
@@ -548,7 +547,7 @@ export class TourBoard {
     // The game's name painted on the lawn, facing the camera.
     const logo = this.keep(
       canvasTexture(1024, 256, (g) => {
-        g.font = `150px ${DISPLAY}`;
+        g.font = `800 150px ${APP_FONT_FAMILY}`;
         g.textAlign = "center";
         g.textBaseline = "middle";
         g.lineJoin = "round";
@@ -583,7 +582,7 @@ export class TourBoard {
           g.fillStyle = "#ffffff";
           g.textAlign = "center";
           g.textBaseline = "middle";
-          g.font = `170px ${DISPLAY}`;
+          g.font = `800 170px ${APP_FONT_FAMILY}`;
           g.fillText(deck === "chance" ? "?" : "✦", W / 2, H / 2 + 6);
         }),
       );
@@ -621,7 +620,7 @@ export class TourBoard {
         c.ellipse(W / 2, H / 2, 34, 34, 0, 0, Math.PI * 2);
         c.fill();
         c.fillStyle = "#3e9a3d";
-        c.font = `56px ${DISPLAY}`;
+        c.font = `800 56px ${APP_FONT_FAMILY}`;
         c.textAlign = "center";
         c.textBaseline = "middle";
         c.fillText("₲", W / 2, H / 2 + 3);
@@ -718,7 +717,7 @@ export class TourBoard {
       g.save();
       g.translate(W / 2, H / 2);
       g.rotate(-Math.PI / 4);
-      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W * 0.82, 64, 26, (px) => `${px}px ${DISPLAY}`);
+      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W * 0.82, 64, 26, (px) => `800 ${px}px ${APP_FONT_FAMILY}`);
       g.lineJoin = "round";
       g.lineWidth = 12;
       g.strokeStyle = "#ffffff";
@@ -729,7 +728,7 @@ export class TourBoard {
         g.fillText(l, 0, yy);
       });
       if (sq.kind === "go") {
-        g.font = `800 ${size * 0.62}px ${UI}`;
+        g.font = `800 ${size * 0.62}px ${APP_FONT_FAMILY}`;
         g.fillStyle = INK;
         g.fillText("+₲200", 0, H * 0.3 + size * 1.05);
       }
@@ -755,12 +754,12 @@ export class TourBoard {
       g.fillRect(0, by, W, bh);
     } else {
       const glyph = sq.kind === "chance" ? "?" : sq.kind === "chest" ? "✦" : sq.kind === "airport" ? "✈" : sq.kind === "tax" ? "%" : (sq as { name?: string }).name?.startsWith("É") ? "⚡" : "≈";
-      g.font = `${W * 0.46}px ${DISPLAY}`;
+      g.font = `800 ${W * 0.46}px ${APP_FONT_FAMILY}`;
       g.fillStyle = sq.kind === "chance" ? "#ff8a1f" : sq.kind === "chest" ? "#3d7ff0" : sq.kind === "tax" ? "#e2373f" : sq.kind === "airport" ? "#5b6b85" : "#e8a400";
       g.fillText(glyph, W / 2, y(H * 0.24));
     }
     {
-      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W - 24, band ? 44 : 36, 18, (px) => `${px}px ${DISPLAY}`);
+      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W - 24, band ? 44 : 36, 18, (px) => `800 ${px}px ${APP_FONT_FAMILY}`);
       g.fillStyle = INK;
       const mid = y(band ? H * 0.38 : H * 0.5);
       lines.forEach((l, k) => g.fillText(l, W / 2, mid + (k - (lines.length - 1) / 2) * size));
@@ -775,7 +774,7 @@ export class TourBoard {
         g.fillRect(0, py, W, ph);
       }
       const text = sq.kind === "tax" ? `−${money(price)}` : h?.mortgaged ? "✕" : rent ?? money(price);
-      g.font = `${Math.min(84, W * 0.34)}px ${DISPLAY}`;
+      g.font = `800 ${Math.min(84, W * 0.34)}px ${APP_FONT_FAMILY}`;
       g.fillStyle = h ? "#ffffff" : sq.kind === "tax" ? "#e2373f" : INK;
       g.fillText(text, W / 2, py + ph / 2, W - 20);
     }
@@ -1061,7 +1060,7 @@ export class TourBoard {
     const o = this.pawns.get(id);
     if (!o) return;
     const tex = canvasTexture(512, 160, (g) => {
-      g.font = `110px ${DISPLAY}`;
+      g.font = `800 110px ${APP_FONT_FAMILY}`;
       g.textAlign = "center";
       g.textBaseline = "middle";
       g.lineJoin = "round";
