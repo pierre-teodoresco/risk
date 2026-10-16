@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
+import { BookOpen, LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
 import { LANG_KEY, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { gamePath } from "@/games/registry";
@@ -8,6 +8,7 @@ import { useRoom } from "@/platform/useRoom";
 import type { PublicGame } from "../engine";
 import { errorText, piocheTexts } from "../i18n";
 import { CardDefs } from "./CardFace";
+import Rules from "./Rules";
 import { Home, Lobby, RoundEnd } from "./Screens";
 import Table from "./Table";
 import { playCue, type Cue } from "./sound";
@@ -21,7 +22,8 @@ export default function Pioche() {
   const [lang, setLang] = useState<Lang>("fr"),
     [audio, setAudio] = useState(false),
     [copied, setCopied] = useState(false),
-    [leaving, setLeaving] = useState(false);
+    [leaving, setLeaving] = useState(false),
+    [rules, setRules] = useState(false);
   const room = useRoom<PublicGame>("pioche", PATH);
   const audioRef = useRef(false);
   const tx = piocheTexts(lang);
@@ -90,6 +92,9 @@ export default function Pioche() {
         </a>
         {g && g.phase !== "lobby" && <span className="round-tag">{fmt(tx.round, { n: g.round })} · {g.code}</span>}
         <nav>
+          <button className="orb small" aria-label={tx.howToPlay} title={tx.howToPlay} aria-expanded={rules} onClick={() => setRules(true)}>
+            <BookOpen />
+          </button>
           {g && (
             <button className="orb small" aria-label={copied ? tx.copied : tx.invite} title={copied ? tx.copied : tx.invite} onClick={copy}>
               <Link2 />
@@ -143,6 +148,7 @@ export default function Pioche() {
         </>
       )}
 
+      {rules && <Rules tx={tx} game={g} busy={room.busy} act={room.act} onClose={() => setRules(false)} />}
       {room.lost && <div className="lost-note"><WifiOff size={16} /> {tx.connectionLost}</div>}
       {room.error && (
         <div className="error-note" role="alert" onClick={() => room.setError("")}>

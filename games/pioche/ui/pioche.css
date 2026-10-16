@@ -172,6 +172,17 @@ button.pc-seat { cursor: pointer; }
 .reactions button:hover { transform: translateY(-3px) scale(1.08); background: #000b; }
 .reactions button:active { transform: scale(.92); }
 
+/* Rules panel (layout shared with Mappa's .rules-modal) */
+.pioche-rules .rule-cards, .pioche-rules .rule-options { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.pioche-rules .rule-cards li { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 12px; align-items: center; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+.pioche-rules .rule-cards b { display: block; color: var(--text); }
+.pioche-rules .rule-card { width: 46px; height: 69px; filter: drop-shadow(0 4px 6px #0007); transform: rotate(-4deg); }
+.pioche-rules .rule-options li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 8px 0; border-top: 1px solid #ffffff10; }
+.pioche-rules .rule-options li > div:first-child { min-width: 0; flex: 1 1 220px; }
+.pioche-rules .rule-options b { display: block; }
+.pioche-rules .switch:disabled, .pioche-rules .seg button:disabled { opacity: .55; cursor: default; }
+.pioche-rules .rule-options small { display: block; color: var(--muted); font-size: 13px; line-height: 1.35; }
+
 /* Notes and overlays */
 .pc-toasts { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); z-index: 25; display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(92%, 460px); }
 .pc-toast { padding: 8px 14px; border-radius: 12px; background: #0a1830e6; border: 2px solid #ffffff1f; font-weight: 800; font-size: 14px; text-align: center; animation: flag-pop .3s ease both; }
