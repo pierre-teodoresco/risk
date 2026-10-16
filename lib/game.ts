@@ -15,7 +15,14 @@ export type Player = {
   cards: Card[];
 };
 export type Land = { owner: string | null; troops: number };
-export type Log = { id: string; key: string; args: string[]; at: number };
+export type Log = {
+  id: string;
+  key: string;
+  args: string[];
+  at: number;
+  /** Player ids allowed to read the entry; absent means public. */
+  to?: string[];
+};
 export type Message = {
   id: string;
   from: string;
@@ -87,6 +94,12 @@ function log(g: Game, key: string, ...args: string[]) {
   g.logs.push({ id: uid(), key, args, at: g.updated });
   g.logs = g.logs.slice(-120);
 }
+// Diplomacy stays secret: only the two players concerned read these entries.
+function privateLog(g: Game, to: string[], key: string, ...args: string[]) {
+  g.logs.push({ id: uid(), key, args, at: g.updated, to });
+  g.logs = g.logs.slice(-120);
+}
+const visibleTo = (actor: string) => (entry: { to?: string[] }) => !entry.to || entry.to.includes(actor);
 export function shuffle<T>(items: T[], random: () => number) {
   const a = [...items];
   for (let i = a.length - 1; i > 0; i--) {
@@ -229,6 +242,11 @@ function trade(g: Game, p: Player, ids: string[]) {
 export function allied(g: Pick<Game, "alliances">, a: string, b: string) {
   return !!g.alliances?.some(
     ([x, y]) => (x === a && y === b) || (x === b && y === a),
+  );
+}
+function endAlliance(g: Game, a: string, b: string) {
+  g.alliances = (g.alliances ?? []).filter(
+    ([x, y]) => !((x === a && y === b) || (x === b && y === a)),
   );
 }
 function dropDiplomacy(g: Game, id: string) {
@@ -564,7 +582,7 @@ export function applyAction(
           !(x.from === actor && x.to === other.id),
       );
       g.alliances!.push([actor, other.id]);
-      log(g, "allied", p.name, other.name);
+      privateLog(g, [actor, other.id], "allied", p.name, other.name);
     };
     if (type === "ally") {
       if (allied(g, actor, other.id)) fail("alreadyAllied");
@@ -579,11 +597,8 @@ export function applyAction(
       g.proposals.splice(mine, 1);
     } else {
       if (!allied(g, actor, other.id)) fail("notAllied");
-      g.alliances = g.alliances.filter(
-        ([x, y]) =>
-          !((x === actor && y === other.id) || (x === other.id && y === actor)),
-      );
-      log(g, "allyBroken", p.name, other.name);
+      endAlliance(g, actor, other.id);
+      privateLog(g, [actor, other.id], "allyBroken", p.name, other.name);
     }
     return g;
   }
@@ -659,9 +674,13 @@ export function applyAction(
       d = g.lands[to];
     if (a.owner !== actor) fail("notOwned");
     if (d.owner === actor) fail("ownTarget");
-    if (d.owner && allied(g, actor, d.owner)) fail("allied");
     if (!BY_ID[from].neighbors.includes(to)) fail("notAdjacent");
     if (a.troops < 2) fail("notEnoughTroops");
+    if (d.owner && allied(g, actor, d.owner)) {
+      const victim = g.players.find((x) => x.id === d.owner)!;
+      endAlliance(g, actor, victim.id);
+      privateLog(g, [actor, victim.id], "betrayed", p.name, victim.name);
+    }
     let al = 0,
       dl = 0,
       nd = 1;
@@ -769,7 +788,9 @@ export function publicGame(g: Game, actor: string) {
     messages: g.messages.filter(
       (m) => m.to === null || m.from === actor || m.to === actor,
     ),
-    alliances: g.alliances ?? [],
+    logs: g.logs.filter(visibleTo(actor)),
+    // Alliances are secret: each player only sees their own pacts.
+    alliances: (g.alliances ?? []).filter((pair) => pair.includes(actor)),
     // Pending proposals are only visible to the two players involved.
     proposals: (g.proposals ?? []).filter(
       (x) => x.from === actor || x.to === actor,

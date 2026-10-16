@@ -546,10 +546,6 @@ const errors: Record<string, [string, string]> = {
     "Toutes vos armées sont déjà placées.",
     "All your armies are already placed.",
   ],
-  allied: [
-    "Ce joueur est votre allié. Rompez l’alliance pour l’attaquer.",
-    "This player is your ally. Break the alliance to attack.",
-  ],
   alreadyAllied: ["Vous êtes déjà alliés.", "You are already allies."],
   noProposal: [
     "Cette proposition d’alliance n’existe plus.",
@@ -617,6 +613,10 @@ export function eventText(key: string, args: string[], lang: Lang) {
     allyBroken: [
       `${a[0]} rompt son alliance avec ${a[1]}.`,
       `${a[0]} breaks their alliance with ${a[1]}.`,
+    ],
+    betrayed: [
+      `${a[0]} trahit ${a[1]} : leur alliance est rompue.`,
+      `${a[0]} betrays ${a[1]}: their alliance is over.`,
     ],
   };
   return dict[key]?.[lang === "fr" ? 0 : 1] ?? key;
@@ -694,7 +694,9 @@ const hudFr = {
   targets: "Cibles : {list}.",
   noTargets: "Aucun ennemi à portée d’ici. Choisis une autre base.",
   notNeighbour: "Ce territoire n’est pas voisin de ta base.",
-  alliedTarget: "{name} est ton allié : romps l’alliance pour l’attaquer.",
+  betrayal: "Trahison",
+  betrayalWarning: "{name} est ton allié. L’attaquer rompt votre alliance, et il saura que tu l’as trahi.",
+  betray: "Trahir et attaquer",
   forecast: "Prévision du Blitz",
   crushing: "Écrasant",
   favourable: "Favorable",
@@ -718,7 +720,7 @@ const hudFr = {
   allyBubble: "Alliance ?",
   allyProposal: "Proposition d’alliance",
   proposes: "{name} te propose une alliance",
-  allyRules: "Tant qu’elle tient, vous ne pouvez pas vous attaquer. L’un ou l’autre peut la rompre à tout moment.",
+  allyRules: "L’alliance reste secrète entre vous deux. L’un ou l’autre peut la rompre à tout moment ; attaquer son allié la rompt aussi, pour trahison.",
   accept: "Accepter",
   refuse: "Refuser",
   later: "Répondre plus tard",
@@ -798,7 +800,9 @@ const hudEn: typeof hudFr = {
   targets: "Targets: {list}.",
   noTargets: "No enemy in reach from here. Pick another base.",
   notNeighbour: "That territory is not next to your base.",
-  alliedTarget: "{name} is your ally: break the alliance to attack.",
+  betrayal: "Betrayal",
+  betrayalWarning: "{name} is your ally. Attacking breaks your alliance, and they will know you betrayed them.",
+  betray: "Betray and attack",
   forecast: "Blitz forecast",
   crushing: "Crushing",
   favourable: "Favourable",
@@ -822,7 +826,7 @@ const hudEn: typeof hudFr = {
   allyBubble: "Alliance?",
   allyProposal: "Alliance proposal",
   proposes: "{name} proposes an alliance",
-  allyRules: "While it lasts, you cannot attack each other. Either of you can end it at any time.",
+  allyRules: "The alliance stays secret between the two of you. Either of you can end it at any time; attacking your ally ends it too, as a betrayal.",
   accept: "Accept",
   refuse: "Decline",
   later: "Answer later",

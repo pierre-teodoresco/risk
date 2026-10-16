@@ -196,6 +196,7 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 .odds span { font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; }
 .odds.good b, .odds.good span { color: #6be070; }
 .odds.mid b, .odds.mid span { color: var(--gold); }
+.betrayal-warning { margin: 4px 0 10px; padding: 8px 12px; border-radius: 12px; background: #3a1418; color: #ffd9d4; border: 2px solid #ff7a6b; }
 .odds.bad b, .odds.bad span { color: #ff7268; }
 .invite { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
 .invite .crest { flex-shrink: 0; border-radius: 50%; }

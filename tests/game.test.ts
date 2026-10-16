@@ -382,7 +382,7 @@ test("hosting transfers by arrival time rather than randomized turn order", () =
   maintenance(g, 70001, rand);
   assert.equal(g.host, expected);
 });
-test("alliances need the receiver's answer and block attacks between allies", () => {
+test("alliances need the receiver's answer and stay secret from other players", () => {
   let g = attackFixture();
   const me = g.active,
     other = g.players[1].id,
@@ -399,15 +399,32 @@ test("alliances need the receiver's answer and block attacks between allies", ()
   );
   g = applyAction(g, other, { type: "allyAnswer", player: me, accept: true }, rand, 2002);
   assert.deepEqual(g.proposals, []);
-  assert.ok(publicGame(g, third).alliances.some((pair) => pair.includes(me) && pair.includes(other)));
-  assert.throws(
-    () => applyAction(g, me, { type: "attack", from: "alaska", to: "kamchatka" }, rand, 2003),
-    /allied/,
-  );
+  const sealed = g.logs.at(-1)!;
+  assert.equal(sealed.key, "allied");
+  for (const id of [me, other]) {
+    assert.equal(publicGame(g, id).alliances.length, 1);
+    assert.ok(publicGame(g, id).logs.some((entry) => entry.id === sealed.id));
+  }
+  assert.deepEqual(publicGame(g, third).alliances, []);
+  assert.ok(!publicGame(g, third).logs.some((entry) => entry.id === sealed.id));
   g = applyAction(g, other, { type: "allyBreak", player: me }, rand, 2004);
   assert.deepEqual(g.alliances, []);
-  g = applyAction(g, me, { type: "attack", from: "alaska", to: "kamchatka" }, rand, 2005);
+  assert.ok(!publicGame(g, third).logs.some((entry) => entry.key === "allyBroken"));
+});
+test("attacking an ally breaks the alliance as a private betrayal", () => {
+  let g = attackFixture();
+  const me = g.active,
+    other = g.players[1].id,
+    third = g.players[2].id;
+  g = applyAction(g, me, { type: "ally", player: other }, rand, 2000);
+  g = applyAction(g, other, { type: "allyAnswer", player: me, accept: true }, rand, 2001);
+  g = applyAction(g, me, { type: "attack", from: "alaska", to: "kamchatka" }, rand, 2002);
   assert.ok(g.lastBattle);
+  assert.deepEqual(g.alliances, []);
+  const betrayal = g.logs.find((entry) => entry.key === "betrayed")!;
+  assert.deepEqual(betrayal.args, [g.players[0].name, g.players[1].name]);
+  assert.ok(publicGame(g, other).logs.some((entry) => entry.id === betrayal.id));
+  assert.ok(!publicGame(g, third).logs.some((entry) => entry.id === betrayal.id));
 });
 test("refusal, cancellation and crossed proposals", () => {
   let g = attackFixture();

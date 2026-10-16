@@ -229,7 +229,7 @@ export default function GameScreen(props: Props) {
   const legal = useMemo(() => {
     if (!selected || selLand?.owner !== game.me) return [];
     if (attacking && selLand.troops > 1)
-      return BY_ID[selected].neighbors.filter((n) => land(n).owner !== game.me && !allied(game.me, land(n).owner));
+      return BY_ID[selected].neighbors.filter((n) => land(n).owner !== game.me);
     if (fortifying && selLand.troops > 1)
       return WORLD.map((w) => w.id).filter((id) => id !== selected && connected(game, selected, id, game.me));
     return [];
@@ -313,12 +313,12 @@ export default function GameScreen(props: Props) {
         setSelected(id === selected ? "" : id);
         setTarget("");
       } else if (legal.includes(id)) {
-        if (target === id && !busy) void run({ type: "attack", from: selected, to: id });
+        // Betraying an ally always goes through the warning card, never a quick second click.
+        if (target === id && !busy && !allied(game.me, l.owner)) void run({ type: "attack", from: selected, to: id });
         else setTarget(id);
       } else {
         setTarget("");
-        if (allied(game.me, l.owner)) pushToast(fmt(h.alliedTarget, { name: nameOf(l.owner) }));
-        else if (selected) pushToast(h.notNeighbour);
+        if (selected) pushToast(h.notNeighbour);
         else setSelected(id);
       }
       return;
@@ -482,16 +482,19 @@ export default function GameScreen(props: Props) {
       const o = blitzOdds(land(selected).troops, land(target).troops);
       const tone = o.win >= 0.65 ? "good" : o.win >= 0.4 ? "mid" : "bad";
       const pct = o.win > 0.995 ? ">99" : o.win < 0.005 ? "<1" : String(Math.round(o.win * 100));
+      const victim = land(target).owner;
+      const betrayal = allied(game.me, victim);
       cardKey = `odds:${selected}:${target}`;
       cardBody = (
         <>
-          <div className="eyebrow">{h.forecast}</div>
+          <div className="eyebrow">{betrayal ? h.betrayal : h.forecast}</div>
           <h2>{terrName(selected)} → {terrName(target)}</h2>
           <div className={"odds " + tone}><b>{pct} %</b><span>{o.win >= 0.9 ? h.crushing : o.win >= 0.65 ? h.favourable : o.win >= 0.4 ? h.close : o.win >= 0.15 ? h.risky : h.suicidal}</span></div>
           <div className="odds-bar"><i style={{ width: `${o.win * 100}%` }} /></div>
           <p>{fmt(h.oddsDetail, { a: land(selected).troops, d: land(target).troops, la: o.attackerLoss.toFixed(1), ld: o.defenderLoss.toFixed(1), name: nameOf(land(target).owner) })}{o.win > 0.005 ? " " + fmt(h.oddsLeft, { n: o.survivors.toFixed(1) }) : ""}</p>
+          {betrayal && <p className="betrayal-warning" role="alert">{fmt(h.betrayalWarning, { name: nameOf(victim) })}</p>}
           <div className="btns">
-            <button className="btn red" disabled={busy} onClick={() => run({ type: "attack", from: selected, to: target })}>{t.blitz}</button>
+            <button className="btn red" disabled={busy} onClick={() => run({ type: "attack", from: selected, to: target })}>{betrayal ? h.betray : t.blitz}</button>
             <button className="btn ghost" onClick={() => setTarget("")}>{t.cancel}</button>
           </div>
         </>
@@ -616,6 +619,7 @@ export default function GameScreen(props: Props) {
             <button aria-pressed={unitMode === "city"} onClick={() => { setUnitMode("city"); savePref("units", "city"); }}>{h.cities}</button>
           </div></div>
           <div className="row">{h.bonusOnMap}<button className="switch" aria-pressed={showBonus} aria-label={h.bonusOnMap} onClick={() => { setShowBonus(!showBonus); savePref("bonus", !showBonus); }} /></div>
+          <div className="row">{t.colorblind}<button className="switch" aria-pressed={props.colorblind} aria-label={t.colorblind} onClick={props.toggleColorblind} /></div>
           <div className="row">{t.sound}<button className="switch" aria-pressed={props.audio} aria-label={t.sound} onClick={props.toggleAudio} /></div>
           <div className="row">{h.language}<div className="seg">
             <button aria-pressed={lang === "fr"} onClick={() => props.setLang("fr")}>FR</button>
