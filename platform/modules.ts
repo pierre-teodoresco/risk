@@ -3,10 +3,12 @@ import "server-only";
 import type { GameModule, RoomState } from "./contract";
 import { GameError } from "./errors";
 import { mappa } from "@/games/mappa/module";
+import { pioche } from "@/games/pioche/module";
 
 // Each module only ever receives rooms of its own game (see gameOf), hence the widening casts.
 const MODULES: Record<string, GameModule<RoomState>> = {
   [mappa.id]: mappa as unknown as GameModule<RoomState>,
+  [pioche.id]: pioche as unknown as GameModule<RoomState>,
 };
 /** Rooms saved before the hub carry no game id: they are Mappa rooms. */
 export const LEGACY_GAME = mappa.id;
