@@ -37,7 +37,7 @@ export const GAMES: GameEntry[] = [
   {
     id: "pioche",
     name: "Pioche",
-    status: "soon",
+    status: "live",
     players: { min: 2, max: 8 },
     minutes: { min: 15, max: 30 },
     tagline: { fr: "Vide ta main avant les autres.", en: "Empty your hand before anyone else." },

@@ -21,6 +21,14 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 - Les routes `app/api/rooms/` sont génériques : le client indique le jeu attendu par `?game=<id>` (création : champ `game` du corps). Sans paramètre, c’est Mappa, pour les clients antérieurs au hub. Une salle d’un autre jeu se lit comme introuvable.
 - Le champ `game` de l’état identifie la brique ; les salles sans ce champ sont des parties Mappa. Les fonctions SQL gardent leur préfixe `mappa_` : ne pas les renommer sans migration explicitement demandée.
 
+- Côté navigateur, `platform/useRoom.ts` gère jeton, création, adhésion, Realtime, présence et commandes d’une brique ; `platform/spring.ts` fournit les ressorts d’animation sans dépendance. Mappa n’utilise pas encore `useRoom`.
+
+## Pioche
+
+- `games/pioche/engine.ts` porte les règles (108 cartes, 2 à 8 joueurs, options d’hôte) et `publicGame`, qui masque les mains adverses, le paquet et la légalité d’un +4. `playable` sert aussi au client pour éclairer les cartes jouables : le serveur reste juge.
+- `games/pioche/ui/` contient l’écran : `Hand.tsx` (éventail, survol, glisser-déposer, clavier) et `Pile.tsx` écrivent leurs transformations dans le DOM depuis une boucle de ressorts, hors du rendu React. Les classes CSS propres à Pioche portent le préfixe `pc-` quand elles risquent d’entrer en collision avec `app/globals.css`.
+- Textes et erreurs dans `games/pioche/i18n.ts`, en français et en anglais. Tests : `tests/pioche.test.ts`, et un passage Pioche dans `npm run test:integration`.
+
 ## Répartition des responsabilités (Mappa)
 
 - `lib/game.ts` porte les règles, les transitions et la projection `publicGame`. Conserver le moteur indépendant du réseau et du stockage, avec le temps et l’aléatoire injectables pour les tests.

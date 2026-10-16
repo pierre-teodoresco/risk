@@ -2,7 +2,7 @@
 
 Jeu de conquête mondiale pour **3 à 6 humains**, en français et en anglais. Salons privés sans compte, carte originale en SVG, combats Blitz instantanés, cartes progressives, chat public et messages privés.
 
-Mappa est le premier jeu du hub **Tablée** : la racine `/` présente la ludothèque, et chaque jeu disponible a sa propre route (`/mappa`). Les anciens liens d’invitation `/?room=CODE` sont redirigés vers `/mappa?room=CODE`.
+Mappa est le premier jeu du hub **Tablée** : la racine `/` présente la ludothèque, et chaque jeu disponible a sa propre route (`/mappa`, `/pioche` pour le jeu de cartes de défausse). Les anciens liens d’invitation `/?room=CODE` sont redirigés vers `/mappa?room=CODE`.
 
 ## Lancer
 

@@ -161,4 +161,25 @@ for (const count of [3, 6]) {
   console.log("  Host pause/resume and neutral exclusion pass");
   console.log("PASS " + count + " players");
 }
+{
+  // Pioche: the platform routes rooms to the right game and each view keeps hands private.
+  const pioche = (path: string) => path + (path.includes("?") ? "&" : "?") + "game=pioche";
+  const create = await req(pioche("/api/rooms"), undefined, { game: "pioche", name: "QA Pioche", emblem: 0 });
+  assert.equal(create.status, 200, JSON.stringify(create));
+  const code = create.game.code;
+  console.log("Created Pioche test room " + code);
+  const join = await req(pioche("/api/rooms/" + code), undefined, { type: "join", name: "QA Pioche 2", emblem: 0 });
+  assert.equal(join.status, 200, JSON.stringify(join));
+  assert.notEqual(join.game.players[1].emblem, join.game.players[0].emblem);
+  assert.equal((await req("/api/rooms/" + code)).error, "roomNotFound");
+  const started = await req(pioche("/api/rooms/" + code), create.token, { type: "start" });
+  assert.equal(started.status, 200, JSON.stringify(started));
+  const seen = (await req(pioche("/api/rooms/" + code), join.token)).game;
+  for (const p of seen.players) assert.equal(p.hand.length, p.id === seen.me ? 7 : 0);
+  assert.ok(!("deck" in seen) && !JSON.stringify(seen).includes("tokenHash"));
+  const tokens = new Map([[create.game.me, create.token], [join.game.me, join.token]]);
+  const drawn = await req(pioche("/api/rooms/" + code), tokens.get(seen.active), { type: "draw" });
+  assert.equal(drawn.status, 200, JSON.stringify(drawn));
+  console.log("PASS Pioche: routing, privacy, deal and draw");
+}
 console.log("Integration suite passed against " + base);

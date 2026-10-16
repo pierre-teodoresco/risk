@@ -115,7 +115,7 @@ export default function Hub({ arts }: { arts: Record<string, ReactNode> }) {
         <section className="hall-shelf" aria-labelledby="hall-shelf-title">
           <div className="hall-section-head">
             <h2 id="hall-shelf-title">{h.shelf}</h2>
-            <p>{h.shelfNote}</p>
+            <p>{fmt(h.shelfNote, { n: GAMES.filter((g) => g.status === "live").length })}</p>
           </div>
           <ul className="hall-boxes">
             {GAMES.map((g) => (
