@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   HelpCircle,
+  LayoutGrid,
   LockKeyhole,
   LogOut,
   Send,
@@ -32,7 +33,8 @@ import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
 import type { BoardOptions, Lands } from "./board/engine";
 import { WORLD, playerColors, type Lang } from "@/lib/world";
 import { type PublicGame, type Action } from "@/lib/game";
-import { texts, errorText } from "@/lib/i18n";
+import { texts, errorText, LANG_KEY } from "@/lib/i18n";
+import { gamePath } from "@/games/registry";
 
 const Board3D = dynamic(() => import("./Board3D"), {
   ssr: false,
@@ -46,6 +48,7 @@ type Preview = {
   timer: number;
 };
 const sessionKey = (code: string) => "mappa.session." + code;
+const MAPPA_PATH = gamePath("mappa");
 function sound(kind = "click") {
   try {
     const AudioCtx =
@@ -173,7 +176,7 @@ export default function Mappa() {
     [accept],
   );
   useEffect(() => {
-    const savedLang = localStorage.getItem("mappa.lang");
+    const savedLang = localStorage.getItem(LANG_KEY);
     if (savedLang === "fr" || savedLang === "en") setLang(savedLang);
     // Sound stays off unless the player turned it on.
     if (localStorage.getItem("mappa.audio") === "on") {
@@ -253,7 +256,7 @@ export default function Mappa() {
   }, [now, game?.deadline, game?.paused, game?.code, fetchState]);
   useEffect(() => {
     document.documentElement.lang = lang;
-    localStorage.setItem("mappa.lang", lang);
+    localStorage.setItem(LANG_KEY, lang);
   }, [lang]);
   useEffect(() => {
     if (!rules && !confirm) return;
@@ -389,12 +392,12 @@ export default function Mappa() {
     setPreview(null);
     setError("");
     setRoom("");
-    history.pushState(null, "", "/");
+    history.pushState(null, "", MAPPA_PATH);
   }
   async function copy() {
     try {
       await navigator.clipboard.writeText(
-        location.origin + "/?room=" + game!.code,
+        `${location.origin}${MAPPA_PATH}?room=${game!.code}`,
       );
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -664,6 +667,9 @@ export default function Mappa() {
           mappa<span>.</span>
         </button>
         <nav>
+          <a className="orb small" href="/" aria-label={t.allGames} title={t.allGames}>
+            <LayoutGrid />
+          </a>
           <button className="orb small" aria-label={t.rules} onClick={() => setRules(true)}>
             <BookOpen />
           </button>
@@ -799,7 +805,7 @@ export default function Mappa() {
               <button
                 className="restore"
                 onClick={() => {
-                  location.href = "/?room=" + recent;
+                  location.href = `${MAPPA_PATH}?room=${recent}`;
                 }}
               >
                 <ArrowDownUp size={14} />

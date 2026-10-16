@@ -8,7 +8,14 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 - Pour une intervention sur le stockage, lire aussi [docs/schema.sql](docs/schema.sql) et [docs/retention.sql](docs/retention.sql). Le schéma contient une empreinte de secret propre à l’installation existante ; suivre le README pour une nouvelle installation.
 - Pour une vérification de déploiement, consulter [docs/verification.md](docs/verification.md). Ce document rapporte des contrôles datés, pas l’état actuel des services.
 
-## Répartition des responsabilités
+## Hub et briques de jeu
+
+- Le site est un hub de jeux, **Tablée**. `games/registry.ts` est l’unique liste des jeux : nom, statut (`live` ou `soon`), joueurs, durée, textes FR/EN et couleur d’accent. Le nom du hub est la constante `HUB_NAME`.
+- Ajouter une brique : une entrée dans le registre, son illustration dans `components/hub/art.tsx` (même `id`), puis, quand elle passe en `live`, une page `app/<id>/page.tsx`. Un jeu `soon` reste visible sans lien.
+- `components/hub/Hub.tsx` affiche la ludothèque ; ses textes sont `hallTexts` dans `lib/i18n.ts`, ses styles sont limités à `.hall` dans `app/hub.css`. Les illustrations sont rendues côté serveur : ne pas importer `components/hub/art.tsx` depuis un composant client.
+- La langue est partagée entre le hub et les jeux par `LANG_KEY`. Le stockage, les routes `app/api/rooms/` et `lib/store.ts` sont encore propres à Mappa ; les rendre génériques au moment d’ajouter le deuxième jeu jouable.
+
+## Répartition des responsabilités (Mappa)
 
 - `lib/game.ts` porte les règles, les transitions et la projection `publicGame`. Conserver le moteur indépendant du réseau et du stockage, avec le temps et l’aléatoire injectables pour les tests.
 - `lib/store.ts` est exclusivement serveur : identité des joueurs, appels RPC, quotas et persistance. Les routes `app/api/rooms/` valident les requêtes et passent par cette couche.

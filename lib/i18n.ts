@@ -4,6 +4,7 @@ const fr = {
   rules: "Les règles",
   sound: "Son",
   colorblind: "Mode daltonien",
+  allGames: "Tous les jeux",
   create: "Créer une partie",
   join: "Rejoindre",
   nickname: "Votre pseudo",
@@ -229,6 +230,7 @@ const en: typeof fr = {
   rules: "How to play",
   sound: "Sound",
   colorblind: "Colour-blind mode",
+  allGames: "All games",
   create: "Create a game",
   join: "Join",
   nickname: "Your name",
@@ -844,3 +846,48 @@ const hudEn: typeof hudFr = {
   heldWithN: "{name} · {n} armies",
 };
 export const hudTexts = (lang: Lang) => (lang === "fr" ? hudFr : hudEn);
+
+// Shared by the hub and every game; the key predates the hub, so saved choices survive.
+export const LANG_KEY = "mappa.lang";
+
+const hallFr = {
+  eyebrow: "Ludothèque entre amis",
+  title: "Ce soir, on joue à quoi\u00a0?",
+  lead: "Des jeux de société qui se lancent avec un lien. Pas de compte, rien à installer\u00a0: un code de salon, quelques amis, et c’est parti.",
+  shelf: "La ludothèque",
+  shelfNote: "Un jeu disponible, d’autres en préparation.",
+  play: "Jouer",
+  soon: "Bientôt",
+  players: "{min}–{max} joueurs",
+  minutes: "{min}–{max} min",
+  how: "Comment ça marche",
+  step1: "Choisis un jeu",
+  step1Text: "Ouvre une boîte de la ludothèque et crée un salon.",
+  step2: "Envoie le lien",
+  step2Text: "Tes amis rejoignent avec le code, depuis leur navigateur.",
+  step3: "Jouez",
+  step3Text: "Chacun sur son écran, ordinateur ou tablette.",
+  footer: "Gratuit, sans publicité, entre amis.",
+  language: "Langue",
+};
+const hallEn: typeof hallFr = {
+  eyebrow: "Game night, online",
+  title: "What are we playing tonight?",
+  lead: "Board games you start with a link. No account, nothing to install: one room code, a few friends, and you are in.",
+  shelf: "The shelf",
+  shelfNote: "One game ready, more on the way.",
+  play: "Play",
+  soon: "Coming soon",
+  players: "{min}–{max} players",
+  minutes: "{min}–{max} min",
+  how: "How it works",
+  step1: "Pick a game",
+  step1Text: "Open a box from the shelf and create a room.",
+  step2: "Send the link",
+  step2Text: "Friends join with the code, right from their browser.",
+  step3: "Play",
+  step3Text: "Each on their own screen, computer or tablet.",
+  footer: "Free, no ads, among friends.",
+  language: "Language",
+};
+export const hallTexts = (lang: Lang) => (lang === "fr" ? hallFr : hallEn);

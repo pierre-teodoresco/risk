@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Mappa — Le monde est à vous.",
+  title: "Tablée — Jeux de société entre amis",
   description:
-    "Un atlas, quelques amis et un monde à conquérir. Jeu de stratégie multijoueur privé, gratuit, pour 3 à 6 joueurs.",
+    "Des jeux de société en ligne qui se lancent avec un lien : pas de compte, rien à installer, gratuit.",
   icons: { icon: "/icon.svg" },
 };
 export default function RootLayout({

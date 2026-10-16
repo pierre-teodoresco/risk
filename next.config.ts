@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
+  async redirects() {
+    // Mappa invites sent before the hub pointed at the site root.
+    return [
+      {
+        source: "/",
+        has: [{ type: "query", key: "room" }],
+        destination: "/mappa",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
