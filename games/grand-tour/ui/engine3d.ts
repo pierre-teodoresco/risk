@@ -46,7 +46,7 @@ export type TourOptions = { interactive: boolean; autoRotate?: boolean; showcase
 
 // Board units: corners 1.6 wide, other squares 1; the board is 12.2 across.
 const CORNER = 1.6, TOTAL = CORNER * 2 + 9, HALF = TOTAL / 2;
-const TILE_H = 0.26, SLAB_H = 0.5, GAP = 0.06;
+const TILE_H = 0.07, SLAB_H = 0.5, GAP = 0;
 const HOP_MS = 200, HOP_H = 0.55;
 const PAWN_SCALE = 1.3;
 const LAND_MS = 1150;
@@ -261,6 +261,7 @@ export class TourBoard {
   private resizeObs: ResizeObserver;
   private boot = performance.now();
   private disposed = false;
+  private moved = false;
   private reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   private arrow: THREE.Mesh;
   private arrowMat = new THREE.MeshPhysicalMaterial({ color: "#ffffff", roughness: 0.3, clearcoat: 1, emissive: "#000000" });
@@ -320,9 +321,12 @@ export class TourBoard {
     Object.assign(this.controls, {
       enableDamping: true,
       dampingFactor: 0.12,
-      enablePan: false,
-      minPolarAngle: 0.35,
-      maxPolarAngle: 1.12,
+      // A free camera: turn all the way round, look from straight above or close to the table,
+      // slide sideways (right drag or two fingers), zoom in on a square.
+      enablePan: true,
+      screenSpacePanning: true,
+      minPolarAngle: 0,
+      maxPolarAngle: 1.45,
       rotateSpeed: 0.6,
       zoomSpeed: 1.1,
     });
@@ -335,6 +339,8 @@ export class TourBoard {
     el.addEventListener("pointerleave", this.onLeave);
     el.addEventListener("pointerdown", this.onDown);
     el.addEventListener("pointerup", this.onUp);
+    el.addEventListener("dblclick", this.onReset);
+    this.controls.addEventListener("start", () => (this.moved = true));
     this.resizeObs = new ResizeObserver(() => this.resize());
     this.resizeObs.observe(host);
     this.resize();
@@ -366,7 +372,7 @@ export class TourBoard {
       group.position.set(x, 0, z);
       group.rotation.y = yaw;
       const bodyMat = this.keep(new THREE.MeshPhysicalMaterial({ color: WHITE, roughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.4 }));
-      const body = new THREE.Mesh(this.keep(new RoundedBoxGeometry(w, TILE_H, d, 3, 0.05)), bodyMat);
+      const body = new THREE.Mesh(this.keep(new RoundedBoxGeometry(w, TILE_H, d, 1, 0.005)), bodyMat);
       body.position.y = TILE_H / 2;
       body.castShadow = body.receiveShadow = true;
       body.userData.i = i;
@@ -377,7 +383,7 @@ export class TourBoard {
       const tex = this.keep(new THREE.CanvasTexture(canvas));
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
-      const label = new THREE.Mesh(this.keep(new THREE.PlaneGeometry(w - 0.04, d - 0.04)), this.keep(new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })));
+      const label = new THREE.Mesh(this.keep(new THREE.PlaneGeometry(w, d)), this.keep(new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })));
       label.rotation.x = -Math.PI / 2;
       label.position.y = TILE_H + 0.003;
       group.add(label);
@@ -394,6 +400,8 @@ export class TourBoard {
   /** The little object standing on a special square. */
   private buildProp(i: number, t: Tile): THREE.Object3D | null {
     const kind = BOARD[i].kind;
+    // Only the corners carry an object; the other squares keep a flat, readable print.
+    if (kind !== "go" && kind !== "jail" && kind !== "parking" && kind !== "toJail") return null;
     const g = new THREE.Group();
     g.position.y = TILE_H;
     const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 0) => {
@@ -405,79 +413,7 @@ export class TourBoard {
     };
     // Props stand in the half of the square near the middle of the board, the label keeps the rest.
     const zc = t.inner * 0.32;
-    if (kind === "airport") {
-      const white = plastic("#ffffff"), blue = plastic("#3d7ff0");
-      const plane = new THREE.Group();
-      const body = new THREE.Mesh(this.keep(new THREE.CapsuleGeometry(0.075, 0.48, 6, 14)), white);
-      body.rotation.z = Math.PI / 2;
-      const wing = new THREE.Mesh(this.keep(new RoundedBoxGeometry(0.16, 0.025, 0.64, 2, 0.01)), blue);
-      wing.position.x = 0.02;
-      const tail = new THREE.Mesh(this.keep(new RoundedBoxGeometry(0.09, 0.15, 0.025, 2, 0.01)), blue);
-      tail.position.set(-0.26, 0.09, 0);
-      const stab = new THREE.Mesh(this.keep(new RoundedBoxGeometry(0.07, 0.02, 0.24, 2, 0.008)), blue);
-      stab.position.set(-0.26, 0.03, 0);
-      plane.add(body, wing, tail, stab);
-      plane.traverse((o) => ((o as THREE.Mesh).castShadow = true));
-      plane.position.set(0, 0.2, zc);
-      plane.rotation.y = 0.5;
-      g.add(plane);
-      this.props.push({ obj: plane, kind: "plane", phase: i });
-    } else if (kind === "utility") {
-      if (BOARD[i].kind === "utility" && (BOARD[i] as { name: string }).name.startsWith("É")) {
-        const bolt = new THREE.Shape([[0.05, 0.3], [-0.12, 0], [0, 0], [-0.06, -0.3], [0.14, 0.05], [0.02, 0.05], [0.1, 0.3]].map(([x, y]) => new THREE.Vector2(x, y)));
-        const geo = new THREE.ExtrudeGeometry(bolt, { depth: 0.07, bevelEnabled: true, bevelSize: 0.015, bevelThickness: 0.015, bevelSegments: 2 });
-        geo.center();
-        const m = add(geo, plastic("#ffcf26", { emissive: "#6b4b00" }), 0, 0.36, zc);
-        this.props.push({ obj: m, kind: "spin", phase: i });
-      } else {
-        const drop = new THREE.LatheGeometry([[0, 0.3], [0.04, 0.22], [0.1, 0.12], [0.13, 0.04], [0.12, -0.03], [0.07, -0.08], [0, -0.09]].map(([x, y]) => new THREE.Vector2(x, y)), 24);
-        const m = add(drop, plastic("#3aa6f2", { transmission: 0, clearcoat: 1 }), 0, 0.32, zc);
-        this.props.push({ obj: m, kind: "bob", phase: i });
-      }
-    } else if (kind === "chance") {
-      const q = canvasTexture(128, 128, (c) => {
-        c.fillStyle = "#ff8a1f";
-        c.fillRect(0, 0, 128, 128);
-        c.fillStyle = "#ffffff";
-        c.font = `100px ${DISPLAY}`;
-        c.textAlign = "center";
-        c.textBaseline = "middle";
-        c.fillText("?", 64, 70);
-      });
-      this.keep(q);
-      const m = add(new RoundedBoxGeometry(0.34, 0.34, 0.34, 3, 0.06), this.keep(new THREE.MeshPhysicalMaterial({ map: q, roughness: 0.35, clearcoat: 0.8 })), 0, 0.42, zc);
-      this.props.push({ obj: m, kind: "float", phase: i });
-    } else if (kind === "chest") {
-      const box = new THREE.Group();
-      const blue = plastic("#3d7ff0"), gold = plastic("#ffd23f");
-      const b = new THREE.Mesh(this.keep(new RoundedBoxGeometry(0.34, 0.24, 0.34, 2, 0.03)), blue);
-      b.position.y = 0.12;
-      const lid = new THREE.Mesh(this.keep(new RoundedBoxGeometry(0.38, 0.07, 0.38, 2, 0.02)), blue);
-      lid.position.y = 0.27;
-      const r1 = new THREE.Mesh(this.keep(new THREE.BoxGeometry(0.07, 0.315, 0.39)), gold);
-      r1.position.y = 0.155;
-      const r2 = new THREE.Mesh(this.keep(new THREE.BoxGeometry(0.39, 0.315, 0.07)), gold);
-      r2.position.y = 0.155;
-      const bow1 = new THREE.Mesh(this.keep(new THREE.TorusGeometry(0.06, 0.022, 8, 16)), gold);
-      bow1.position.set(-0.05, 0.36, 0);
-      bow1.rotation.y = Math.PI / 2;
-      const bow2 = bow1.clone();
-      bow2.position.x = 0.05;
-      box.add(b, lid, r1, r2, bow1, bow2);
-      box.traverse((o) => ((o as THREE.Mesh).castShadow = true));
-      box.position.z = zc;
-      box.rotation.y = 0.35;
-      g.add(box);
-      this.props.push({ obj: box, kind: "wiggle", phase: i });
-    } else if (kind === "tax") {
-      const gold = plastic("#ffc928", { metalness: 0.3, roughness: 0.3 });
-      for (let k = 0; k < 4; k++) {
-        const c = new THREE.Mesh(COIN, gold);
-        c.position.set(k === 3 ? 0.12 : 0, 0.03 + (k === 3 ? 0 : k * 0.055), zc + (k === 3 ? 0.1 : 0));
-        c.castShadow = true;
-        g.add(c);
-      }
-    } else if (kind === "go") {
+    if (kind === "go") {
       const arrow = new THREE.Shape([[-0.5, 0.16], [0.12, 0.16], [0.12, 0.38], [0.55, 0], [0.12, -0.38], [0.12, -0.16], [-0.5, -0.16]].map(([x, y]) => new THREE.Vector2(x, y)));
       const geo = new THREE.ExtrudeGeometry(arrow, { depth: 0.1, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 2 });
       geo.rotateX(-Math.PI / 2);
@@ -734,58 +670,52 @@ export class TourBoard {
         g.fillText("+₲200", 0, H * 0.3 + size * 1.05);
       }
       g.restore();
+      this.drawEdge(g, W, H);
       t.tex.needsUpdate = true;
       return;
     }
 
+    // One clean card per square: a colour band (cities), one big symbol (the others), the name,
+    // and the price on the outer edge. Nothing else, so it reads from across the table.
     const band = s.groupColors[i];
-    const flagEmoji = s.flags[i];
     if (band) {
-      // Coloured header near the middle, with the city's name in white.
-      const [by, bh] = box(0, H * 0.36);
+      const [by, bh] = box(0, H * 0.26);
       g.fillStyle = band;
-      g.beginPath();
-      g.roundRect(0, by, W, bh, 18);
-      g.fill();
-      g.fillStyle = "#00000022";
-      g.fillRect(0, innerTop ? H * 0.36 - 8 : H - H * 0.36, W, 8);
-      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W - 26, 52, 22, (px) => `${px}px ${DISPLAY}`);
-      g.fillStyle = "#ffffff";
-      g.lineJoin = "round";
-      g.lineWidth = 8;
-      g.strokeStyle = "#00000033";
-      lines.forEach((l, k) => {
-        const yy = y(H * 0.18) + (k - (lines.length - 1) / 2) * size * 0.98;
-        g.strokeText(l, W / 2, yy);
-        g.fillText(l, W / 2, yy);
-      });
+      g.fillRect(0, by, W, bh);
     } else {
-      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W - 30, 40, 20, (px) => `${px}px ${DISPLAY}`);
-      g.fillStyle = INK;
-      lines.forEach((l, k) => g.fillText(l, W / 2, y(H * 0.7) + (k - (lines.length - 1) / 2) * size));
+      const glyph = sq.kind === "chance" ? "?" : sq.kind === "chest" ? "✦" : sq.kind === "airport" ? "✈" : sq.kind === "tax" ? "%" : (sq as { name?: string }).name?.startsWith("É") ? "⚡" : "≈";
+      g.font = `${W * 0.46}px ${DISPLAY}`;
+      g.fillStyle = sq.kind === "chance" ? "#ff8a1f" : sq.kind === "chest" ? "#3d7ff0" : sq.kind === "tax" ? "#e2373f" : sq.kind === "airport" ? "#5b6b85" : "#e8a400";
+      g.fillText(glyph, W / 2, y(H * 0.24));
     }
-    if (flagEmoji && !h?.houses) {
-      g.font = `${W * 0.42}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-      g.fillText(flagEmoji, W / 2, y(H * 0.57));
+    {
+      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W - 24, band ? 44 : 36, 18, (px) => `${px}px ${DISPLAY}`);
+      g.fillStyle = INK;
+      const mid = y(band ? H * 0.47 : H * 0.53);
+      lines.forEach((l, k) => g.fillText(l, W / 2, mid + (k - (lines.length - 1) / 2) * size));
     }
     const price = s.prices[i];
     if (price !== null) {
-      // The price strip on the outer edge; an owned square shows its rent in its owner's colour.
-      const [py, ph] = box(H * 0.8, H);
+      // An owned square shows its rent on a strip of its owner's colour.
+      const [py, ph] = box(H * 0.78, H);
       const rent = h ? s.rents[i] : null;
       if (h && ownerColor) {
         g.fillStyle = h.mortgaged ? "#b8bcc6" : ownerColor;
-        g.beginPath();
-        g.roundRect(8, py + 4, W - 16, ph - 12, 16);
-        g.fill();
+        g.fillRect(0, py, W, ph);
       }
       const text = sq.kind === "tax" ? `−${money(price)}` : h?.mortgaged ? "✕" : rent ?? money(price);
-      const fs = Math.min(64, W * 0.27);
-      g.font = `${fs}px ${DISPLAY}`;
+      g.font = `${Math.min(58, W * 0.25)}px ${DISPLAY}`;
       g.fillStyle = h ? "#ffffff" : sq.kind === "tax" ? "#e2373f" : INK;
-      g.fillText(text, W / 2, py + ph / 2, W - 24);
+      g.fillText(text, W / 2, py + ph / 2, W - 20);
     }
+    this.drawEdge(g, W, H);
     t.tex.needsUpdate = true;
+  }
+  /** A fine line around each square, like the print of a real board. */
+  private drawEdge(g: CanvasRenderingContext2D, W: number, H: number) {
+    g.strokeStyle = "#d3dae4";
+    g.lineWidth = 5;
+    g.strokeRect(2.5, 2.5, W - 5, H - 5);
   }
 
   /** Owner's flag and buildings; new ones pop up. */
@@ -826,18 +756,20 @@ export class TourBoard {
       t.built = [];
       if (houses && owner) {
         const color = s.ownerColor(owner);
-        const zc = t.inner * 0.08;
+        // On the colour band, so the name and the rent stay readable.
+        const zc = t.inner * (t.d / 2 - 0.2);
         if (houses === 5) {
           const tower = this.tower(color);
-          tower.position.set(0.05, 0, zc);
+          tower.scale.setScalar(0.75);
+          tower.position.set(0, 0, zc);
           t.buildings.add(tower);
           t.built.push({ obj: tower, born: grew ? now : -1e9 });
         } else
           for (let k = 0; k < houses; k++) {
             const house = this.house(color);
-            // Two rows of two, a little askew like a real street.
-            house.position.set((k % 2 ? 0.17 : -0.12), 0, zc + (k < 2 ? -0.18 : 0.2) * t.inner * -1);
-            house.rotation.y = (k % 2 ? -0.2 : 0.15);
+            // A row along the band, like the houses on a printed board.
+            house.scale.setScalar(0.85);
+            house.position.set((k - (houses - 1) / 2) * 0.22, 0, zc);
             t.buildings.add(house);
             t.built.push({ obj: house, born: grew && k >= t.houses ? now : -1e9 });
           }
@@ -1144,10 +1076,20 @@ export class TourBoard {
   };
 
   // ---------- Frame ----------
+  /** Back to the starting view (double click on the board). */
+  private onReset = () => {
+    this.moved = false;
+    this.resize();
+  };
   private resize() {
     const w = this.host.clientWidth || 1, h = this.host.clientHeight || 1;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
+    // Once the player has moved the camera, a resize keeps their view.
+    if (this.moved) {
+      this.camera.updateProjectionMatrix();
+      return;
+    }
     const showcase = !!this.opts.showcase;
     // Seen from the Start corner, high above: the board is a diamond.
     const polar = showcase ? 0.95 : w / h < 0.8 ? 0.6 : 0.96;
@@ -1175,10 +1117,8 @@ export class TourBoard {
     const dist = hi;
     this.camera.position.copy(dir).multiplyScalar(dist).add(target);
     this.controls.target.copy(target);
-    this.controls.minDistance = dist * 0.6;
-    this.controls.maxDistance = dist * 1.2;
-    this.controls.minAzimuthAngle = showcase ? -Infinity : Math.PI / 4 - 0.6;
-    this.controls.maxAzimuthAngle = showcase ? Infinity : Math.PI / 4 + 0.6;
+    this.controls.minDistance = dist * 0.25;
+    this.controls.maxDistance = dist * 2;
     this.controls.update();
   }
 
@@ -1346,6 +1286,7 @@ export class TourBoard {
     el.removeEventListener("pointerleave", this.onLeave);
     el.removeEventListener("pointerdown", this.onDown);
     el.removeEventListener("pointerup", this.onUp);
+    el.removeEventListener("dblclick", this.onReset);
     // Shared colours and shapes stay for the other boards on the page; this board's own go.
     for (const x of this.owned) x.dispose();
     for (const f of this.floats) {
