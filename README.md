@@ -77,6 +77,13 @@ Options choisies par l’hôte dans la salle d’attente :
 
 Simplification : la carte « anniversaire » ne met jamais un autre joueur en dette ; il donne ce qu’il a.
 
+## Échecs et Dames
+
+Deux jeux à **deux joueurs** sur le même socle (`games/duel/`) : pendule réglable par l’hôte (libre, 3, 5, 10 ou 15 minutes, avec 0, 2 ou 5 secondes ajoutées par coup), proposition de nulle, abandon, revanche avec couleurs inversées. Les couleurs sont tirées au sort au premier lancement.
+
+- **Échecs** : règles complètes (roque, prise en passant, promotion, pat, triple répétition, cinquante coups, matériel insuffisant ; une chute au temps face à un matériel qui ne peut pas mater est nulle). Le plateau suit les conventions des grands sites d’échecs : glisser-déposer ou deux clics, points des coups possibles, flèches et marques au clic droit, historique navigable aux flèches du clavier, sons.
+- **Dames** : règles internationales sur 10 × 10 (prise obligatoire et majoritaire, dames volantes, promotion seulement en fin de coup sur la dernière rangée, nulle après 25 coups de dames sans prise de chaque côté), plateau en 3D.
+
 ## Vérifier
 
 ```sh
@@ -89,7 +96,7 @@ npm run test:integration
 MAPPA_TEST_URL=https://votre-domaine.vercel.app npm run test:integration
 ```
 
-L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, et une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
+L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges, et une table d’échecs et de dames pour le routage, les deux places et la légalité des coups. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
 
 ## Déploiement
 

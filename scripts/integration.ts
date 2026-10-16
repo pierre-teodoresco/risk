@@ -212,4 +212,30 @@ for (const count of [3, 6]) {
   assert.equal((await req(gt("/api/rooms/" + code), tokens.get(c))).game.trades.length, 0);
   console.log("PASS Grand Tour: routing, privacy, roll and private trades");
 }
+for (const [game, opening, illegal] of [
+  ["echecs", { from: 12, to: 28 }, { from: 12, to: 36 }],
+  ["dames", { path: [31, 42] }, { path: [31, 51] }],
+] as const) {
+  // Chess and draughts: routing, a two-seat table, an illegal move refused and a legal one played.
+  const q = (path: string) => path + "?game=" + game;
+  const create = await req(q("/api/rooms"), undefined, { game, name: "QA Duel 1", emblem: 0 });
+  assert.equal(create.status, 200, JSON.stringify(create));
+  const code = create.game.code;
+  console.log(`Created ${game} test room ${code}`);
+  const join = await req(q("/api/rooms/" + code), undefined, { type: "join", name: "QA Duel 2", emblem: 1 });
+  assert.equal(join.status, 200, JSON.stringify(join));
+  const third = await req(q("/api/rooms/" + code), undefined, { type: "join", name: "QA Duel 3", emblem: 2 });
+  assert.equal(third.error, "roomFull");
+  assert.equal((await req("/api/rooms/" + code)).error, "roomNotFound");
+  const started = await req(q("/api/rooms/" + code), create.token, { type: "start" });
+  assert.equal(started.status, 200, JSON.stringify(started));
+  assert.ok(!JSON.stringify(started.game).includes("tokenHash"));
+  const white = started.game.players.find((p: Any) => p.side === "w").id === create.game.me ? create.token : join.token;
+  const refused = await req(q("/api/rooms/" + code), white, { type: "move", ...illegal });
+  assert.equal(refused.error, "illegalMove", JSON.stringify(refused));
+  const moved = await req(q("/api/rooms/" + code), white, { type: "move", ...opening });
+  assert.equal(moved.status, 200, JSON.stringify(moved));
+  assert.equal(moved.game.moves.length, 1);
+  console.log(`PASS ${game}: routing, two seats, move legality`);
+}
 console.log("Integration suite passed against " + base);

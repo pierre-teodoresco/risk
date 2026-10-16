@@ -39,6 +39,12 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 - `games/grand-tour/ui/engine3d.ts` dessine le plateau en three.js, hors de React ; `Board.tsx` lui transmet l’état et pose les actions du tour en HTML au centre du plateau. Les géométries partagées (`SHARED`) ne sont jamais libérées avec une instance : l’accueil et l’entrée du jeu en affichent aussi un.
 - Textes, noms de cases, cartes et erreurs dans `games/grand-tour/i18n.ts`. Tests : `tests/grand-tour.test.ts`, dont des parties aléatoires complètes qui contrôlent la cohérence des comptes, et un passage Grand Tour dans `npm run test:integration`.
 
+## Échecs et Dames
+
+- `games/duel/engine.ts` porte le socle commun des jeux à deux (`duel(rules)`) : places, couleurs, pendule et incrément, nulle, abandon, revanche, pause et chute au temps par `maintenance`. Chaque jeu fournit ses règles pures (`games/echecs/rules.ts`, `games/dames/rules.ts`) et un `DuelRules` dans son `engine.ts`.
+- `games/duel/ui/DuelScreen.tsx` dessine l’entrée, la salle d’attente et une table générique (utilisée par les Dames, plateau 3D `grid3d.ts`). Un jeu peut fournir sa propre table (`Table`) et son habillage (`className`) : les Échecs le font avec `games/echecs/ui/ChessTable.tsx` et le plateau 2D `Board2D.tsx`, sous `.cc` dans `echecs.css`. L’historique des coups se rejoue côté client depuis la notation (`replay.ts`) ; le serveur reste juge des coups.
+- Textes partagés et erreurs dans `games/duel/i18n.ts`. Tests : `tests/duel.test.ts` (perft, notation, fins de partie, pendule, dames), et un passage par jeu dans `npm run test:integration`.
+
 ## Répartition des responsabilités (Mappa)
 
 - `lib/game.ts` porte les règles, les transitions et la projection `publicGame`. Conserver le moteur indépendant du réseau et du stockage, avec le temps et l’aléatoire injectables pour les tests.

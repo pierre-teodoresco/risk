@@ -61,6 +61,32 @@ export const GAMES: GameEntry[] = [
     accent: "#ffd24d",
   },
   {
+    id: "echecs",
+    name: "Échecs",
+    status: "live",
+    players: { min: 2, max: 2 },
+    minutes: { min: 10, max: 40 },
+    tagline: { fr: "Le roi tombe, la partie aussi.", en: "When the king falls, so does the game." },
+    pitch: {
+      fr: "Les échecs, avec pendule, nulle proposée et revanche.",
+      en: "Chess, with a clock, draw offers and rematches.",
+    },
+    accent: "#5c9171",
+  },
+  {
+    id: "dames",
+    name: "Dames",
+    status: "live",
+    players: { min: 2, max: 2 },
+    minutes: { min: 15, max: 40 },
+    tagline: { fr: "Prise obligatoire, rafle majoritaire.", en: "Capture is a must, the longest line wins." },
+    pitch: {
+      fr: "Le jeu de dames international sur 10 × 10 cases.",
+      en: "International draughts on a 10 × 10 board.",
+    },
+    accent: "#9a6a4b",
+  },
+  {
     id: "loup-garou",
     name: "Loup-garou",
     status: "soon",
