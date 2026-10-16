@@ -45,8 +45,8 @@ const BY_TERRITORY = {
   afghanistan: "AFG KAZ TKM UZB KGZ TJK KAB",
   india: "IND PAK BGD NPL BTN LKA KAS",
   siam: "THA MMR LAO KHM VNM",
-  china: "CHN TWN PRK KOR HKG MAC",
-  mongolia: "MNG",
+  china: "CHN TWN HKG MAC",
+  mongolia: "MNG PRK KOR",
   japan: "JPN",
   indonesia: "IDN PHL BRN TLS SGP",
   newguinea: "PNG",
@@ -66,7 +66,15 @@ function assign(p) {
     if (["Saskatchewan", "Manitoba", "Ontario"].includes(n)) return "ontario";
     return "quebec";
   }
+  // Asia is reshaped so touching shapes match the classic adjacency: Mongolia reaches the
+  // Pacific (Kamchatka, Japan) through Manchuria and Korea, Ural meets China at the Altai,
+  // and only Ural borders Kazakhstan (Afghanistan) on the Russian side; China fills the Altai
+  // corner so Kazakhstan does not seem to touch Mongolia.
+  if (c === "CHN" && ["Inner Mongol", "Heilongjiang", "Jilin", "Liaoning"].includes(n)) return "mongolia";
+  if (c === "MNG" && n === "Bayan-Ölgiy") return "china";
   if (c === "RUS") {
+    if (n === "Gorno-Altay") return "china";
+    if (["Altay", "Novosibirsk"].includes(n)) return "ural";
     if (n === "Sakha (Yakutia)") return "yakutsk";
     if (["Irkutsk", "Buryat", "Chita", "Amur"].includes(n)) return "irkutsk";
     if (["Kamchatka", "Chukchi Autonomous Okrug", "Maga Buryatdan", "Khabarovsk", "Primor'ye", "Yevrey", "Sakhalin"].includes(n)) return "kamchatka";
@@ -169,6 +177,10 @@ for (const g of geoms)
 for (const set of Object.values(owners)) for (const a of set) for (const b of set) if (a !== b) touching.add(a + "|" + b);
 const sea = [];
 for (const t of WORLD) for (const n of t.neighbors) if (t.id < n && !touching.has(t.id + "|" + n)) sea.push([t.id, n]);
+// A shared border without adjacency shows an attack the rules refuse.
+const neighbors = new Set(WORLD.flatMap((t) => t.neighbors.map((n) => t.id + "|" + n)));
+const stray = [...touching].filter((pair) => !neighbors.has(pair) && pair.split("|")[0] < pair.split("|")[1]);
+if (stray.length) console.error("Shapes touching without adjacency:", stray.join(", "));
 
 const out = { viewBox: [Math.floor(x0) - 12, Math.floor(y0) - 12, Math.ceil(x1 - x0) + 24, Math.ceil(y1 - y0) + 24], territories, sea };
 fs.writeFileSync(new URL("../lib/map-data.json", import.meta.url), JSON.stringify(out));
