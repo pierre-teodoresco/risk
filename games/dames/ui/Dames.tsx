@@ -1,61 +1,45 @@
 "use client";
-// International draughts: the shared duel screen, with capture lines picked square by square.
-import { useMemo, useState } from "react";
+// International draughts: the shared duel screen with the same 2D table as chess, and draughts pieces.
+import { useEffect, useState } from "react";
 import { gamePath } from "@/games/registry";
-import DuelScreen, { type DuelConfig, type PlayProps } from "@/games/duel/ui/DuelScreen";
-import GridBoard from "@/games/duel/ui/GridBoard";
-import type { GridConfig } from "@/games/duel/ui/grid3d";
-import { legalMoves, startPosition, type Position } from "../rules";
-import { draughtsPiece } from "./pieces";
+import DuelScreen, { type DuelConfig } from "@/games/duel/ui/DuelScreen";
+import Board2D from "@/games/duel/ui/Board2D";
+import Table2D from "@/games/duel/ui/Table2D";
+import { dark, legalMoves, play, squareNumber, startPosition, type Position } from "../rules";
+import { DRAUGHTS_2D } from "./game2d";
+import Piece from "./Piece";
 
-const BOARD: GridConfig = { size: 10, light: "#f3e3c3", dark: "#9a6a4b", piece: draughtsPiece };
-
-function DraughtsPlay({ game, side, act, busy }: PlayProps<Position>) {
-  const p = game.position;
-  const [path, setPath] = useState<number[]>([]);
-  const myTurn = game.phase === "playing" && !game.paused && side === p.turn;
-  const moves = useMemo(() => (myTurn ? legalMoves(p) : []), [p, myTurn]);
-  // Only the lines still matching the stops clicked so far.
-  const open = moves.filter((m) => path.every((s, i) => m.path[i] === s));
-  const current = path.length && open.length ? path : [];
-  const targets = current.length ? [...new Set(open.map((m) => m.path[current.length]).filter((s) => s !== undefined))] : [];
-  const starts = [...new Set(moves.map((m) => m.path[0]))];
-  const taking = moves[0]?.taken.length ? new Set(open.flatMap((m) => m.taken)) : new Set<number>();
-  function onSquare(i: number) {
-    if (!myTurn || busy) return;
-    if (current.length && targets.includes(i)) {
-      const next = [...current, i];
-      const done = open.find((m) => m.path.length === next.length && m.path.every((s, k) => s === next[k]));
-      if (done && !open.some((m) => m.path.length > next.length && m.path.every((s, k) => k >= next.length || s === next[k]))) {
-        setPath([]);
-        void act({ type: "move", path: done.path });
-      } else setPath(next);
-      return;
-    }
-    setPath(starts.includes(i) ? [i] : []);
+// A demo game for the entrance and the hub: the same moves every time, picked by a fixed seed.
+const DEMO_PLIES = 60;
+const DEMO = (() => {
+  let seed = 7;
+  const rand = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const positions = [startPosition()], played: number[][] = [[]];
+  for (let k = 0; k < DEMO_PLIES; k++) {
+    const ms = legalMoves(positions.at(-1)!);
+    if (!ms.length) break;
+    const m = ms[Math.floor(rand() * ms.length)];
+    positions.push(play(positions.at(-1)!, m));
+    played.push(m.path);
   }
-  const state = useMemo(
-    () => ({
-      cells: p.board,
-      flipped: side === "b",
-      selected: current.length ? current[current.length - 1] : null,
-      targets,
-      captures: [] as number[],
-      last: [...(game.last?.squares ?? []), ...current, ...taking],
-      danger: null,
-      move: game.last ? { path: game.last.path, at: game.last.at } : null,
-      interactive: true,
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [p, side, current.join(), targets.join(), game.last?.at],
-  );
-  return <GridBoard config={BOARD} state={state} onSquare={onSquare} />;
-}
+  return { positions, played };
+})();
+const SHOWCASE_STEP_MS = 1000;
+const label = (i: number) => (dark(i) ? String(squareNumber(i)) : null);
 
-const START = startPosition();
+/** A board replaying a demo game on a loop. */
 export function Showcase() {
-  const state = useMemo(() => ({ cells: START.board, flipped: false, selected: null, targets: [], captures: [], last: [], danger: null, move: null, interactive: false, spin: true }), []);
-  return <GridBoard config={BOARD} state={state} onSquare={() => {}} />;
+  const [k, setK] = useState(0);
+  useEffect(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(() => setK((n) => (n + 1) % DEMO.positions.length), SHOWCASE_STEP_MS);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="cc-showcase">
+      <Board2D size={10} cells={DEMO.positions[k].board} flipped={false} moves={[]} last={DEMO.played[k]} renderPiece={(c) => <Piece cell={c} />} coords="squares" squareLabel={label} />
+    </div>
+  );
 }
 
 const CONFIG: DuelConfig<Position> = {
@@ -71,7 +55,7 @@ const CONFIG: DuelConfig<Position> = {
       ["Prises", "On prend en sautant par-dessus une pièce adverse, en avant comme en arrière, et on enchaîne tant que c’est possible. La prise est obligatoire, et il faut jouer la rafle qui prend le plus de pièces. Les pièces prises disparaissent à la fin de la rafle."],
       ["Promotion", "Un pion qui termine son coup sur la dernière rangée devient une dame. S’il ne fait qu’y passer pendant une rafle, il reste un pion."],
       ["Nulles", "La partie est nulle d’un commun accord, après une triple répétition, ou après 25 coups de chaque côté sans prise ni mouvement de pion."],
-      ["Jouer ici", "Clique sur une pièce, puis sur ses cases d’arrivée. Pour une rafle, clique chaque étape : les pièces menacées s’allument."],
+      ["Jouer ici", "Glisse une pièce sur sa case d’arrivée, ou clique la pièce puis la case : les points montrent où elle peut aller, un anneau marque la fin d’une rafle. Clic droit pour marquer une case ou tracer une flèche. Les flèches du clavier font défiler la partie."],
     ],
     en: [
       ["The goal", "Take all the opposing pieces or block them: whoever cannot move loses. White starts, on a 10 × 10 board."],
@@ -79,11 +63,12 @@ const CONFIG: DuelConfig<Position> = {
       ["Capturing", "Jump over an opposing piece, forwards or backwards, and keep going while you can. Capturing is compulsory, and you must play the line that takes the most pieces. Taken pieces leave at the end of the line."],
       ["Crowning", "A man ending its move on the far row becomes a king. If it only passes through during a capture, it stays a man."],
       ["Draws", "A game is drawn by agreement, after a threefold repetition, or after 25 moves each without a capture or a man moving."],
-      ["Playing here", "Click a piece, then where it should land. For a capture line, click each stop: the pieces at stake light up."],
+      ["Playing here", "Drag a piece to its square, or click the piece then the square: dots show where it can go, a ring marks the end of a capture line. Right-click to mark a square or draw an arrow. The arrow keys step through the game."],
     ],
   },
-  Play: DraughtsPlay,
   Showcase,
+  Table: (props) => <Table2D rules={DRAUGHTS_2D} {...props} />,
+  className: "cc",
 };
 export default function Dames() {
   return <DuelScreen config={CONFIG} />;

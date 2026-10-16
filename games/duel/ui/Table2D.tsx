@@ -1,26 +1,57 @@
 "use client";
-// The chess table, laid out like the big chess sites: the opponent's bar above the board and
-// yours below (name, captured pieces, material, clock), the move list on the side with arrows
-// to look back through the game, draw and resign underneath, and the result over the board.
-import { useEffect, useMemo, useRef, useState } from "react";
+// The table of the two-player games, laid out like the big chess sites: the opponent's bar above
+// the board and yours below (name, pieces taken, material, clock), the move list on the side with
+// arrows to look back through the game, draw and resign underneath, and the result over the
+// board. Each game plugs its rules in through a `Game2D`; chess also allows premoves.
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Flag, Handshake, Timer, Trophy, X } from "lucide-react";
 import EmblemBadge from "@/components/EmblemBadge";
 import { fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
-import { clockText, useClocks, type TableProps } from "@/games/duel/ui/DuelScreen";
-import { reasonText } from "@/games/duel/i18n";
-import type { Side } from "@/games/duel/engine";
-import { inCheck, kingSquare, legalMoves, play, type Cell, type Kind, type Move, type Position } from "../rules";
-import Board2D from "./Board2D";
-import Piece from "./Piece";
-import { replay, type Replay } from "./replay";
+import type { Action } from "@/platform/contract";
+import { clockText, useClocks, type TableProps } from "./DuelScreen";
+import { reasonText } from "../i18n";
+import type { Side } from "../engine";
+import Board2D, { type BoardCell, type BoardMove, type BoardProps } from "./Board2D";
 import { playSound, type Sound } from "./sound";
 
 const CONFIRM_MS = 3000;
 const LOW_MS = 20000;
-const VALUE: Record<Kind, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-const START_COUNT: Record<Kind, number> = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
-const CAPTURE_ORDER: Kind[] = ["p", "b", "n", "r", "q"];
+/** Like the big chess sites: up to five moves can be queued in advance. */
+const MAX_PREMOVES = 5;
+
+export type Game2D<P, M> = {
+  size: number;
+  start: () => P;
+  cells: (p: P) => BoardCell[];
+  turn: (p: P) => Side;
+  legal: (p: P) => M[];
+  play: (p: P, m: M) => P;
+  /** The move in the notation the server records, to rebuild the history. */
+  notation: (p: P, m: M) => string;
+  /** Start, end, capture and promotion, for the board. */
+  ends: (m: M) => { from: number; to: number; capture: boolean; promo?: string };
+  /** What the server expects in the `move` action. */
+  action: (m: M) => Record<string, unknown>;
+  /** Squares lit after the move. */
+  highlight: (m: M) => number[];
+  check?: (p: P) => number | null;
+  sound: (before: P, m: M, after: P) => Sound;
+  soundOf: (notation: string) => Sound;
+  Piece: (props: { cell: string; className?: string }) => ReactNode;
+  /** Pieces taken by `by`, as [piece kind, count], and the material balance (White − Black). */
+  material: (cells: BoardCell[]) => { taken: (by: Side) => [string, number][]; score: number };
+  /** The move as written in the list. */
+  Notation?: (props: { text: string }) => ReactNode;
+  board: Pick<BoardProps, "coords" | "squareLabel" | "promoOrder">;
+  /** Premoves: where a piece could go if the board stays as it is, and how a queued premove changes the board. */
+  premove?: {
+    targets: (cells: BoardCell[], from: number, real: P) => number[];
+    apply: (cells: BoardCell[], from: number, to: number) => BoardCell[];
+    /** The legal move a premove becomes once it is the player's turn, if it still is legal. */
+    resolve: (p: P, from: number, to: number) => M | null;
+  };
+};
 
 const TEXTS = {
   fr: {
@@ -38,7 +69,7 @@ const TEXTS = {
     newRound: "Revanche",
     gameOver: "Partie terminée",
     vs: "vs",
-    draw: "Nulle",
+    premoves: "{n} prémove(s) en attente · clic droit pour annuler",
   },
   en: {
     untimed: "Untimed",
@@ -55,74 +86,75 @@ const TEXTS = {
     newRound: "Rematch",
     gameOver: "Game over",
     vs: "vs",
-    draw: "Draw",
+    premoves: "{n} premove(s) queued · right-click to cancel",
   },
 };
 
-/** Pieces each side has taken, from what is missing on the board, and the material balance. */
-function material(board: Cell[]) {
-  const count = { w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }, b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 } };
-  let score = 0;
-  for (const c of board) {
-    if (!c) continue;
-    const s = c[0] as Side, k = c[1] as Kind;
-    count[s][k]++;
-    score += (s === "w" ? 1 : -1) * VALUE[k];
+type Replay<P, M> = { moves: string[]; positions: P[]; played: (M | null)[] };
+/** Rebuilds every position of the game from its notation; extends the last result when the list only grew. */
+function replay<P, M>(g: Game2D<P, M>, moves: string[], previous?: Replay<P, M>): Replay<P, M> {
+  const keep = previous && previous.moves.length <= moves.length && previous.moves.every((m, k) => m === moves[k]) ? previous : null;
+  const positions = keep ? [...keep.positions] : [g.start()];
+  const played = keep ? [...keep.played] : [null];
+  for (let k = positions.length - 1; k < moves.length; k++) {
+    const p = positions[k];
+    const m = g.legal(p).find((x) => g.notation(p, x) === moves[k]);
+    // A list that does not replay (should not happen) stops where it breaks.
+    if (!m) break;
+    positions.push(g.play(p, m));
+    played.push(m);
   }
-  const taken = (by: Side) => {
-    const them = by === "w" ? count.b : count.w;
-    return CAPTURE_ORDER.map((k) => [k, Math.max(0, START_COUNT[k] - them[k])] as const).filter(([, n]) => n > 0);
-  };
-  return { taken, score };
+  return { moves: [...moves], positions, played };
 }
 
-function soundOf(san: string): Sound {
-  if (san.includes("#") || san.includes("+")) return "check";
-  if (san.startsWith("O-O")) return "castle";
-  return san.includes("x") ? "capture" : "move";
-}
-
-/** Notation with the moving piece drawn instead of its letter, as on the big sites. */
-function Figurine({ san, side }: { san: string; side: Side }) {
-  const head = /^[KQRBN]/.test(san) ? (san[0].toLowerCase() as Kind) : null;
-  const promo = san.match(/=([QRBN])/);
-  const body = (head ? san.slice(1) : san).replace(/=[QRBN]/, "=");
-  return (
-    <>
-      {head && <Piece cell={`${side}${head}`} className="cc-fig" />}
-      {body}
-      {promo && <Piece cell={`${side}${promo[1].toLowerCase() as Kind}`} className="cc-fig" />}
-    </>
-  );
-}
-
-export default function ChessTable({ game, side, tx, lang, act, busy }: TableProps<Position>) {
+export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy }: TableProps<P> & { rules: Game2D<P, M> }) {
   const t = TEXTS[lang];
+  const R = rules;
   const { turn, running, remaining } = useClocks(game);
-  const [pending, setPending] = useState<{ move: Move; base: number } | null>(null),
+  const [pending, setPending] = useState<{ move: M; base: number } | null>(null),
     [ply, setPly] = useState<number | null>(null),
     [confirmResign, setConfirmResign] = useState(false),
-    [dismissed, setDismissed] = useState<number | null>(null);
+    [dismissed, setDismissed] = useState<number | null>(null),
+    [queue, setQueue] = useState<{ from: number; to: number }[]>([]);
 
-  // Positions of every move, for the history and the highlights.
-  const cache = useRef<Replay | undefined>(undefined);
-  const history = useMemo(() => (cache.current = replay(game.moves, cache.current)), [game.moves]);
+  const cache = useRef<Replay<P, M> | undefined>(undefined);
+  const history = useMemo(() => (cache.current = replay(R, game.moves, cache.current)), [R, game.moves]);
 
   // A move sent and not yet confirmed shows at once; the server's answer replaces it.
   useEffect(() => {
     setPending(null);
-  }, [game.moves.length, game.round]);
-  const live = ply === null || ply >= game.moves.length;
-  useEffect(() => {
     setPly(null);
   }, [game.moves.length, game.round]);
-
+  useEffect(() => {
+    setQueue([]);
+  }, [game.round, game.phase]);
+  const live = ply === null || ply >= game.moves.length;
   const pendingMove = pending && pending.base === game.moves.length ? pending.move : null;
-  const shown: Position = !live ? history.positions[ply!] : pendingMove ? play(game.position, pendingMove) : game.position;
+  const real = game.position;
+  const shown: P = !live ? history.positions[ply!] : pendingMove ? R.play(real, pendingMove) : real;
   const lastMove = !live ? history.played[ply!] : pendingMove ?? history.played[history.played.length - 1];
-  const myTurn = live && !pendingMove && game.phase === "playing" && !game.paused && side === game.position.turn;
-  const moves = useMemo(() => (myTurn ? legalMoves(game.position) : []), [game.position, myTurn]);
-  const check = inCheck(shown) ? kingSquare(shown.board, shown.turn) : null;
+  const playing = game.phase === "playing" && !game.paused && !!side;
+  const myTurn = live && !pendingMove && playing && side === R.turn(real);
+  const premoving = live && playing && !!R.premove && !myTurn;
+
+  // The board as the player will have it once the queued premoves are played.
+  const virtual = useMemo(() => {
+    let cells = R.cells(shown);
+    if (premoving) for (const q of queue) cells = R.premove!.apply(cells, q.from, q.to);
+    return cells;
+  }, [R, shown, premoving, queue]);
+
+  const legal = useMemo(() => (myTurn ? R.legal(real) : []), [R, real, myTurn]);
+  const boardMoves = useMemo<BoardMove[]>(() => {
+    if (myTurn) return legal.map((m, id) => ({ ...R.ends(m), id }));
+    if (!premoving || queue.length >= MAX_PREMOVES) return [];
+    const out: BoardMove[] = [];
+    virtual.forEach((c, from) => {
+      if (c?.[0] !== side) return;
+      for (const to of R.premove!.targets(virtual, from, real)) out.push({ from, to, id: -1 });
+    });
+    return out;
+  }, [R, myTurn, legal, premoving, virtual, side, real, queue.length]);
 
   // Sounds: once per move, when it first appears (the player's own move sounds on the drop).
   const heard = useRef({ count: game.moves.length, round: game.round, phase: game.phase });
@@ -133,21 +165,37 @@ export default function ChessTable({ game, side, tx, lang, act, busy }: TablePro
   }, []);
   useEffect(() => {
     const h = heard.current;
-    if (h.round !== game.round || (h.phase === "lobby" && game.phase === "playing")) playSound("start");
-    else if (game.moves.length > h.count) playSound(soundOf(game.moves[game.moves.length - 1]));
+    if (h.round !== game.round) playSound("start");
+    else if (game.moves.length > h.count) playSound(R.soundOf(game.moves[game.moves.length - 1]));
     if (h.phase === "playing" && game.phase === "finished") setTimeout(() => playSound("end"), 160);
     heard.current = { count: Math.max(h.round === game.round ? h.count : 0, game.moves.length), round: game.round, phase: game.phase };
-  }, [game.moves, game.round, game.phase]);
+  }, [R, game.moves, game.round, game.phase]);
 
-  async function send(m: Move) {
+  async function send(m: M) {
     const base = game.moves.length;
     setPending({ move: m, base });
-    const next = play(game.position, m);
-    const capture = !!game.position.board[m.to] || m.ep;
-    playSound(inCheck(next) ? "check" : m.castle ? "castle" : capture ? "capture" : "move");
+    playSound(R.sound(real, m, R.play(real, m)));
     heard.current.count = base + 1;
-    if (!(await act({ type: "move", from: m.from, to: m.to, promo: m.promo }))) setPending(null);
+    if (!(await act({ type: "move", ...R.action(m) } as Action))) setPending(null);
   }
+
+  // When the turn comes back, the first premove plays at once if it is still legal; otherwise
+  // the whole queue is dropped, like on the big sites.
+  useEffect(() => {
+    if (!myTurn || !queue.length || !R.premove || busy) return;
+    const [first, ...rest] = queue;
+    const m = R.premove.resolve(real, first.from, first.to);
+    setQueue(m ? rest : []);
+    if (m) void send(m);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTurn, game.moves.length, busy]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setQueue([]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Arrow keys walk through the game.
   useEffect(() => {
@@ -176,7 +224,7 @@ export default function ChessTable({ game, side, tx, lang, act, busy }: TablePro
   }, [running, turn, mine, myMs]);
 
   const seat = (s: Side) => game.players.find((p) => p.side === s);
-  const { taken, score } = material(shown.board);
+  const { taken, score } = R.material(R.cells(shown));
   const order: Side[] = [mine === "w" ? "b" : "w", mine];
   const minutes = game.options.clock;
   const category = !minutes ? t.untimed : minutes < 3 ? t.bullet : minutes < 10 ? t.blitz : t.rapid;
@@ -187,10 +235,10 @@ export default function ChessTable({ game, side, tx, lang, act, busy }: TablePro
   }, [current]);
   const rows: number[] = [];
   for (let k = 0; k < game.moves.length; k += 2) rows.push(k);
-  const playing = game.phase === "playing" && !!side;
   const opponent = seat(side === "w" ? "b" : "w");
   const finished = game.phase === "finished" && game.result;
   const showResult = finished && dismissed !== game.round;
+  const Piece = R.Piece, Notation = R.Notation;
 
   const bar = (s: Side, top: boolean) => {
     const p = seat(s);
@@ -232,13 +280,24 @@ export default function ChessTable({ game, side, tx, lang, act, busy }: TablePro
           {bar(order[0], true)}
           <div className="cc-board-box">
             <Board2D
-              position={shown}
+              size={R.size}
+              cells={virtual}
               flipped={side === "b"}
-              moves={moves}
-              last={lastMove ? [lastMove.from, lastMove.to] : null}
-              check={check}
-              onMove={(m) => void send(m)}
+              moves={boardMoves}
+              last={lastMove ? R.highlight(lastMove) : null}
+              check={R.check?.(shown) ?? null}
+              premoves={premoving ? queue.flatMap((q) => [q.from, q.to]) : []}
+              onMove={(m) => {
+                if (m.id >= 0) void send(legal[m.id]);
+                else {
+                  setQueue((q) => [...q, { from: m.from, to: m.to }]);
+                  playSound("premove");
+                }
+              }}
               onPress={() => !live && setPly(null)}
+              onCancel={() => setQueue([])}
+              renderPiece={(c) => <Piece cell={c} />}
+              {...R.board}
             />
             {showResult && (
               <div className="cc-result" role="dialog" aria-modal="true" aria-labelledby="cc-result-title">
@@ -247,7 +306,7 @@ export default function ChessTable({ game, side, tx, lang, act, busy }: TablePro
                   <header className={game.result!.winner ? (game.result!.winner === side ? "win" : side ? "loss" : "win") : "draw"}>
                     {game.result!.winner ? <Trophy size={30} /> : <Handshake size={30} />}
                     <h2 id="cc-result-title">
-                      {!game.result!.winner ? tx.draw : side ? (game.result!.winner === side ? tx.youWon : game.result!.winner === "w" ? t.whiteWon : t.blackWon) : game.result!.winner === "w" ? t.whiteWon : t.blackWon}
+                      {!game.result!.winner ? tx.draw : side && game.result!.winner === side ? tx.youWon : game.result!.winner === "w" ? t.whiteWon : t.blackWon}
                     </h2>
                     <p>{reasonText(game.result!.reason, lang)}</p>
                   </header>
@@ -289,7 +348,7 @@ export default function ChessTable({ game, side, tx, lang, act, busy }: TablePro
                 {[k, k + 1].map((i) =>
                   i < game.moves.length ? (
                     <button key={i} className={"cc-move" + (current === i + 1 ? " on" : "")} onClick={() => setPly(i + 1 >= game.moves.length ? null : i + 1)}>
-                      <Figurine san={game.moves[i]} side="w" />
+                      {Notation ? <Notation text={game.moves[i]} /> : game.moves[i]}
                     </button>
                   ) : (
                     <span key={i} />
@@ -301,6 +360,8 @@ export default function ChessTable({ game, side, tx, lang, act, busy }: TablePro
             <p className="cc-empty">{finished ? "" : side ? (turn === side ? tx.yourTurn : fmt(tx.theirTurn, { name: seat(turn)?.name ?? "" })) : tx.spectating}</p>
           )}
         </div>
+
+        {premoving && queue.length > 0 && <p className="cc-premoves">{fmt(t.premoves, { n: queue.length })}</p>}
 
         {playing && game.drawOffer && game.drawOffer !== side && (
           <div className="cc-offer">
@@ -319,7 +380,7 @@ export default function ChessTable({ game, side, tx, lang, act, busy }: TablePro
           <button aria-label={t.latest} title={t.latest} disabled={live} onClick={() => setPly(null)}><ChevronLast /></button>
         </nav>
 
-        {playing ? (
+        {game.phase === "playing" && side ? (
           <div className="cc-actions">
             <button className="cc-btn" disabled={busy || game.drawOffer === side} onClick={() => void act({ type: "offerDraw" })}>
               <span className="cc-half">½</span> {game.drawOffer === side ? tx.drawOffered : tx.offerDraw}

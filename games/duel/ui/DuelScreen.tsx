@@ -1,6 +1,6 @@
 "use client";
-// Shared screen of the two-player games: top bar, entrance, waiting room, and the table with the
-// players' clocks, the move list and the game's actions. Each game draws its own board (`Play`).
+// Shared screen of the two-player games: top bar, entrance, waiting room; each game brings its
+// table (`Table`, usually the shared Table2D with the game's rules).
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, BookOpen, Check, Flag, Handshake, LayoutGrid, Link2, LogOut, Pause, Play as PlayIcon, Trophy, WifiOff, X } from "lucide-react";
 import EmblemBadge from "@/components/EmblemBadge";
@@ -11,8 +11,7 @@ import { useRoom } from "@/platform/useRoom";
 import { CLOCKS, EMBLEM_COUNT, INCREMENTS, type DuelView, type Side } from "../engine";
 import { duelTexts, errorText, reasonText, type DuelTexts } from "../i18n";
 
-export type PlayProps<P> = { game: DuelView<P>; side: Side | null; act: (a: Action) => Promise<boolean>; busy: boolean; lang: Lang; tx: DuelTexts };
-export type TableProps<P> = PlayProps<P>;
+export type TableProps<P> = { game: DuelView<P>; side: Side | null; act: (a: Action) => Promise<boolean>; busy: boolean; lang: Lang; tx: DuelTexts };
 export type DuelConfig<P> = {
   id: string;
   path: string;
@@ -20,12 +19,10 @@ export type DuelConfig<P> = {
   tagline: Record<Lang, string>;
   rulesTitle: Record<Lang, string>;
   rules: Record<Lang, [string, string][]>;
-  /** The board during a game. */
-  Play: (props: PlayProps<P>) => ReactNode;
   /** A slowly turning board for the entrance. */
   Showcase: () => ReactNode;
-  /** A game's own table, in place of the shared one (board, seats, moves and result). */
-  Table?: (props: TableProps<P>) => ReactNode;
+  /** The game's table: board, seats, clocks, moves and result. */
+  Table: (props: TableProps<P>) => ReactNode;
   /** Extra class on the page, for a game's own skin. */
   className?: string;
   /** Extra buttons in the top bar. */
@@ -147,11 +144,7 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
         <Lobby game={g} tx={tx} busy={room.busy} act={room.act} copied={copied} onCopy={copy} />
       ) : (
         <>
-          {config.Table ? (
-            <config.Table game={g} side={me?.side ?? null} tx={tx} lang={lang} act={room.act} busy={room.busy} />
-          ) : (
-            <Table config={config} game={g} side={me?.side ?? null} tx={tx} lang={lang} act={room.act} busy={room.busy} />
-          )}
+          <config.Table game={g} side={me?.side ?? null} tx={tx} lang={lang} act={room.act} busy={room.busy} />
           {g.paused && (
             <div className="gt-veil soft" role="status">
               <div className="gt-dialog">
@@ -291,113 +284,5 @@ function Lobby<P>({ game, tx, busy, act, copied, onCopy }: { game: DuelView<P>; 
         )}
       </section>
     </main>
-  );
-}
-
-function Table<P>({ config, game, side, tx, lang, act, busy }: { config: DuelConfig<P>; game: DuelView<P>; side: Side | null; tx: DuelTexts; lang: Lang; act: (a: Action) => Promise<boolean>; busy: boolean }) {
-  const [confirmResign, setConfirmResign] = useState(false);
-  const { turn, running, remaining } = useClocks(game);
-  const seat = (s: Side) => game.players.find((p) => p.side === s);
-  const mine = side ?? "w";
-  const order: Side[] = [mine === "w" ? "b" : "w", mine];
-  const pairs: string[][] = [];
-  for (let k = 0; k < game.moves.length; k += 2) pairs.push(game.moves.slice(k, k + 2));
-  const listEnd = useRef<HTMLOListElement>(null);
-  useEffect(() => {
-    listEnd.current?.lastElementChild?.scrollIntoView({ block: "nearest" });
-  }, [game.moves.length]);
-  const Play = config.Play;
-  const playing = game.phase === "playing" && !!side;
-  const opponent = seat(side === "w" ? "b" : "w");
-
-  return (
-    <div className="gt-table du-table">
-      <div className="gt-board-wrap">
-        <div className="gt-board3d"><Play game={game} side={side} act={act} busy={busy} lang={lang} tx={tx} /></div>
-      </div>
-      <aside className="gt-side">
-        {order.map((s) => {
-          const p = seat(s);
-          const ms = remaining(s);
-          return (
-            <section key={s} className={"gt-panel du-seat" + (turn === s && game.phase === "playing" ? " active" : "")}>
-              <span className={"du-stone " + s} aria-hidden="true" />
-              {p && <EmblemBadge emblem={p.emblem} size={34} />}
-              <span className="gt-who">
-                <b>{p?.name ?? "—"}{p?.id === game.me && <small>{tx.you}</small>}</b>
-                <small>{s === "w" ? tx.white : tx.black}</small>
-              </span>
-              {game.options.clock > 0 && (
-                <span className={"du-clock" + (turn === s && running ? " running" : "") + (ms < 20000 ? " low" : "")} style={{ "--pct": `${Math.max(0, Math.min(1, ms / (game.options.clock * 60000))) * 100}%` } as CSSProperties}>
-                  {clockText(ms)}
-                </span>
-              )}
-            </section>
-          );
-        })}
-
-        <section className="gt-panel">
-          <p className="du-status" aria-live="polite">
-            {game.phase === "finished" ? "" : side ? (turn === side ? tx.yourTurn : fmt(tx.theirTurn, { name: seat(turn)?.name ?? "" })) : tx.spectating}
-          </p>
-          {playing && game.drawOffer && game.drawOffer !== side && (
-            <div className="gt-offer">
-              <b><Handshake size={16} /> {fmt(tx.drawIncoming, { name: opponent?.name ?? "" })}</b>
-              <div className="gt-actions">
-                <button className="gt-btn go small" disabled={busy} onClick={() => void act({ type: "answerDraw", accept: true })}>{tx.accept}</button>
-                <button className="gt-btn ghost small" disabled={busy} onClick={() => void act({ type: "answerDraw", accept: false })}>{tx.refuse}</button>
-              </div>
-            </div>
-          )}
-          {playing && (
-            <div className="gt-actions du-actions">
-              <button className="gt-btn ghost small" disabled={busy || game.drawOffer === side} onClick={() => void act({ type: "offerDraw" })}>
-                <Handshake size={15} /> {game.drawOffer === side ? tx.drawOffered : tx.offerDraw}
-              </button>
-              <button
-                className={"gt-btn small " + (confirmResign ? "danger" : "ghost")}
-                disabled={busy}
-                onClick={() => {
-                  if (!confirmResign) {
-                    setConfirmResign(true);
-                    setTimeout(() => setConfirmResign(false), CONFIRM_MS);
-                  } else void act({ type: "resign" });
-                }}
-              >
-                <Flag size={15} /> {confirmResign ? tx.resignConfirm : tx.resign}
-              </button>
-            </div>
-          )}
-        </section>
-
-        <section className="gt-panel du-moves">
-          <h3>{tx.moves}</h3>
-          {pairs.length ? (
-            <ol ref={listEnd}>
-              {pairs.map(([w, b], k) => (
-                <li key={k}><small>{k + 1}.</small><span>{w}</span><span>{b ?? ""}</span></li>
-              ))}
-            </ol>
-          ) : (
-            <p className="gt-hint">{tx.noMoves}</p>
-          )}
-        </section>
-      </aside>
-
-      {game.phase === "finished" && game.result && (
-        <div className="gt-veil soft du-result" role="dialog" aria-modal="true" aria-labelledby="du-result">
-          <div className="gt-dialog gt-end">
-            {game.result.winner ? <Trophy size={40} /> : <Handshake size={40} />}
-            <h2 id="du-result">
-              {!game.result.winner ? tx.draw : side ? (game.result.winner === side ? tx.youWon : tx.youLost) : fmt(tx.won, { name: seat(game.result.winner)?.name ?? "" })}
-            </h2>
-            <p className="gt-hint">{reasonText(game.result.reason, lang)}</p>
-            {game.players.filter((p) => !p.left).length === 2 && side && (
-              <button className="gt-btn go big" disabled={busy} onClick={() => void act({ type: "again" })}>{tx.again}</button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
   );
 }

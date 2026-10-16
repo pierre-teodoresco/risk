@@ -1,7 +1,8 @@
-// Board sounds made on the fly with Web Audio: a wooden tap for a move, a heavier knock for a
-// capture, a bright ping for a check, two notes for the start and the end of a game.
+// Board sounds of the two-player games, made on the fly with Web Audio: a wooden tap for a
+// move, a heavier knock for a capture, a bright ping for a check, a soft tick for a premove, two
+// notes for the start and the end of a game.
 let ctx: AudioContext | null = null;
-const SOUND_KEY = "echecs.sound";
+const SOUND_KEY = "duel.sound";
 
 export function soundOn() {
   try {
@@ -69,7 +70,7 @@ function note(a: AudioContext, at: number, freq: number, gain: number, length = 
   o.stop(at + length + 0.02);
 }
 
-export type Sound = "move" | "capture" | "castle" | "check" | "start" | "end" | "low";
+export type Sound = "move" | "capture" | "castle" | "check" | "start" | "end" | "low" | "premove";
 export function playSound(s: Sound) {
   const a = audio();
   if (!a) return;
@@ -90,5 +91,6 @@ export function playSound(s: Sound) {
   } else if (s === "end") {
     note(a, t, 880, 0.12);
     note(a, t + 0.14, 660, 0.12, 0.3);
-  } else note(a, t, 1320, 0.06, 0.08);
+  } else if (s === "premove") knock(a, t, 260, 0.22);
+  else note(a, t, 1320, 0.06, 0.08);
 }

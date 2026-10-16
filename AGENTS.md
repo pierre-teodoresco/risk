@@ -43,7 +43,10 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 ## Échecs et Dames
 
 - `games/duel/engine.ts` porte le socle commun des jeux à deux (`duel(rules)`) : places, couleurs, pendule et incrément, nulle, abandon, revanche, pause et chute au temps par `maintenance`. Chaque jeu fournit ses règles pures (`games/echecs/rules.ts`, `games/dames/rules.ts`) et un `DuelRules` dans son `engine.ts`.
-- `games/duel/ui/DuelScreen.tsx` dessine l’entrée, la salle d’attente et une table générique (utilisée par les Dames, plateau 3D `grid3d.ts`). Un jeu peut fournir sa propre table (`Table`) et son habillage (`className`) : les Échecs le font avec `games/echecs/ui/ChessTable.tsx` et le plateau 2D `Board2D.tsx`, sous `.cc` dans `echecs.css`. L’historique des coups se rejoue côté client depuis la notation (`replay.ts`) ; le serveur reste juge des coups.
+- `games/duel/ui/DuelScreen.tsx` dessine l’entrée et la salle d’attente ; chaque jeu fournit sa table (`Table`) et son habillage (`className`). Les deux jeux utilisent la table commune `Table2D.tsx` (barres des joueurs, pendules, pièces prises, liste des coups, historique, nulle, abandon, résultat) et le plateau 2D `Board2D.tsx`, sous `.cc` dans `board2d.css`. Un jeu s’y branche par un `Game2D` (`games/echecs/ui/game2d.ts`, `games/dames/ui/game2d.ts`) : règles, notation, pièces, matériel, et pour les échecs les prémoves.
+- `Board2D` cale le damier sur des pixels physiques entiers (taille et coin), pour des cases nettes et des pièces centrées sur les écrans à mise à l’échelle fractionnaire (Windows 125 %, 150 %). Garder les cases en SVG `crispEdges` et les déplacements des pièces en pixels.
+- Prémoves (échecs) : jusqu’à cinq coups préparés pendant le tour adverse, en rouge, joués dès le retour du trait s’ils sont légaux, sinon toute la file tombe ; clic droit, clic sur une case vide ou Échap pour annuler. Ils restent côté client : le serveur ne reçoit qu’un coup normal.
+- L’historique se rejoue côté client depuis la notation enregistrée par le serveur ; le serveur reste juge des coups. Aux dames, une rafle se choisit par sa case d’arrivée.
 - Textes partagés et erreurs dans `games/duel/i18n.ts`. Tests : `tests/duel.test.ts` (perft, notation, fins de partie, pendule, dames), et un passage par jeu dans `npm run test:integration`.
 
 ## Répartition des responsabilités (Mappa)

@@ -81,8 +81,8 @@ Simplification : la carte « anniversaire » ne met jamais un autre joueur en de
 
 Deux jeux à **deux joueurs** sur le même socle (`games/duel/`) : pendule réglable par l’hôte (libre, 3, 5, 10 ou 15 minutes, avec 0, 2 ou 5 secondes ajoutées par coup), proposition de nulle, abandon, revanche avec couleurs inversées. Les couleurs sont tirées au sort au premier lancement.
 
-- **Échecs** : règles complètes (roque, prise en passant, promotion, pat, triple répétition, cinquante coups, matériel insuffisant ; une chute au temps face à un matériel qui ne peut pas mater est nulle). Le plateau suit les conventions des grands sites d’échecs : glisser-déposer ou deux clics, points des coups possibles, flèches et marques au clic droit, historique navigable aux flèches du clavier, sons.
-- **Dames** : règles internationales sur 10 × 10 (prise obligatoire et majoritaire, dames volantes, promotion seulement en fin de coup sur la dernière rangée, nulle après 25 coups de dames sans prise de chaque côté), plateau en 3D.
+- **Échecs** : règles complètes (roque, prise en passant, promotion, pat, triple répétition, cinquante coups, matériel insuffisant ; une chute au temps face à un matériel qui ne peut pas mater est nulle). Le plateau suit les conventions des grands sites d’échecs : glisser-déposer ou deux clics, points des coups possibles, flèches et marques au clic droit, historique navigable aux flèches du clavier, prémoves (jusqu’à cinq coups préparés pendant le tour adverse), sons.
+- **Dames** : règles internationales sur 10 × 10 (prise obligatoire et majoritaire, dames volantes, promotion seulement en fin de coup sur la dernière rangée, nulle après 25 coups de dames sans prise de chaque côté), sur la même table et le même plateau que les échecs.
 
 ## Vérifier
 
