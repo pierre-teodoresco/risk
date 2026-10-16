@@ -149,8 +149,11 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
 
   // ---------- The dice ----------
   const canRoll = myTurn && game.step === "roll" && !busy && !rolling && settled;
+  // A ref as well as the state: a quick click lets go before React has re-rendered the press.
+  const held = useRef(false);
   function startRoll(e?: ReactPointerEvent) {
-    if (!canRoll || holding) return;
+    if (!canRoll || held.current) return;
+    held.current = true;
     e?.currentTarget.setPointerCapture?.(e.pointerId);
     setHolding(true);
     board.current?.hold();
@@ -158,7 +161,8 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
     rattle.current = setInterval(() => playSound("rattle"), RATTLE_MS);
   }
   async function throwDice() {
-    if (!holding) return;
+    if (!held.current) return;
+    held.current = false;
     setHolding(false);
     if (rattle.current) clearInterval(rattle.current);
     rattle.current = null;

@@ -678,7 +678,9 @@ export class TourBoard {
     this.tiles.forEach((_, i) => this.syncHolding(i, !prev));
     this.syncPawns(s, !prev);
     if (s.dice && s.dice.key !== this.diceKey) {
-      if (this.diceKey === "" || !prev) this.restDice(s.dice.values);
+      // Dice held or thrown by this player always land, even on the first throw of the game.
+      const thrown = this.diceMode === "shake" || this.diceMode === "air";
+      if (!thrown && (this.diceKey === "" || !prev)) this.restDice(s.dice.values);
       else this.landDice(s.dice.values);
     }
     if (s.dice) this.diceKey = s.dice.key;
@@ -1236,6 +1238,8 @@ export class TourBoard {
     if (this.beacon) this.beacon.emissiveIntensity = this.reduced ? 1 : 0.4 + Math.max(0, Math.sin(t * 6)) * 1.6;
 
     this.updateDice(now);
+    // A pawn only waits for dice that are actually in the air.
+    if (this.diceMode === "idle") for (const o of this.pawns.values()) if (o.stepStart === Infinity) o.stepStart = now;
 
     // Pawns: hop along their path, then rest in their square's slot.
     if (s) {
