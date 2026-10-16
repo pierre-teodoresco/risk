@@ -68,7 +68,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
   const challengedMe = myTurn && game.challenge?.to === game.me;
   const top = game.discard.at(-1) ?? null;
 
-  const [inFlight, setInFlight] = useState<{ card: Card; from: DOMRect } | null>(null),
+  const [inFlight, setInFlight] = useState<{ card: Card; from: DOMRect; color?: CardColor } | null>(null),
     [picking, setPicking] = useState<PendingPick | null>(null),
     [toasts, setToasts] = useState<Toast[]>([]),
     [shaking, setShaking] = useState(new Map<string, number>()),
@@ -123,7 +123,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
 
   async function send(card: Card, from: DOMRect, extra: Partial<Action> = {}) {
     setPicking(null);
-    setInFlight({ card, from });
+    setInFlight({ card, from, color: CARD_COLORS.find((c) => c === extra.color) });
     await act({ type: "play", card: card.id, ...extra });
     setInFlight(null);
   }
@@ -148,6 +148,9 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
   );
   const pileCards = staged && !game.discard.some((c) => c.id === staged.card.id) ? [...game.discard, staged.card] : game.discard;
   const hand = me.hand.filter((c) => c.id !== staged?.card.id);
+  // A wild on top shows the colour chosen for it: ours as soon as we pick it, others' from the server.
+  const pileTop = pileCards.at(-1);
+  const topTint = pileTop && !pileTop.color ? (inFlight?.card.id === pileTop.id ? inFlight.color ?? null : picking ? null : game.color) : null;
 
   const canDraw = myTurn && !busy && !inFlight && !picking && (!game.drawn || game.pendingDraw > 0);
   const activePlayer = game.players.find((p) => p.id === game.active);
@@ -185,7 +188,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
       <div className="centre">
         <DirectionRing direction={game.direction} label={`${tx.direction} : ${game.direction === 1 ? tx.clockwise : tx.counterClockwise}`} />
         {game.color && (
-          <span className="colour-glow" style={{ "--glow": CARD_HEX[game.color] } as CSSProperties} aria-hidden="true" />
+          <span className={"colour-glow" + (topTint ? " strong" : "")} style={{ "--glow": CARD_HEX[topTint ?? game.color] } as CSSProperties} aria-hidden="true" />
         )}
         <Deck
           count={game.deckCount}
@@ -195,7 +198,13 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
           onDraw={() => void act({ type: "draw" })}
           deckRef={(el) => (deckEl.current = el)}
         />
-        <Pile cards={pileCards} originOf={originOf} label={tx.pile} zoneRef={pileEl} />
+        <Pile cards={pileCards} topTint={topTint} originOf={originOf} label={tx.pile} zoneRef={pileEl} />
+        {topTint && (
+          <span className="colour-tag" key={`${pileCards.at(-1)?.id}-${topTint}`} style={{ "--glow": CARD_HEX[topTint] } as CSSProperties}>
+            <i aria-hidden="true" />
+            {fmt(tx.colourInPlay, { colour: tx.colors[topTint] })}
+          </span>
+        )}
         {picking?.kind === "color" && (
           <div className="colour-picker" role="group" aria-label={tx.chooseColor}>
             {CARD_COLORS.map((c: CardColor, i) => (

@@ -366,6 +366,7 @@ function play(g: Game, p: Player, action: Action, random: () => number, now: num
   g.drawn = null;
   g.lastPlay = { by: p.id, card: card.id, at: now };
   log(g, "played", p.name, card.id);
+  if (wild) log(g, "chose", p.name, chosen);
   if (!p.hand.length) return finish(g, p);
 
   if (target) {

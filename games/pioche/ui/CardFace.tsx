@@ -102,9 +102,10 @@ function Symbol({ card, fill, size }: { card: Card; fill: string; size: number }
   );
 }
 
-export function CardFace({ card }: { card: Card }) {
+/** `tint` paints a wild in the colour chosen for it, keeping its four-colour centre. */
+export function CardFace({ card, tint = null }: { card: Card; tint?: CardColor | null }) {
   const wild = !card.color;
-  const panel = wild ? WILD_PANEL : CARD_HEX[card.color!];
+  const panel = wild ? (tint ? CARD_HEX[tint] : WILD_PANEL) : CARD_HEX[card.color!];
   const ink = wild ? CREAM : panel;
   return (
     <svg className="card-face" viewBox="0 0 100 150" aria-hidden="true">

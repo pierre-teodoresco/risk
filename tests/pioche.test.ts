@@ -117,6 +117,9 @@ test("a wild needs a colour and sets it", () => {
   assert.throws(() => applyAction(g, g.active, { type: "play", card: "wild1" }, rand, NOW + 1), /chooseColor/);
   g = applyAction(g, g.active, { type: "play", card: "wild1", color: "green" }, rand, NOW + 1);
   assert.equal(g.color, "green");
+  // Everyone is told which colour was chosen.
+  assert.deepEqual(g.events.at(-1)!.key, "chose");
+  assert.equal(g.events.at(-1)!.args[1], "green");
 });
 
 test("a challenged +4 played while holding the colour costs its player four cards", () => {

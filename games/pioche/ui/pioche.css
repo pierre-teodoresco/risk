@@ -91,6 +91,10 @@
 @keyframes direction-spin { to { transform: rotate(360deg); } }
 .colour-glow { position: absolute; left: 50%; top: 50%; width: 120%; height: 120%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(closest-side, var(--glow), transparent); opacity: .42; filter: blur(18px); transition: background .5s; pointer-events: none; }
 
+.colour-glow.strong { opacity: .75; filter: blur(14px); }
+.colour-tag { position: absolute; left: 50%; top: calc(100% - 6px); z-index: 6; translate: -50% 0; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 7px; border-radius: 999px; background: #000b; border: 2px solid var(--glow); font: 800 13px var(--f-ui); white-space: nowrap; animation: flag-pop .4s cubic-bezier(.2,1.6,.4,1) both; }
+.colour-tag i { width: 16px; height: 16px; border-radius: 50%; background: var(--glow); border: 2px solid var(--cream); }
+
 /* Deck */
 .pc-deck { position: relative; width: var(--card-w); height: var(--card-h); padding: 0; border-radius: var(--card-radius); transition: transform .18s cubic-bezier(.2,.8,.2,1); }
 .deck-layer { position: absolute; inset: 0; transform: translate(calc(var(--i) * -2px), calc(var(--i) * -3px)); filter: drop-shadow(0 6px 8px #0007); }

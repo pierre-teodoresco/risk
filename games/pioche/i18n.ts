@@ -77,6 +77,7 @@ const fr = {
   challenge: "Contester",
   acceptDraw: "Piocher 4",
   chooseColor: "Choisis la couleur",
+  colourInPlay: "Couleur : {colour}",
   chooseTarget: "Avec qui échanger ta main ?",
   cancel: "Annuler",
   call: "Pioche !",
@@ -186,6 +187,7 @@ const en: typeof fr = {
   challenge: "Challenge",
   acceptDraw: "Draw 4",
   chooseColor: "Choose the colour",
+  colourInPlay: "Colour: {colour}",
   chooseTarget: "Who do you swap hands with?",
   cancel: "Cancel",
   call: "Pioche!",
@@ -249,6 +251,8 @@ const errors: Record<string, [string, string]> = {
 export const errorText = (code: string, lang: Lang) =>
   errors[code]?.[lang === "fr" ? 0 : 1] ?? (lang === "fr" ? "Une erreur est survenue." : "Something went wrong.");
 
+const COLOUR_NAMES: Record<Lang, Record<string, string>> = { fr: fr.colors, en: en.colors };
+
 /** Journal lines worth a toast; plays and draws are already visible on the table. */
 export function eventText(key: string, a: string[], lang: Lang) {
   const t: Record<string, [string, string]> = {
@@ -256,6 +260,7 @@ export function eventText(key: string, a: string[], lang: Lang) {
     started: [`${a[0]} distribue.`, `${a[0]} deals.`],
     skipped: [`${a[0]} passe son tour.`, `${a[0]} is skipped.`],
     reversed: ["Le sens du jeu s’inverse.", "Direction reversed."],
+    chose: [`${a[0]} choisit le ${COLOUR_NAMES.fr[a[1]] ?? a[1]}.`, `${a[0]} chooses ${COLOUR_NAMES.en[a[1]] ?? a[1]}.`],
     called: [`${a[0]} : « Pioche ! »`, `${a[0]}: “Pioche!”`],
     caught: [`${a[0]} crie « Pioche ! » : ${a[1]} pioche 2.`, `${a[0]} shouts “Pioche!”: ${a[1]} draws 2.`],
     challengeWon: [`${a[0]} conteste avec succès : ${a[1]} pioche 4.`, `${a[0]} wins the challenge: ${a[1]} draws 4.`],

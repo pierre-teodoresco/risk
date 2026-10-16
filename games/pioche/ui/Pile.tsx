@@ -3,7 +3,7 @@
 // played (the hand, or the opponent's seat), spins and lands with a bounce.
 import { useEffect, useLayoutEffect, useRef, type Ref } from "react";
 import { Spring, SPRINGS, createLoop } from "@/platform/spring";
-import type { Card } from "../engine";
+import type { Card, CardColor } from "../engine";
 import { CardFace } from "./CardFace";
 
 const JITTER_DEG = 22;
@@ -29,10 +29,13 @@ type Flight = { x: Spring; y: Spring; rot: Spring; scale: Spring };
 
 export default function Pile({
   cards,
+  topTint,
   originOf,
   label,
   zoneRef,
 }: {
+  /** Colour chosen for the top card when it is a wild. */
+  topTint: CardColor | null;
   cards: Card[];
   /** Where a newly arrived card comes from, in viewport pixels; null lands it in place. */
   originOf: (card: Card) => DOMRect | null;
@@ -120,7 +123,7 @@ export default function Pile({
             className={"pile-card" + (card === top ? " top" : "")}
             style={{ zIndex: i + 1, transform: `translate(${rest.x}px, ${rest.y}px) rotate(${rest.rot}deg)` }}
           >
-            <CardFace card={card} />
+            <CardFace card={card} tint={card === top ? topTint : null} />
           </div>
         );
       })}
