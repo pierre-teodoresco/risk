@@ -11,6 +11,7 @@ import { CARD_HEX, CardDefs, SKINS, SkinContext, type Skin } from "./CardFace";
 import Rules from "./Rules";
 import { Home, Lobby, RoundEnd } from "./Screens";
 import Table from "./Table";
+import { setSoundEnabled, soundEnabled } from "@/lib/sound";
 import { playCue, type Cue } from "./sound";
 
 const PATH = gamePath("pioche");
@@ -37,7 +38,7 @@ export default function Pioche() {
       const saved = localStorage.getItem(LANG_KEY);
       if (saved === "fr" || saved === "en") setLang(saved);
       // Sound stays off until the player turns it on.
-      const on = localStorage.getItem(AUDIO_KEY) === "on";
+      const on = soundEnabled(AUDIO_KEY, false);
       setAudio(on);
       audioRef.current = on;
       const savedSkin = localStorage.getItem(SKIN_KEY);
@@ -61,9 +62,7 @@ export default function Pioche() {
     const next = !audio;
     setAudio(next);
     audioRef.current = next;
-    try {
-      localStorage.setItem(AUDIO_KEY, next ? "on" : "off");
-    } catch {}
+    setSoundEnabled(next);
     if (next) playCue("select");
   }
   function setSkin(next: Skin) {

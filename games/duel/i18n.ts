@@ -59,6 +59,8 @@ const fr = {
   draw: "Partie nulle",
   spectating: "Tu regardes la partie.",
   choosePromotion: "Promotion",
+  mute: "Couper le son",
+  unmute: "Activer le son",
 };
 const en: typeof fr = {
   yourName: "Your name",
@@ -119,6 +121,8 @@ const en: typeof fr = {
   draw: "Draw",
   spectating: "You are watching the game.",
   choosePromotion: "Promotion",
+  mute: "Mute",
+  unmute: "Unmute",
 };
 export const duelTexts = (lang: Lang) => (lang === "fr" ? fr : en);
 export type DuelTexts = typeof fr;

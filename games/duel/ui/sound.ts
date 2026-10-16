@@ -1,21 +1,12 @@
 // Board sounds of the two-player games, made on the fly with Web Audio: a wooden tap for a
 // move, a heavier knock for a capture, a bright ping for a check, a soft tick for a premove, two
 // notes for the start and the end of a game.
-let ctx: AudioContext | null = null;
-const SOUND_KEY = "duel.sound";
+import { setSoundEnabled, soundEnabled } from "@/lib/sound";
 
-export function soundOn() {
-  try {
-    return localStorage.getItem(SOUND_KEY) !== "off";
-  } catch {
-    return true;
-  }
-}
-export function setSound(on: boolean) {
-  try {
-    localStorage.setItem(SOUND_KEY, on ? "on" : "off");
-  } catch {}
-}
+let ctx: AudioContext | null = null;
+
+export const soundOn = () => soundEnabled("duel.sound");
+export const setSound = setSoundEnabled;
 
 function audio() {
   if (typeof window === "undefined" || !soundOn()) return null;

@@ -1,20 +1,12 @@
 // Grand Tour's sounds, made on the fly with Web Audio: dice rattling in the hand and clattering
 // on the board, pawn hops climbing in pitch, coins, a fanfare for a purchase, a pop for a house.
-let ctx: AudioContext | null = null;
-const SOUND_KEY = "grand-tour.sound";
+import { setSoundEnabled, soundEnabled } from "@/lib/sound";
 
-export function soundOn() {
-  try {
-    return localStorage.getItem(SOUND_KEY) !== "off";
-  } catch {
-    return true;
-  }
-}
-export function setSound(on: boolean) {
-  try {
-    localStorage.setItem(SOUND_KEY, on ? "on" : "off");
-  } catch {}
-}
+let ctx: AudioContext | null = null;
+
+export const soundOn = () => soundEnabled("grand-tour.sound");
+export const setSound = setSoundEnabled;
+
 function audio() {
   if (typeof window === "undefined" || !soundOn()) return null;
   try {

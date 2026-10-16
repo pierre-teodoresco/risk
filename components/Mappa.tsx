@@ -35,6 +35,7 @@ import { WORLD, playerColors, type Lang } from "@/lib/world";
 import { type PublicGame, type Action } from "@/lib/game";
 import { texts, errorText, LANG_KEY } from "@/lib/i18n";
 import { gamePath } from "@/games/registry";
+import { setSoundEnabled, soundEnabled } from "@/lib/sound";
 
 const Board3D = dynamic(() => import("./Board3D"), {
   ssr: false,
@@ -179,7 +180,7 @@ export default function Mappa() {
     const savedLang = localStorage.getItem(LANG_KEY);
     if (savedLang === "fr" || savedLang === "en") setLang(savedLang);
     // Sound stays off unless the player turned it on.
-    if (localStorage.getItem("mappa.audio") === "on") {
+    if (soundEnabled("mappa.audio", false)) {
       setAudio(true);
       audioRef.current = true;
     }
@@ -408,7 +409,7 @@ export default function Mappa() {
   function changeAudio() {
     setAudio((v) => {
       audioRef.current = !v;
-      localStorage.setItem("mappa.audio", v ? "off" : "on");
+      setSoundEnabled(!v);
       return !v;
     });
   }

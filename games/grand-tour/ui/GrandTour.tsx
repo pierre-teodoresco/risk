@@ -1,7 +1,7 @@
 "use client";
 // Grand Tour's screen: the top bar, then the entrance, the waiting room or the table.
 import { useEffect, useState } from "react";
-import { BookOpen, LayoutGrid, Link2, LogOut, Pause, Play, WifiOff } from "lucide-react";
+import { BookOpen, LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
 import { LANG_KEY, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { gamePath } from "@/games/registry";
@@ -10,6 +10,7 @@ import type { PublicGame } from "../engine";
 import { errorText, gtTexts } from "../i18n";
 import { Home, Lobby, Rules } from "./Screens";
 import Table from "./Table";
+import { setSound, soundOn } from "./sound";
 
 const PATH = gamePath("grand-tour");
 const COPIED_MS = 2500;
@@ -19,7 +20,8 @@ export default function GrandTour() {
   const [lang, setLang] = useState<Lang>("fr"),
     [copied, setCopied] = useState(false),
     [leaving, setLeaving] = useState(false),
-    [rules, setRules] = useState(false);
+    [rules, setRules] = useState(false),
+    [sound, setSoundState] = useState(true);
   const room = useRoom<PublicGame>("grand-tour", PATH);
   const tx = gtTexts(lang);
   const g = room.state;
@@ -29,6 +31,7 @@ export default function GrandTour() {
       const saved = localStorage.getItem(LANG_KEY);
       if (saved === "fr" || saved === "en") setLang(saved);
     } catch {}
+    setSoundState(soundOn());
   }, []);
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -72,6 +75,12 @@ export default function GrandTour() {
               {g.paused ? <Play /> : <Pause />}
             </button>
           )}
+          <button className="gt-orb" aria-label={sound ? tx.sound : tx.soundOff} title={sound ? tx.sound : tx.soundOff} aria-pressed={!sound} onClick={() => {
+            setSound(!sound);
+            setSoundState(!sound);
+          }}>
+            {sound ? <Volume2 /> : <VolumeX />}
+          </button>
           <div className="gt-seg" role="group" aria-label={tx.language}>
             <button aria-pressed={lang === "fr"} onClick={() => setLang("fr")}>FR</button>
             <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>

@@ -2,14 +2,15 @@
 // Shared screen of the two-player games: top bar, entrance, waiting room; each game brings its
 // table (`Table`, usually the shared Table2D with the game's rules).
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
-import { ArrowRight, BookOpen, Check, Flag, Handshake, LayoutGrid, Link2, LogOut, Pause, Play as PlayIcon, Trophy, WifiOff, X } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Volume2, VolumeX, Flag, Handshake, LayoutGrid, Link2, LogOut, Pause, Play as PlayIcon, Trophy, WifiOff, X } from "lucide-react";
 import EmblemBadge from "@/components/EmblemBadge";
 import { LANG_KEY, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import type { Action } from "@/platform/contract";
 import { useRoom } from "@/platform/useRoom";
 import { CLOCKS, EMBLEM_COUNT, INCREMENTS, type DuelView, type Side } from "../engine";
-import { duelTexts, errorText, reasonText, type DuelTexts } from "../i18n";
+import { duelTexts, errorText, type DuelTexts } from "../i18n";
+import { setSound, soundOn } from "./sound";
 
 export type TableProps<P> = { game: DuelView<P>; side: Side | null; act: (a: Action) => Promise<boolean>; busy: boolean; lang: Lang; tx: DuelTexts };
 export type DuelConfig<P> = {
@@ -73,7 +74,8 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
   const [lang, setLang] = useState<Lang>("fr"),
     [copied, setCopied] = useState(false),
     [leaving, setLeaving] = useState(false),
-    [rules, setRules] = useState(false);
+    [rules, setRules] = useState(false),
+    [sound, setSoundState] = useState(true);
   const room = useRoom<DuelView<P>>(config.id, config.path);
   const tx = duelTexts(lang);
   const g = room.state;
@@ -83,6 +85,7 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
       const saved = localStorage.getItem(LANG_KEY);
       if (saved === "fr" || saved === "en") setLang(saved);
     } catch {}
+    setSoundState(soundOn());
   }, []);
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -124,6 +127,12 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
               {g.paused ? <PlayIcon /> : <Pause />}
             </button>
           )}
+          <button className="gt-orb" aria-label={sound ? tx.mute : tx.unmute} title={sound ? tx.mute : tx.unmute} aria-pressed={!sound} onClick={() => {
+            setSound(!sound);
+            setSoundState(!sound);
+          }}>
+            {sound ? <Volume2 /> : <VolumeX />}
+          </button>
           {config.Nav && <config.Nav lang={lang} />}
           <div className="gt-seg" role="group" aria-label={tx.language}>
             <button aria-pressed={lang === "fr"} onClick={() => setLang("fr")}>FR</button>

@@ -2,13 +2,10 @@
 // Chess: the shared duel screen (entrance, waiting room) with a chess table of its own, drawn
 // like the big chess sites.
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
 import { gamePath } from "@/games/registry";
 import DuelScreen, { type DuelConfig } from "@/games/duel/ui/DuelScreen";
-import type { Lang } from "@/lib/world";
 import Board2D from "@/games/duel/ui/Board2D";
 import Table2D from "@/games/duel/ui/Table2D";
-import { setSound, soundOn } from "@/games/duel/ui/sound";
 import { legalMoves, play, san, startPosition, type Cell, type Position } from "../rules";
 import { CHESS_2D } from "./game2d";
 import Piece from "./Piece";
@@ -45,26 +42,6 @@ export function Showcase() {
   );
 }
 
-function SoundToggle({ lang }: { lang: Lang }) {
-  const [on, setOn] = useState(true);
-  useEffect(() => setOn(soundOn()), []);
-  const label = lang === "fr" ? (on ? "Couper le son" : "Activer le son") : on ? "Mute" : "Unmute";
-  return (
-    <button
-      className="gt-orb"
-      aria-label={label}
-      title={label}
-      aria-pressed={!on}
-      onClick={() => {
-        setSound(!on);
-        setOn(!on);
-      }}
-    >
-      {on ? <Volume2 /> : <VolumeX />}
-    </button>
-  );
-}
-
 const CONFIG: DuelConfig<Position> = {
   id: "echecs",
   path: gamePath("echecs"),
@@ -90,7 +67,6 @@ const CONFIG: DuelConfig<Position> = {
   Showcase,
   Table: (props) => <Table2D rules={CHESS_2D} {...props} />,
   className: "cc",
-  Nav: SoundToggle,
 };
 export default function Echecs() {
   return <DuelScreen config={CONFIG} />;
