@@ -1,8 +1,9 @@
-// Flat draughts pieces to match the chess set: a thick disc with a dark outline and two grooves;
-// a king carries a gold crown. Drawn on a 100 × 100 square.
+// Flat draughts pieces to match the chess set: a round disc seen from above, with a dark outline,
+// a thin edge showing underneath and two grooves; a king carries a gold crown. Drawn on 100 × 100.
 const INK = { w: "#38352f", b: "#1d1b19" };
 const FILL = { w: ["#ffffff", "#e3ddd2"], b: ["#6e6a66", "#3b3835"] };
-const GROOVE = { w: "#b9b1a3", b: "#26231f" };
+const EDGE = { w: "#c9c1b3", b: "#24211e" };
+const GROOVE = { w: "#bcb4a6", b: "#2a2724" };
 
 export default function Piece({ cell, className }: { cell: string; className?: string }) {
   const c = (cell[0] === "b" ? "b" : "w") as "w" | "b", king = cell[1] === "k";
@@ -15,19 +16,13 @@ export default function Piece({ cell, className }: { cell: string; className?: s
           <stop offset="1" stopColor={FILL[c][1]} />
         </linearGradient>
       </defs>
-      {/* The edge of the disc, then its face. */}
-      <ellipse cx="50" cy="58" rx="40" ry="32" fill={INK[c]} />
-      <ellipse cx="50" cy="52" rx="40" ry="32" fill={`url(#${id})`} stroke={INK[c]} strokeWidth="3.6" />
-      <ellipse cx="50" cy="52" rx="29" ry="22.5" fill="none" stroke={GROOVE[c]} strokeWidth="3" />
-      <ellipse cx="50" cy="52" rx="17" ry="12.5" fill="none" stroke={GROOVE[c]} strokeWidth="2.6" />
+      {/* The edge of the disc peeks out below its face. */}
+      <circle cx="50" cy="53" r="38" fill={EDGE[c]} stroke={INK[c]} strokeWidth="3.6" />
+      <circle cx="50" cy="49" r="38" fill={`url(#${id})`} stroke={INK[c]} strokeWidth="3.6" />
+      <circle cx="50" cy="49" r="27" fill="none" stroke={GROOVE[c]} strokeWidth="3" />
+      <circle cx="50" cy="49" r="15" fill="none" stroke={GROOVE[c]} strokeWidth="2.6" />
       {king && (
-        <path
-          d="M30 60 L27 38 L39 48 L50 32 L61 48 L73 38 L70 60 Z"
-          fill="#ffcf3a"
-          stroke="#8a5b00"
-          strokeWidth="3"
-          strokeLinejoin="round"
-        />
+        <path d="M31 58 L28 36 L40 46 L50 30 L60 46 L72 36 L69 58 Z" fill="#ffcf3a" stroke="#8a5b00" strokeWidth="3" strokeLinejoin="round" />
       )}
     </svg>
   );
