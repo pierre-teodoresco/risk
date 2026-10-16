@@ -6,7 +6,7 @@ import EmblemBadge from "@/components/EmblemBadge";
 import { fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import type { Action } from "@/platform/contract";
-import { CARD_COLORS, REACTIONS, playable, type Card, type CardColor, type PublicGame } from "../engine";
+import { CARD_COLORS, REACTIONS, catchable, playable, type Card, type CardColor, type PublicGame } from "../engine";
 import { eventText, type PiocheTexts } from "../i18n";
 import { CARD_HEX, CardBack } from "./CardFace";
 import Hand from "./Hand";
@@ -99,7 +99,9 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
     }
     if (fresh.some((e) => e.key === "called")) cue("call");
     if (fresh.some((e) => e.key === "caught")) cue("catch");
-    if (game.exposed && game.exposed !== game.me && game.exposed !== old.exposed) cue("call");
+    // A player just reached their last card without calling: the race to shout starts.
+    const racing = (s: PublicGame) => s.players.filter(catchable).map((p) => p.id).join();
+    if (game.phase === "playing" && racing(game) && racing(game) !== racing(old)) cue("call");
     if (game.lastPlay && game.lastPlay.at !== old.lastPlay?.at && game.lastPlay.by !== game.me) cue("play");
     if (game.active === game.me && old.active !== game.me && game.phase === "playing") cue("turn");
     const hits = new Map<string, number>();
@@ -156,10 +158,11 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
     prompt = fmt(tx.stackHint, { card: top?.kind === "draw4" ? "+4" : "+2", n: game.pendingDraw });
   if (challengedMe) prompt = fmt(tx.challengeHint, { name: challenger?.name ?? "" });
   if (picking) prompt = picking.kind === "color" ? tx.chooseColor : tx.chooseTarget;
-  const canCall = playing && !me.left && me.hand.length > 0 && me.hand.length <= 2 && !me.called;
-  // Someone else forgot to call: every other player may shout it until the next move.
-  const forgetful = game.exposed && game.exposed !== game.me ? game.players.find((p) => p.id === game.exposed) : null;
+  // "Pioche!" is a race open as long as a player sits on one card without having called it.
+  const canCall = playing && catchable(me);
+  const forgetful = playing ? game.players.find((p) => p.id !== game.me && catchable(p)) : undefined;
   if (forgetful && !picking) prompt = fmt(tx.catchHint, { name: forgetful.name });
+  if (canCall && !picking) prompt = tx.callHint;
   const myReaction = lastReaction(game.reactions, game.me, now);
 
   return (
@@ -171,7 +174,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
         shaking={shaking}
         choosing={picking?.kind === "target"}
         onChoose={(id) => picking && void send(picking.card, picking.from, { target: id })}
-        onCatch={() => void act({ type: "catch" })}
+        onCatch={(id) => void act({ type: "catch", player: id })}
         register={(id, el) => {
           if (el) seatEls.current.set(id, el);
           else seatEls.current.delete(id);
@@ -221,7 +224,7 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
             <button className="btn ghost" disabled={busy} onClick={() => void act({ type: "pass" })}>{tx.pass}</button>
           )}
           {forgetful && !picking && (
-            <button className="btn red shout" disabled={busy} onClick={() => void act({ type: "catch" })} aria-label={fmt(tx.catchLabel, { name: forgetful.name })}>
+            <button className="btn red shout" disabled={busy} onClick={() => void act({ type: "catch", player: forgetful.id })} aria-label={fmt(tx.catchLabel, { name: forgetful.name })}>
               {tx.catch}
             </button>
           )}
@@ -235,7 +238,6 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
             {tx.call}
           </button>
         )}
-        {game.exposed === game.me && !canCall && <span className="exposed-note">{tx.callHint}</span>}
         <Hand
           cards={hand}
           canPlay={canPlay}

@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import EmblemBadge from "@/components/EmblemBadge";
 import { fmt } from "@/lib/i18n";
-import type { PublicGame, PublicPlayer, Reaction } from "../engine";
+import { catchable, type PublicGame, type PublicPlayer, type Reaction } from "../engine";
 import { CardBack } from "./CardFace";
 import type { PiocheTexts } from "../i18n";
 import { reactionGlyph } from "./reactions";
@@ -55,7 +55,7 @@ export default function Seats({
   /** When set, seats become buttons to pick the hand-swap target. */
   choosing: boolean;
   onChoose: (id: string) => void;
-  onCatch: () => void;
+  onCatch: (id: string) => void;
   register: (id: string, el: HTMLElement | null) => void;
 }) {
   const seats = opponentsOf(game);
@@ -105,8 +105,8 @@ export default function Seats({
             {p.called && p.cardCount <= 2 && <span className="seat-call">{tx.call}</span>}
             {shake && <span className="seat-penalty" key={`${p.id}-${p.cardCount}`}>+{shake}</span>}
             {reaction && <span className="pc-bubble" key={reaction.id}>{reactionGlyph(reaction.key, tx)}</span>}
-            {game.exposed === p.id && !choosing && (
-              <button className="seat-catch" onClick={onCatch} aria-label={fmt(tx.catchLabel, { name: p.name })}>
+            {game.phase === "playing" && !game.paused && catchable(p) && !choosing && (
+              <button className="seat-catch" onClick={() => onCatch(p.id)} aria-label={fmt(tx.catchLabel, { name: p.name })}>
                 {tx.catch}
               </button>
             )}

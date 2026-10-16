@@ -162,26 +162,45 @@ test("drawing until playable keeps drawing", () => {
   assert.equal(g.drawn, "red-9b");
 });
 
-test("a forgotten call can be caught until the next player acts", () => {
+test("a player on one card can be made to draw by anyone until they call, whatever happens in between", () => {
   let g = position(table(), ["red-1a", "red-2a"], "red-5a");
   const me = g.active;
   g = applyAction(g, me, { type: "play", card: "red-1a" }, rand, NOW + 1);
-  assert.equal(g.exposed, me);
   const catcher = seat(g, 1).id;
-  const caught = applyAction(g, catcher, { type: "catch" }, rand, NOW + 2);
+  // The next player has moved on: the player on one card is still exposed.
+  g = applyAction(g, g.active, { type: "draw" }, rand, NOW + 2);
+  if (g.drawn) g = applyAction(g, g.active, { type: "pass" }, rand, NOW + 3);
+  const caught = applyAction(g, catcher, { type: "catch", player: me }, rand, NOW + 4);
   assert.equal(caught.players.find((p) => p.id === me)!.hand.length, 3);
-  const safe = applyAction(g, me, { type: "call" }, rand, NOW + 2);
-  assert.throws(() => applyAction(safe, catcher, { type: "catch" }, rand, NOW + 3), /cannotCatch/);
-  const moved = applyAction(g, g.active, { type: "draw" }, rand, NOW + 2);
-  assert.equal(moved.exposed, null);
+  assert.throws(() => applyAction(caught, catcher, { type: "catch", player: me }, rand, NOW + 5), /tooLate/);
+  assert.throws(() => applyAction(caught, me, { type: "call" }, rand, NOW + 5), /tooLate/);
 });
 
-test("calling before the second-to-last card keeps the player safe", () => {
+test("calling on the last card protects it, and only with exactly one card", () => {
+  let g = position(table(), ["red-1a", "red-2a"], "red-5a");
+  const me = g.active, other = seat(g, 1).id;
+  assert.throws(() => applyAction(g, me, { type: "call" }, rand, NOW + 1), /tooLate/);
+  assert.throws(() => applyAction(g, other, { type: "catch", player: me }, rand, NOW + 1), /tooLate/);
+  g = applyAction(g, me, { type: "play", card: "red-1a" }, rand, NOW + 2);
+  g = applyAction(g, me, { type: "call" }, rand, NOW + 3);
+  assert.throws(() => applyAction(g, other, { type: "catch", player: me }, rand, NOW + 4), /tooLate/);
+  assert.throws(() => applyAction(g, me, { type: "catch", player: me }, rand, NOW + 4), /invalidAction/);
+});
+
+test("drawing after a call makes the next last card need a new call", () => {
   let g = position(table(), ["red-1a", "red-2a"], "red-5a");
   const me = g.active;
-  g = applyAction(g, me, { type: "call" }, rand, NOW + 1);
-  g = applyAction(g, me, { type: "play", card: "red-1a" }, rand, NOW + 2);
-  assert.equal(g.exposed, null);
+  g = applyAction(g, me, { type: "play", card: "red-1a" }, rand, NOW + 1);
+  g = applyAction(g, me, { type: "call" }, rand, NOW + 2);
+  // Back to this player, who cannot follow the blue 9 and draws an unplayable card.
+  g.active = me;
+  g.discard.push(card("blue-9b"));
+  g.color = "blue";
+  g.deck.push(card("green-4a"));
+  g = applyAction(g, me, { type: "draw" }, rand, NOW + 3);
+  const p = g.players.find((x) => x.id === me)!;
+  assert.equal(p.hand.length, 2);
+  assert.equal(p.called, false);
 });
 
 test("seven swaps hands with a chosen player and zero rotates them", () => {

@@ -68,8 +68,6 @@ export type Game = {
   challenge: { from: string; to: string; previousColor: CardColor; illegal: boolean } | null;
   /** Card just drawn this turn: the only one the player may still play. */
   drawn: string | null;
-  /** Player left on one card without calling, until the next player acts. */
-  exposed: string | null;
   deadline: number | null;
   paused: boolean;
   /** "offline" pauses lift when the active player returns; "host" pauses wait for the host. */
@@ -172,10 +170,9 @@ function startTurn(g: Game, id: string, now: number) {
 function advance(g: Game, steps: number, now: number) {
   startTurn(g, nextSeat(g, g.active, steps), now);
 }
-/** Any move by someone else closes the window to catch a forgotten call. */
-function closeCatchWindow(g: Game, actor: string) {
-  if (g.exposed && g.exposed !== actor) g.exposed = null;
-}
+/** A player on their last card who has not called it yet: anyone else may make them draw. */
+export const catchable = (p: { left: boolean; called: boolean } & ({ hand: Card[] } | { cardCount: number })) =>
+  !p.left && !p.called && ("cardCount" in p ? p.cardCount : p.hand.length) === 1;
 function finish(g: Game, winner: Player) {
   g.phase = "finished";
   g.winner = winner.id;
@@ -185,7 +182,6 @@ function finish(g: Game, winner: Player) {
   g.challenge = null;
   g.pendingDraw = 0;
   g.drawn = null;
-  g.exposed = null;
   log(g, "won", winner.name);
 }
 
@@ -226,7 +222,6 @@ export function createGame(code: string, input: Record<string, unknown>, hash: s
     pendingDraw: 0,
     challenge: null,
     drawn: null,
-    exposed: null,
     deadline: null,
     paused: false,
     pauseReason: null,
@@ -260,7 +255,6 @@ function deal(g: Game, random: () => number, now: number) {
   g.direction = 1;
   g.pendingDraw = 0;
   g.challenge = null;
-  g.exposed = null;
   g.winner = null;
   g.lastPlay = null;
   g.paused = false;
@@ -359,12 +353,10 @@ function play(g: Game, p: Player, action: Action, random: () => number, now: num
   g.lastPlay = { by: p.id, card: card.id, at: now };
   log(g, "played", p.name, card.id);
   if (!p.hand.length) return finish(g, p);
-  if (p.hand.length === 1 && !p.called) g.exposed = p.id;
 
   if (target) {
     [p.hand, target.hand] = [target.hand, p.hand];
     p.called = target.called = false;
-    g.exposed = null;
     log(g, "swapped", p.name, target.name);
   } else if (g.options.sevenZero && card.kind === "number" && card.value === 0) {
     const order = seated(g);
@@ -373,7 +365,6 @@ function play(g: Game, p: Player, action: Action, random: () => number, now: num
       x.hand = hands[(i - g.direction + order.length) % order.length];
       x.called = false;
     });
-    g.exposed = null;
     log(g, "rotated");
   }
 
@@ -496,7 +487,6 @@ export function applyAction(
     if (g.phase !== "playing") return g;
     g.deck = [...shuffle(target.hand, random), ...g.deck];
     target.hand = [];
-    if (g.exposed === target.id) g.exposed = null;
     if (g.challenge && (g.challenge.from === target.id || g.challenge.to === target.id)) {
       g.challenge = null;
       g.pendingDraw = 0;
@@ -510,26 +500,26 @@ export function applyAction(
     return g;
   }
 
+  // "Pioche!" is a race: the player on one card must call it before anyone else does.
   if (type === "call") {
     if (g.phase !== "playing" || p.left) fail("invalidPhase");
-    if (p.hand.length > 2) fail("tooManyCards");
+    if (g.paused) fail("paused");
+    if (!catchable(p)) fail("tooLate");
     p.called = true;
-    if (g.exposed === actor) g.exposed = null;
     log(g, "called", p.name);
     return g;
   }
   if (type === "catch") {
-    if (g.phase !== "playing") fail("invalidPhase");
-    const target = g.exposed ? byId(g, g.exposed) : fail("cannotCatch");
-    if (target.id === actor || target.called || target.hand.length !== 1) fail("cannotCatch");
+    if (g.phase !== "playing" || p.left) fail("invalidPhase");
+    if (g.paused) fail("paused");
+    const target = g.players.find((x) => x.id === action.player && x.id !== actor) ?? fail("invalidAction");
+    if (!catchable(target)) fail("tooLate");
     drawCards(g, target, CATCH_PENALTY, random);
-    g.exposed = null;
     log(g, "caught", p.name, target.name);
     return g;
   }
 
   myTurn();
-  closeCatchWindow(g, actor);
   if (type === "play") play(g, p, action, random, now);
   else if (type === "draw") takeDraw(g, p, random, now);
   else if (type === "pass") {
