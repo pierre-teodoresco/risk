@@ -5,7 +5,7 @@ import { gamePath } from "@/games/registry";
 import DuelScreen, { type DuelConfig } from "@/games/duel/ui/DuelScreen";
 import Board2D from "@/games/duel/ui/Board2D";
 import Table2D from "@/games/duel/ui/Table2D";
-import { dark, legalMoves, play, squareNumber, startPosition, type Position } from "../rules";
+import { legalMoves, play, startPosition, type Position } from "../rules";
 import { DRAUGHTS_2D } from "./game2d";
 import Piece from "./Piece";
 
@@ -25,7 +25,6 @@ const DEMO = (() => {
   return { positions, played };
 })();
 const SHOWCASE_STEP_MS = 1000;
-const label = (i: number) => (dark(i) ? String(squareNumber(i)) : null);
 
 /** A board replaying a demo game on a loop. */
 export function Showcase() {
@@ -37,7 +36,7 @@ export function Showcase() {
   }, []);
   return (
     <div className="cc-showcase">
-      <Board2D size={10} cells={DEMO.positions[k].board} flipped={false} moves={[]} last={DEMO.played[k]} renderPiece={(c) => <Piece cell={c} />} coords="squares" squareLabel={label} />
+      <Board2D size={10} cells={DEMO.positions[k].board} flipped={false} moves={[]} last={DEMO.played[k]} renderPiece={(c) => <Piece cell={c} />} coords={false} />
     </div>
   );
 }

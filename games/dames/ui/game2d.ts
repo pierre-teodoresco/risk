@@ -1,10 +1,10 @@
 // International draughts plugged into the shared 2D table. A capture line is picked by where it
-// ends; the board shows the square numbers 1–50 on the dark squares.
+// ends; the board carries no coordinates.
 import { createElement } from "react";
 import type { Side } from "@/games/duel/engine";
 import type { BoardCell } from "@/games/duel/ui/Board2D";
 import type { Game2D } from "@/games/duel/ui/Table2D";
-import { dark, legalMoves, notation, play, squareNumber, startPosition, type Move, type Position } from "../rules";
+import { legalMoves, notation, play, startPosition, type Move, type Position } from "../rules";
 import Piece from "./Piece";
 
 const PIECES = 20;
@@ -40,5 +40,5 @@ export const DRAUGHTS_2D: Game2D<Position, Move> = {
   soundOf: (text) => (text.includes("x") ? "capture" : "move"),
   Piece: ({ cell, className }) => createElement(Piece, { cell, className }),
   material,
-  board: { coords: "squares", squareLabel: (i) => (dark(i) ? String(squareNumber(i)) : null) },
+  board: { coords: false },
 };
