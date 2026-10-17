@@ -5,6 +5,7 @@
 // in a drawer on the right.
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowLeftRight, Crown, Handshake, Lock, Menu, Plane, X, Zap } from "lucide-react";
+import { useUntilClock } from "@/lib/useUntilClock";
 import { fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import type { Action } from "@/platform/contract";
@@ -61,8 +62,7 @@ function DiceIcon() {
 }
 
 export default function Table({ game, tx, lang, act, busy }: Props) {
-  const [now, setNow] = useState(() => Date.now()),
-    [selected, setSelected] = useState<number | null>(null),
+  const [selected, setSelected] = useState<number | null>(null),
     [target, setTarget] = useState<number | null>(null),
     [trading, setTrading] = useState<string | null>(null),
     [drawer, setDrawer] = useState(false),
@@ -72,16 +72,15 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
     [rolled, setRolled] = useState<{ values: [number, number]; key: number } | null>(null),
     [toasts, setToasts] = useState<{ id: string; text: string }[]>([]),
     [banner, setBanner] = useState(0);
-  const skew = useRef(0);
+  const skew = useMemo(() => game.serverTime - Date.now(), [game.serverTime]);
   const board = useRef<TourBoard | null>(null);
   const rattle = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    skew.current = game.serverTime - Date.now();
-  }, [game.serverTime]);
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), CLOCK_MS);
-    return () => clearInterval(t);
-  }, []);
+  const until = Math.max(
+    game.deadline && !game.paused ? game.deadline - skew : 0,
+    game.endsAt && game.phase === "playing" ? game.endsAt - skew : 0,
+    game.lastCard ? game.lastCard.at - skew + CARD_SHOWN_MS : 0,
+  );
+  const now = useUntilClock(until, CLOCK_MS);
 
   const me = game.players.find((p) => p.id === game.me)!;
   const active = game.players.find((p) => p.id === game.active)!;
@@ -223,10 +222,10 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
   useEffect(() => {
     setTarget(null);
   }, [game.step, game.active]);
-  const timeLeft = game.endsAt && game.phase === "playing" ? Math.max(0, game.endsAt - now - skew.current) : null;
+  const timeLeft = game.endsAt && game.phase === "playing" ? Math.max(0, game.endsAt - now - skew) : null;
   const auction = game.auction;
-  const remaining = game.deadline ? Math.max(0, (game.deadline - now - skew.current) / 1000) : 0;
-  const card = game.lastCard && settled && now + skew.current - game.lastCard.at < CARD_SHOWN_MS ? game.lastCard : null;
+  const remaining = game.deadline ? Math.max(0, (game.deadline - now - skew) / 1000) : 0;
+  const card = game.lastCard && settled && now + skew - game.lastCard.at < CARD_SHOWN_MS ? game.lastCard : null;
   const buyable = property(me.pos);
 
   // ---------- The dock: what the turn asks for ----------

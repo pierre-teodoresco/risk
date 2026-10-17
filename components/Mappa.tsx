@@ -431,6 +431,7 @@ export default function Mappa() {
       unitMode: "army",
       showNames: false,
       interactive: false,
+      waterMotion: false,
       selected: "",
       target: "",
       legal: [],

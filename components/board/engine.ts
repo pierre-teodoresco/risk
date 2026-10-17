@@ -1,6 +1,7 @@
 // Three.js board: extruded territory pieces, plastic army figures, coins, arrow and effects.
 // React-free on purpose: components/Board3D.tsx owns one instance and feeds it state.
 import * as THREE from "three";
+import { observeRenderVisibility } from "@/platform/render-visibility";
 import { APP_FONT_FAMILY } from "@/lib/typography";
 import { MapControls } from "three/examples/jsm/controls/MapControls.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
@@ -103,7 +104,7 @@ export const FIGURES = (() => {
   return { infantry, cavalry, artillery };
 })();
 
-/** PNG snapshot of a figure, for HUD icons. */
+/** Offline snapshot helper. HUD icons are served from public/mappa rather than rendered at startup. */
 export function figureIcon(kind: keyof typeof FIGURES, rotY: number) {
   const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   r.setSize(192, 192);
@@ -164,10 +165,8 @@ export class BoardEngine {
   private winMat = new THREE.MeshStandardMaterial({ color: 0xffd36b, emissive: 0xffb43b, emissiveIntensity: 0.6 });
   private lineMats: LineMaterial[] = [];
   private ocean: THREE.Mesh;
-  private oceanBase: Float32Array;
   private waterTime = { value: 0 };
   private reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  private waterWasMoving = true;
   private boot = performance.now() / 1000;
   private raf = 0;
   private resizeObs: ResizeObserver;
@@ -175,6 +174,8 @@ export class BoardEngine {
   private down: [number, number] | null = null;
   private tmp = new THREE.Color();
   private disposed = false;
+  private visible = false;
+  private stopObserving = () => {};
 
   constructor(private host: HTMLElement, private cb: Callbacks, opts: BoardOptions) {
     this.opts = opts;
@@ -210,8 +211,17 @@ export class BoardEngine {
     water.onBeforeCompile = (shader) => {
       shader.uniforms.uWaterTime = this.waterTime;
       shader.vertexShader = shader.vertexShader
-        .replace("#include <common>", "#include <common>\nvarying vec2 vWaterPosition;")
-        .replace("#include <begin_vertex>", "#include <begin_vertex>\nvWaterPosition = position.xz;");
+        .replace("#include <common>", "#include <common>\nvarying vec2 vWaterPosition;\nuniform float uWaterTime;")
+        .replace("#include <beginnormal_vertex>", `#include <beginnormal_vertex>
+          float dx = cos(position.x * 0.75 + uWaterTime * 0.9) * 0.055 * 0.75;
+          float dz = -sin(position.z * 0.95 + uWaterTime * 1.2) * 0.045 * 0.95;
+          objectNormal = normalize(vec3(-dx, 1.0, -dz));
+        `)
+        .replace("#include <begin_vertex>", `#include <begin_vertex>
+          vWaterPosition = position.xz;
+          transformed.y += sin(position.x * 0.75 + uWaterTime * 0.9) * 0.055
+            + cos(position.z * 0.95 + uWaterTime * 1.2) * 0.045;
+        `);
       shader.fragmentShader = shader.fragmentShader
         .replace("#include <common>", "#include <common>\nuniform float uWaterTime;\nvarying vec2 vWaterPosition;")
         .replace("#include <color_fragment>", `#include <color_fragment>
@@ -227,7 +237,6 @@ export class BoardEngine {
     this.ocean.position.y = -0.04;
     this.ocean.receiveShadow = true;
     this.scene.add(this.ocean);
-    this.oceanBase = (oceanGeo.attributes.position.array as Float32Array).slice();
 
     this.buildPieces();
     this.buildSeaRoutes();
@@ -267,7 +276,11 @@ export class BoardEngine {
     this.resizeObs.observe(host);
     this.resize(true);
     this.applyOptions();
-    this.raf = requestAnimationFrame(this.frame);
+    this.stopObserving = observeRenderVisibility(host, (visible) => {
+      this.visible = visible;
+      if (visible) { this.last = performance.now(); this.invalidate(); }
+      else { cancelAnimationFrame(this.raf); this.raf = 0; }
+    });
   }
 
   // ---------- Build ----------
@@ -353,6 +366,7 @@ export class BoardEngine {
 
   // ---------- State ----------
   setLands(next: Lands, intro = false) {
+    this.invalidate();
     const now = performance.now() / 1000;
     IDS.forEach((id, t) => {
       const before = this.lands[id], after = next[id] ?? { color: null, troops: 0 };
@@ -369,6 +383,7 @@ export class BoardEngine {
   }
 
   setOptions(opts: BoardOptions) {
+    this.invalidate();
     const prev = this.opts;
     this.opts = opts;
     if (prev.theme !== opts.theme) {
@@ -437,6 +452,7 @@ export class BoardEngine {
 
   dispose() {
     this.disposed = true;
+    this.stopObserving();
     cancelAnimationFrame(this.raf);
     this.resizeObs.disconnect();
     this.controls.dispose();
@@ -464,6 +480,12 @@ export class BoardEngine {
 
   private buildUnits(t: number, drop: boolean) {
     const g = this.groups[t];
+    // Town buildings own their geometries; army figures share the module's three meshes.
+    // Replacing a garrison must release its old buildings instead of retaining GPU buffers.
+    g.traverse((object) => {
+      const geometry = (object as THREE.Mesh).geometry;
+      if (geometry && !Object.values(FIGURES).includes(geometry)) geometry.dispose();
+    });
     g.clear();
     const land = this.lands[IDS[t]];
     if (!land || land.troops <= 0) return;
@@ -694,6 +716,7 @@ export class BoardEngine {
 
   // ---------- Camera ----------
   private resize(refit: boolean) {
+    this.invalidate();
     const w = Math.max(1, this.host.clientWidth), h = Math.max(1, this.host.clientHeight);
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
@@ -772,23 +795,17 @@ export class BoardEngine {
 
   // ---------- Loop ----------
   private last = performance.now();
+  private invalidate = () => {
+    if (!this.disposed && this.visible && !this.raf) this.raf = requestAnimationFrame(this.frame);
+  };
   private frame = () => {
-    this.raf = requestAnimationFrame(this.frame);
+    this.raf = 0;
+    if (this.disposed || !this.visible) return;
     const nowMs = performance.now(), now = nowMs / 1000, dt = Math.min((nowMs - this.last) / 1000, 0.05);
     this.last = nowMs;
     const el = now - this.boot, o = this.opts;
 
-    const p = this.ocean.geometry.attributes.position.array as Float32Array, b = this.oceanBase;
-    const waterMoving = o.waterMotion !== false && !this.reducedMotion.matches;
-    if (waterMoving) this.waterTime.value += dt;
-    if (waterMoving || this.waterWasMoving) {
-      const time = this.waterTime.value;
-      for (let k = 0; k < p.length; k += 3)
-        p[k + 1] = Math.sin(b[k] * 0.75 + time * 0.9) * 0.055 + Math.cos(b[k + 2] * 0.95 + time * 1.2) * 0.045;
-      this.ocean.geometry.attributes.position.needsUpdate = true;
-      this.ocean.geometry.computeVertexNormals();
-    }
-    this.waterWasMoving = waterMoving;
+    if (o.waterMotion !== false && !this.reducedMotion.matches) this.waterTime.value += dt;
 
     for (let t = 0; t < N; t++) {
       const id = IDS[t];
@@ -877,5 +894,7 @@ export class BoardEngine {
     this.camera.position.add(this.shakeOffset);
     this.renderer.render(this.scene, this.camera);
     this.cb.onFrame?.(this.project);
+    // The entrance/lobby atlas is a backdrop: after its intro it redraws only on changes.
+    if (o.interactive || o.waterMotion !== false || this.fx.length || el < 2.5) this.invalidate();
   };
 }

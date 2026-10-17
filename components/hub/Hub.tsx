@@ -2,6 +2,7 @@
 import ThemeToggle from "@/components/ThemeToggle";
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, ArrowUpRight, Clock, Users } from "lucide-react";
+import { findRoom } from "@/lib/find-room";
 import { fmt, hallTexts, LANG_KEY } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { GAMES, HUB_NAME, gamePath, type GameEntry } from "@/games/registry";
@@ -63,20 +64,16 @@ export default function Hub({ arts }: { arts: Record<string, ReactNode> }) {
     } catch {}
   }
 
-  // Room codes do not say which game they belong to: ask each live game until one knows it.
+  // Resolve all game previews together, so the last game is as quick to find as the first.
   async function join(e: FormEvent) {
     e.preventDefault();
     if (code.length !== CODE_LENGTH || joining) return;
     setJoining(true);
     setNotFound(false);
-    for (const game of LIVE) {
-      try {
-        const res = await fetch(`/api/rooms/${code}?game=${game.id}`, { cache: "no-store" });
-        if (res.ok) {
-          location.href = `${gamePath(game.id)}?room=${code}`;
-          return;
-        }
-      } catch {}
+    const game = await findRoom(code, LIVE.map((g) => g.id));
+    if (game) {
+      location.href = `${gamePath(game)}?room=${code}`;
+      return;
     }
     setJoining(false);
     setNotFound(true);

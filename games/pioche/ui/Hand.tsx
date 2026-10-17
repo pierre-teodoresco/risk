@@ -168,15 +168,15 @@ export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, 
       clock.current += dt;
       const el = host.current;
       if (!el) return true;
-      const width = el.clientWidth;
       const { order: ids, selected: sel, joinable: join } = live.current;
+      const width = el.clientWidth;
+      const cardW = els.current.get(ids[0])?.offsetWidth ?? 0, cardH = cardW * 1.5;
       const d = drag.current?.active ? drag.current : null;
       const trail = d && sel.length > 1 && sel.includes(d.id) ? sel.filter((id) => id !== d.id) : [];
       const layout = ids.filter((id) => id !== d?.id && !trail.includes(id));
       ids.forEach((id) => {
         const m = motion.current.get(id), card = els.current.get(id);
         if (!m || !card) return;
-        const cardW = card.offsetWidth, cardH = cardW * 1.5;
         if (clock.current >= m.wait) {
           if (d?.id === id) {
             // The held card sticks to the pointer; only its lean is animated.

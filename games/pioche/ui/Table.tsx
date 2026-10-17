@@ -3,6 +3,7 @@
 // The server decides what is legal; this screen only predicts it to highlight playable cards.
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import EmblemBadge from "@/components/EmblemBadge";
+import { useUntilClock } from "@/lib/useUntilClock";
 import { fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import type { Action } from "@/platform/contract";
@@ -103,18 +104,18 @@ export default function Table({ game, tx, lang, act, busy, cue }: {
     [picking, setPicking] = useState<PendingPick | null>(null),
     [lot, setLot] = useState<string[]>([]),
     [toasts, setToasts] = useState<Toast[]>([]),
-    [shaking, setShaking] = useState(new Map<string, number>()),
-    [now, setNow] = useState(() => Date.now());
+    [shaking, setShaking] = useState(new Map<string, number>());
   const deckEl = useRef<HTMLButtonElement | null>(null),
     pileEl = useRef<HTMLDivElement | null>(null),
     handEl = useRef<HTMLDivElement | null>(null),
     seatEls = useRef(new Map<string, HTMLElement>()),
     previous = useRef<PublicGame | null>(null);
 
-  useEffect(() => {
-    const it = setInterval(() => setNow(Date.now()), CLOCK_MS);
-    return () => clearInterval(it);
-  }, []);
+  const until = Math.max(
+    game.paused ? 0 : game.deadline ?? 0,
+    ...game.reactions.map((r) => r.at + 2600),
+  );
+  const now = useUntilClock(until, CLOCK_MS);
 
   // Sounds, toasts and penalty shakes come from what changed since the last state.
   useEffect(() => {

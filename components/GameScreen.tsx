@@ -61,6 +61,8 @@ type Props = {
   onHome: () => void;
   troopChanges: TroopChange[];
 };
+const icons = ["/mappa/infantry.png", "/mappa/artillery.png", "/mappa/cavalry.png"];
+
 type Panel = "settings" | "stats" | "cards" | null;
 type Toast = { id: string; text: string; elimination?: boolean };
 
@@ -113,7 +115,6 @@ export default function GameScreen(props: Props) {
     [closedCard, setClosedCard] = useState(""),
     [toasts, setToasts] = useState<Toast[]>([]),
     [pulse, setPulse] = useState<{ id: string; at: number } | null>(null),
-    [icons, setIcons] = useState<string[]>([]),
     [readIds, setReadIds] = useState<string[]>(() => {
       const saved = pref<unknown>(`read.${game.code}.${game.me}`, []);
       return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : [];
@@ -134,10 +135,6 @@ export default function GameScreen(props: Props) {
     const onMq = () => setNarrow(mq.matches);
     onMq();
     mq.addEventListener("change", onMq);
-    // Phase icons are rendered from the board's own plastic figures.
-    import("./board/engine").then(({ figureIcon }) =>
-      setIcons([figureIcon("infantry", -0.35), figureIcon("artillery", -0.55), figureIcon("cavalry", -0.5)]),
-    );
     return () => mq.removeEventListener("change", onMq);
   }, []);
 

@@ -4,6 +4,7 @@
 // square by square, and two red dice that are shaken, thrown and bounce before the pawn moves.
 // React-free on purpose: Board.tsx owns one instance and feeds it state.
 import * as THREE from "three";
+import { observeRenderVisibility } from "@/platform/render-visibility";
 import { APP_FONT_FAMILY } from "@/lib/typography";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
@@ -265,6 +266,7 @@ export class TourBoard {
   private resizeObs: ResizeObserver;
   private boot = performance.now();
   private disposed = false;
+  private stopObserving = () => {};
   private moved = false;
   private reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   private arrow: THREE.Mesh;
@@ -348,7 +350,10 @@ export class TourBoard {
     this.resizeObs = new ResizeObserver(() => this.resize());
     this.resizeObs.observe(host);
     this.resize();
-    this.raf = requestAnimationFrame(this.frame);
+    this.stopObserving = observeRenderVisibility(host, (visible) => {
+      cancelAnimationFrame(this.raf);
+      if (visible && !this.disposed) this.raf = requestAnimationFrame(this.frame);
+    });
   }
 
   private keep<T extends THREE.Material | THREE.BufferGeometry | THREE.Texture>(x: T) {
@@ -1380,6 +1385,7 @@ export class TourBoard {
 
   dispose() {
     this.disposed = true;
+    this.stopObserving();
     cancelAnimationFrame(this.raf);
     this.resizeObs.disconnect();
     this.controls.dispose();
