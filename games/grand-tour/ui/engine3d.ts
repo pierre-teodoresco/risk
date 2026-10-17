@@ -10,7 +10,7 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import { BOARD, SQUARES } from "../board";
 
 export type TourHolding = { owner: string; houses: number; mortgaged: boolean };
-export type TourPawn = { id: string; color: string; pos: number; out: boolean };
+export type TourPawn = { id: string; color: string; pos: number; out: boolean; face?: string };
 export type TourMove = { by: string; from: number; to: number; jump: boolean; at: number } | null;
 export type TourState = {
   holdings: Record<string, TourHolding>;
@@ -49,7 +49,7 @@ export type TourOptions = { interactive: boolean; autoRotate?: boolean; showcase
 const CORNER = 1.6, TOTAL = CORNER * 2 + 9, HALF = TOTAL / 2;
 const TILE_H = 0.07, SLAB_H = 0.5, GAP = 0;
 const HOP_MS = 200, HOP_H = 0.55;
-const PAWN_SCALE = 1.3;
+const PAWN_SCALE = 1.4;
 const LAND_MS = 1150;
 const PX = 256;
 const INK = "#20232e";
@@ -99,11 +99,10 @@ function plastic(color: THREE.ColorRepresentation, extra: Partial<THREE.MeshPhys
 /** Geometries shared by every board on the page: never disposed with one of them. */
 const SHARED = new Set<THREE.BufferGeometry>();
 const share = <T extends THREE.BufferGeometry>(g: T) => (SHARED.add(g), g);
-const lathe = (profile: number[][], s = 1, seg = 32) => share(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r * s, y * s)), seg));
-const PAWN = {
-  base: lathe([[0, 0], [0.27, 0], [0.29, 0.03], [0.28, 0.07], [0.22, 0.1], [0, 0.1]]),
-  body: lathe([[0, 0.08], [0.21, 0.08], [0.17, 0.2], [0.12, 0.36], [0.1, 0.44], [0.16, 0.47], [0.16, 0.5], [0, 0.5]]),
-  head: share(new THREE.SphereGeometry(0.15, 28, 20)),
+const AVATAR = {
+  stand: share(new THREE.CylinderGeometry(0.2, 0.26, 0.1, 32)),
+  stem: share(new THREE.CylinderGeometry(0.06, 0.06, 0.16, 16)),
+  coin: share(new THREE.CylinderGeometry(0.44, 0.44, 0.1, 48)),
 };
 const ARROW = (() => {
   const g = new THREE.ConeGeometry(0.13, 0.22, 4);
@@ -247,7 +246,8 @@ type Burst = { points: THREE.Points; born: number; vel: Float32Array };
 export class TourBoard {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(24, 1, 0.1, 200);
+  // A true isometric view, like the online board games: no perspective, the board a clean diamond.
+  private camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 300);
   private controls: OrbitControls;
   private tiles: Tile[] = [];
   private pawns = new Map<string, PawnObj>();
@@ -754,12 +754,12 @@ export class TourBoard {
       g.fillRect(0, by, W, bh);
     } else {
       const glyph = sq.kind === "chance" ? "?" : sq.kind === "chest" ? "✦" : sq.kind === "airport" ? "✈" : sq.kind === "tax" ? "%" : (sq as { name?: string }).name?.startsWith("É") ? "⚡" : "≈";
-      g.font = `800 ${W * 0.46}px ${APP_FONT_FAMILY}`;
+      g.font = `800 ${W * 0.56}px ${APP_FONT_FAMILY}`;
       g.fillStyle = sq.kind === "chance" ? "#ff8a1f" : sq.kind === "chest" ? "#3d7ff0" : sq.kind === "tax" ? "#e2373f" : sq.kind === "airport" ? "#5b6b85" : "#e8a400";
       g.fillText(glyph, W / 2, y(H * 0.24));
     }
     {
-      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W - 24, band ? 44 : 36, 18, (px) => `800 ${px}px ${APP_FONT_FAMILY}`);
+      const { size, lines } = fitLines(g, s.labels[i].toUpperCase(), W - 24, band ? 32 : 28, 16, (px) => `800 ${px}px ${APP_FONT_FAMILY}`);
       g.fillStyle = INK;
       const mid = y(band ? H * 0.38 : H * 0.5);
       lines.forEach((l, k) => g.fillText(l, W / 2, mid + (k - (lines.length - 1) / 2) * size));
@@ -774,7 +774,7 @@ export class TourBoard {
         g.fillRect(0, py, W, ph);
       }
       const text = sq.kind === "tax" ? `−${money(price)}` : h?.mortgaged ? "✕" : rent ?? money(price);
-      g.font = `800 ${Math.min(84, W * 0.34)}px ${APP_FONT_FAMILY}`;
+      g.font = `800 ${Math.min(96, W * 0.38)}px ${APP_FONT_FAMILY}`;
       g.fillStyle = h ? "#ffffff" : sq.kind === "tax" ? "#e2373f" : INK;
       g.fillText(text, W / 2, py + ph / 2, W - 20);
     }
@@ -887,6 +887,27 @@ export class TourBoard {
     return new THREE.Vector3(x + Math.cos(a) * r, TILE_H, z + Math.sin(a) * r);
   }
 
+  /** The emblem picture (an SVG data URL) painted on an avatar's token. */
+  private loadFace(url: string, mat: THREE.MeshPhysicalMaterial) {
+    const img = new Image();
+    img.onload = () => {
+      if (this.disposed) return;
+      const c = document.createElement("canvas");
+      c.width = c.height = 256;
+      c.getContext("2d")!.drawImage(img, 0, 0, 256, 256);
+      const tex = this.keep(new THREE.CanvasTexture(c));
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      // The cap's texture runs the other way on this token; turn it upright.
+      tex.center.set(0.5, 0.5);
+      tex.rotation = Math.PI;
+      mat.map = tex;
+      mat.color.set("#ffffff");
+      mat.needsUpdate = true;
+    };
+    img.src = url;
+  }
+
   private syncPawns(s: TourState, instant: boolean) {
     const now = performance.now();
     const seen = new Set<string>();
@@ -894,13 +915,20 @@ export class TourBoard {
       seen.add(p.id);
       let o = this.pawns.get(p.id);
       if (!o) {
+        // An avatar standing on the board: a thick token with the player's emblem on both faces,
+        // a rim and a stand in their colour, always turned to the camera.
         const mat = plastic(p.color, { clearcoat: 1, clearcoatRoughness: 0.12, roughness: 0.3 });
+        const face = this.keep(new THREE.MeshPhysicalMaterial({ color: p.color, roughness: 0.4, clearcoat: 0.8 }));
+        if (p.face) this.loadFace(p.face, face);
         const group = new THREE.Group();
-        const base = new THREE.Mesh(PAWN.base, plastic("#ffffff"));
-        const body = new THREE.Mesh(PAWN.body, mat);
-        const head = new THREE.Mesh(PAWN.head, mat);
-        head.position.y = 0.62;
-        group.add(base, body, head);
+        const stand = new THREE.Mesh(AVATAR.stand, mat);
+        stand.position.y = 0.05;
+        const stem = new THREE.Mesh(AVATAR.stem, mat);
+        stem.position.y = 0.16;
+        const coin = new THREE.Mesh(AVATAR.coin, [mat, face, face]);
+        coin.rotation.x = Math.PI / 2;
+        coin.position.y = 0.68;
+        group.add(stand, stem, coin);
         group.scale.setScalar(PAWN_SCALE);
         group.traverse((m) => ((m as THREE.Mesh).castShadow = true));
         group.position.copy(this.slot(p.pos, 0, 1));
@@ -1154,41 +1182,40 @@ export class TourBoard {
   private resize() {
     const w = this.host.clientWidth || 1, h = this.host.clientHeight || 1;
     this.renderer.setSize(w, h);
-    this.camera.aspect = w / h;
+    const aspect = w / h, cam = this.camera;
     // Once the player has moved the camera, a resize keeps their view.
     if (this.moved) {
-      this.camera.updateProjectionMatrix();
+      cam.left = -cam.top * aspect;
+      cam.right = cam.top * aspect;
+      cam.updateProjectionMatrix();
       return;
     }
     const showcase = !!this.opts.showcase;
-    // Seen from the Start corner, high above: the board is a diamond.
-    const polar = showcase ? 0.95 : w / h < 0.8 ? 0.6 : 0.96;
+    // Seen from the Start corner at the isometric angle; a little steeper on a tall screen.
+    const polar = aspect < 0.8 ? 0.78 : 0.96;
     const dir = new THREE.Vector3(Math.sin(polar) * Math.SQRT1_2, Math.cos(polar), Math.sin(polar) * Math.SQRT1_2);
     // Aimed a little towards Start, so the board sits above the roll button.
-    const lead = showcase ? 0 : 1.6;
+    const lead = showcase ? 0 : 1.2;
     const target = new THREE.Vector3(lead, 0, lead);
-    // Find the distance at which the whole board fits, with room for the players' cards.
-    const corners = [-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => [new THREE.Vector3(sx * (HALF + 0.3), 0.3, sz * (HALF + 0.3)), new THREE.Vector3(sx * (HALF + 0.3), -SLAB_H, sz * (HALF + 0.3))]));
-    const fitX = showcase ? 1.05 : w < 700 ? 1 : 0.94, fitY = showcase ? 1.0 : 0.9;
-    let lo = 5, hi = 120;
-    for (let k = 0; k < 28; k++) {
-      const mid = (lo + hi) / 2;
-      this.camera.position.copy(dir).multiplyScalar(mid).add(target);
-      this.camera.lookAt(target);
-      this.camera.updateProjectionMatrix();
-      this.camera.updateMatrixWorld();
-      const fits = corners.every((c) => {
-        const p = c.clone().project(this.camera);
-        return Math.abs(p.x) <= fitX && p.y <= fitY && p.y >= -(showcase ? fitY : 0.74);
-      });
-      if (fits) hi = mid;
-      else lo = mid;
-    }
-    const dist = hi;
-    this.camera.position.copy(dir).multiplyScalar(dist).add(target);
+    cam.position.copy(dir).multiplyScalar(60).add(target);
+    cam.lookAt(target);
+    cam.updateMatrixWorld();
+    // The frustum that holds the whole board, with room for the players' cards and the dock.
+    let xm = 0, ymax = -Infinity, ymin = Infinity;
+    for (const sx of [-1, 1])
+      for (const sz of [-1, 1])
+        for (const y of [0.3, -SLAB_H - 0.4]) {
+          const v = new THREE.Vector3(sx * (HALF + 0.3), y, sz * (HALF + 0.3)).applyMatrix4(cam.matrixWorldInverse);
+          xm = Math.max(xm, Math.abs(v.x));
+          ymax = Math.max(ymax, v.y);
+          ymin = Math.min(ymin, v.y);
+        }
+    const fitX = showcase ? 1 : w < 700 ? 0.98 : 0.92, top = showcase ? 0.95 : 0.88, bottom = showcase ? 0.95 : 0.74;
+    const half = Math.max(ymax / top, -ymin / bottom, xm / (aspect * fitX));
+    Object.assign(cam, { top: half, bottom: -half, left: -half * aspect, right: half * aspect, zoom: 1 });
+    cam.updateProjectionMatrix();
     this.controls.target.copy(target);
-    this.controls.minDistance = dist * 0.25;
-    this.controls.maxDistance = dist * 2;
+    Object.assign(this.controls, { minZoom: 0.6, maxZoom: 4 });
     this.controls.update();
   }
 
@@ -1288,10 +1315,13 @@ export class TourBoard {
         this.spawnFloat(f.id, f.text, f.color);
         return false;
       });
+      // Avatars face the camera, whichever way the board has been turned.
+      const yaw = Math.atan2(this.camera.position.x - this.controls.target.x, this.camera.position.z - this.controls.target.z);
+      for (const o of this.pawns.values()) o.group.rotation.y = yaw;
       // The active player's arrow bobs above their pawn.
       const a = s.active ? this.pawns.get(s.active) : null;
       if (a && this.arrow.visible) {
-        this.arrow.position.set(a.group.position.x, a.group.position.y + 1.25 + Math.sin(t * 4) * 0.07, a.group.position.z);
+        this.arrow.position.set(a.group.position.x, a.group.position.y + 1.45 + Math.sin(t * 4) * 0.07, a.group.position.z);
         this.arrow.rotation.y = t * 2;
       }
     }

@@ -205,3 +205,16 @@
 .gt-tour .gt-fun-more { justify-self: start; margin-top: -6px; }
 .gt-tour .gt-fun-list { display: grid; margin-left: 12px; padding-left: 12px; border-left: 3px solid var(--app-line); }
 .gt-postcard header { border-top: 4px solid var(--band); }
+.gt-tour .gt-switch.mixed { background: #ffc98a; }
+.gt-tour .gt-switch.mixed::after { transform: translateX(9px); background: #fff; }
+
+/* The sky stays, light or dark appearance: it is the game's table, like Pioche's felt. */
+html[data-theme] .gt.gt-tour {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='3' opacity='.55'%3E%3Crect x='30' y='40' width='44' height='44' rx='8' transform='rotate(18 52 62)'/%3E%3Crect x='150' y='140' width='30' height='30' rx='6' transform='rotate(-24 165 155)'/%3E%3Crect x='140' y='20' width='20' height='20' rx='4' transform='rotate(40 150 30)'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 220px 220px,
+    linear-gradient(180deg, #a9dbff 0%, #d9efff 55%, #eef8ff 100%);
+}
+html[data-theme] .gt-tour .gt-play .gt-canvas { background: none; box-shadow: none; }
+html[data-theme] .poster-gt .gt-canvas { background: linear-gradient(180deg, #a9dbff, #e6f5ff); }
+/* The table's cards are white in both appearances: keep their ink dark. */
+html[data-theme] .gt-tour .gt-play, .gt-tour .gt-play { --gt-text: #1f2a44; --gt-grey: #5d6a85; --gt-dim: #8d98b0; color: #1f2a44; }

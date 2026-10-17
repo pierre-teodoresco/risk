@@ -2,6 +2,7 @@
 // The board, drawn in 3D by engine3d.ts. Pawn() is the flat token used in the players' cards.
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useAppFontReady } from "@/lib/useAppFontReady";
+import { renderToStaticMarkup } from "react-dom/server";
 import { EmblemShapes } from "@/components/Crest";
 import { EMBLEM_INK, EMBLEM_OUTLINE, emblemOf } from "@/lib/emblems";
 import type { Lang } from "@/lib/world";
@@ -35,6 +36,16 @@ export const flagOf = (i: number) => {
   const s = BOARD[i];
   return s?.kind === "city" ? FLAGS[s.name] ?? null : null;
 };
+/** Each emblem as a picture, for the avatars standing on the board. */
+const FACES = new Map<number, string>();
+function faceOf(emblem: number) {
+  let url = FACES.get(emblem);
+  if (!url) {
+    const svg = renderToStaticMarkup(<Pawn emblem={emblem} size={256} />).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
+    FACES.set(emblem, (url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg)));
+  }
+  return url;
+}
 const PRICES = BOARD.map((s) => (s.kind === "city" || s.kind === "airport" || s.kind === "utility" ? s.price : s.kind === "tax" ? s.amount : null));
 const GROUPS = BOARD.map((s) => (s.kind === "city" ? GROUP_HEX[s.group] : null));
 const FLAG_LIST = BOARD.map((_, i) => flagOf(i));
@@ -70,7 +81,7 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
   select.current = onSelect;
   handlers.current = events;
   const labels = useMemo(() => BOARD.map((_, i) => squareName(i, lang)), [lang]);
-  const tokens = pawns.map((p) => ({ id: p.id, color: PAWN_HEX[p.emblem % PAWN_HEX.length], pos: p.pos, out: p.out }));
+  const tokens = pawns.map((p) => ({ id: p.id, color: PAWN_HEX[p.emblem % PAWN_HEX.length], pos: p.pos, out: p.out, face: faceOf(p.emblem) }));
   const pawnKey = JSON.stringify(tokens);
   const state = () => ({ holdings, pawns: tokens, move, ownerColor, dice, selected, labels, prices: PRICES, rents, groupColors: GROUPS, flags: FLAG_LIST, active, pot, card });
 
