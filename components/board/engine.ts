@@ -53,6 +53,9 @@ const COIN_SIZE = 1;
 const MEDAL = { x: 128, y: 32, r: 29, emblemScale: 0.88 };
 const IDS = WORLD.map((t) => t.id);
 const N = IDS.length;
+const WHITE = new THREE.Color(0xffffff);
+const HIGHLIGHT = new THREE.Color(0xffd24d);
+const TONES = { move: new THREE.Color(0xffe27a), attack: new THREE.Color(0xff5a4e) };
 const [VX, VY, VW, VH] = MAP.viewBox;
 const S = 31 / VW;
 export const toWorld = (px: number, py: number): [number, number] => [(px - VX - VW / 2) * S, (py - VY - VH / 2) * S];
@@ -171,14 +174,18 @@ export class BoardEngine {
   private raf = 0;
   private resizeObs: ResizeObserver;
   private ray = new THREE.Raycaster();
+  private pointer: PointerEvent | null = null;
+  private pointerPosition = new THREE.Vector2();
   private down: [number, number] | null = null;
   private tmp = new THREE.Color();
+  private baseColors: THREE.Color[];
   private disposed = false;
   private visible = false;
   private stopObserving = () => {};
 
   constructor(private host: HTMLElement, private cb: Callbacks, opts: BoardOptions) {
     this.opts = opts;
+    this.baseColors = IDS.map((_, t) => this.baseColor(t, null));
     this.plastic = opts.palette.map((c) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.25 }));
     this.roofs = opts.palette.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, flatShading: true }));
     this.unitScale = IDS.map((id) => THREE.MathUtils.clamp(Math.sqrt(TERR[id].area) / 95, 0.58, 1));
@@ -371,11 +378,12 @@ export class BoardEngine {
     IDS.forEach((id, t) => {
       const before = this.lands[id], after = next[id] ?? { color: null, troops: 0 };
       if (before && before.color !== after.color) {
-        this.flipColor[t] = this.baseColor(t, before.color);
+        this.flipColor[t] = this.baseColors[t];
         this.flipAt[t] = now;
       }
       if (!before || before.color !== after.color || before.troops !== after.troops) {
         this.lands[id] = { ...after };
+        this.baseColors[t] = this.baseColor(t, after.color);
         this.buildUnits(t, intro || !before || before.color !== after.color);
         this.drawCoin(t);
       }
@@ -386,6 +394,8 @@ export class BoardEngine {
     this.invalidate();
     const prev = this.opts;
     this.opts = opts;
+    if (prev.view !== opts.view || prev.palette !== opts.palette)
+      this.baseColors = IDS.map((id, t) => this.baseColor(t, this.lands[id]?.color ?? null));
     if (prev.theme !== opts.theme) {
       const sea = opts.theme === "light" ? "#dce7e8" : "#171d25";
       (this.scene.background as THREE.Color).set(sea);
@@ -620,13 +630,13 @@ export class BoardEngine {
 
   private paint(t: number, now: number) {
     const id = IDS[t], o = this.opts;
-    const c = this.tmp.copy(this.flipColor[t] ?? this.baseColor(t, this.lands[id]?.color ?? null));
-    if (t === this.hover && o.interactive) c.lerp(new THREE.Color(0xffffff), 0.2);
-    if (o.highlight.includes(id)) c.lerp(new THREE.Color(0xffd24d), 0.35 + 0.15 * Math.sin(now * 5));
-    const tone = new THREE.Color(o.legalTone === "move" ? 0xffe27a : 0xff5a4e);
+    const c = this.tmp.copy(this.flipColor[t] ?? this.baseColors[t]);
+    if (t === this.hover && o.interactive) c.lerp(WHITE, 0.2);
+    if (o.highlight.includes(id)) c.lerp(HIGHLIGHT, 0.35 + 0.15 * Math.sin(now * 5));
+    const tone = TONES[o.legalTone];
     if (id === o.target) c.lerp(tone, 0.55);
     else if (o.legal.includes(id)) c.lerp(tone, 0.3 + 0.2 * Math.sin(now * 9));
-    if (id === o.selected) c.lerp(new THREE.Color(0xffffff), 0.25);
+    if (id === o.selected) c.lerp(WHITE, 0.25);
     ((this.pieces[t].material as THREE.Material[])[0] as THREE.MeshPhysicalMaterial).color.copy(c);
   }
 
@@ -762,21 +772,21 @@ export class BoardEngine {
   // ---------- Pointer ----------
   private pick(e: PointerEvent) {
     const r = this.renderer.domElement.getBoundingClientRect();
-    const p = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    this.ray.setFromCamera(p, this.camera);
+    this.pointerPosition.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    this.ray.setFromCamera(this.pointerPosition, this.camera);
     const hit = this.ray.intersectObjects(this.pieces, false)[0];
     return hit ? (hit.object.userData.t as number) : -1;
   }
   private onMove = (e: PointerEvent) => {
-    if (e.buttons) return;
-    const t = this.pick(e);
-    this.hover = t;
-    this.renderer.domElement.style.cursor = t >= 0 && this.opts.interactive ? "pointer" : "";
-    this.cb.onHover(t >= 0 ? IDS[t] : null, e.clientX, e.clientY);
+    if (e.buttons || !this.opts.interactive) return;
+    this.pointer = e;
+    this.invalidate();
   };
   private onLeave = () => {
+    this.pointer = null;
     this.hover = -1;
     this.cb.onHover(null, 0, 0);
+    this.invalidate();
   };
   private onDown = (e: PointerEvent) => {
     this.down = [e.clientX, e.clientY];
@@ -804,6 +814,14 @@ export class BoardEngine {
     const nowMs = performance.now(), now = nowMs / 1000, dt = Math.min((nowMs - this.last) / 1000, 0.05);
     this.last = nowMs;
     const el = now - this.boot, o = this.opts;
+    // Coalesce high-frequency pointer events into one raycast and tooltip update per frame.
+    if (this.pointer) {
+      const e = this.pointer;
+      this.pointer = null;
+      this.hover = this.pick(e);
+      this.renderer.domElement.style.cursor = this.hover >= 0 ? "pointer" : "";
+      this.cb.onHover(this.hover >= 0 ? IDS[this.hover] : null, e.clientX, e.clientY);
+    }
 
     if (o.waterMotion !== false && !this.reducedMotion.matches) this.waterTime.value += dt;
 

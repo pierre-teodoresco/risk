@@ -261,6 +261,9 @@ export class TourBoard {
   private state: TourState | null = null;
   private hover = -1;
   private ray = new THREE.Raycaster();
+  private pointer: PointerEvent | null = null;
+  private pointerPosition = new THREE.Vector2();
+  private pickTargets: THREE.Object3D[] = [];
   private down: [number, number] | null = null;
   private raf = 0;
   private resizeObs: ResizeObserver;
@@ -316,6 +319,7 @@ export class TourBoard {
     this.scene.add(catcher);
 
     this.buildBoard();
+    this.pickTargets = this.tiles.map((tile) => tile.body);
     this.buildCentre();
     this.buildDice();
     this.arrow = new THREE.Mesh(ARROW, this.arrowMat);
@@ -677,8 +681,13 @@ export class TourBoard {
   setState(s: TourState) {
     const prev = this.state;
     this.state = s;
-    if (!prev || prev.labels !== s.labels || prev.rents.join() !== s.rents.join() || JSON.stringify(prev.holdings) !== JSON.stringify(s.holdings))
-      this.tiles.forEach((_, i) => this.drawLabel(i));
+    // Only upload textures whose printed contents changed, even when the server sends fresh arrays.
+    this.tiles.forEach((_, i) => {
+      const before = prev?.holdings[String(i)], after = s.holdings[String(i)];
+      if (!prev || prev.labels[i] !== s.labels[i] || prev.rents[i] !== s.rents[i] || prev.prices[i] !== s.prices[i]
+        || prev.groupColors[i] !== s.groupColors[i] || before?.owner !== after?.owner || before?.mortgaged !== after?.mortgaged
+        || (before && after && prev.ownerColor(before.owner) !== s.ownerColor(after.owner))) this.drawLabel(i);
+    });
     this.tiles.forEach((_, i) => this.syncHolding(i, !prev));
     this.syncPawns(s, !prev);
     if (s.dice && s.dice.key !== this.diceKey) {
@@ -1153,17 +1162,17 @@ export class TourBoard {
   // ---------- Input ----------
   private pick(e: PointerEvent) {
     const rect = this.renderer.domElement.getBoundingClientRect();
-    const v = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
-    this.ray.setFromCamera(v, this.camera);
-    const hit = this.ray.intersectObjects(this.tiles.map((t) => t.body), false)[0];
+    this.pointerPosition.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    this.ray.setFromCamera(this.pointerPosition, this.camera);
+    const hit = this.ray.intersectObjects(this.pickTargets, false)[0];
     return hit ? (hit.object.userData.i as number) : -1;
   }
   private onMove = (e: PointerEvent) => {
     if (!this.cb.onSelect || !this.opts.interactive) return;
-    this.hover = this.pick(e);
-    this.renderer.domElement.style.cursor = this.hover >= 0 ? "pointer" : "grab";
+    this.pointer = e;
   };
   private onLeave = () => {
+    this.pointer = null;
     this.hover = -1;
   };
   private onDown = (e: PointerEvent) => {
@@ -1229,6 +1238,11 @@ export class TourBoard {
     this.raf = requestAnimationFrame(this.frame);
     const now = performance.now(), t = (now - this.boot) / 1000;
     const s = this.state;
+    if (this.pointer) {
+      this.hover = this.pick(this.pointer);
+      this.pointer = null;
+      this.renderer.domElement.style.cursor = this.hover >= 0 ? "pointer" : "grab";
+    }
     // Tiles: pop in, lift on hover and selection, dip when a pawn lands.
     this.tiles.forEach((tile, i) => {
       const k = this.reduced ? 1 : clamp01((t - tile.appear) / 0.4);

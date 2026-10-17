@@ -26,11 +26,9 @@ import {
   Wifi,
   X,
 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
+import { subscribeRoom } from "@/platform/realtime";
 import Crest from "./Crest";
-import GameScreen from "./GameScreen";
-import VictoryCelebration from "./VictoryCelebration";
-import DefeatAnimation from "./DefeatAnimation";
+import { useUntilClock } from "@/lib/useUntilClock";
 import { gameFeedback, type TroopChange } from "@/lib/game-feedback";
 import type { BoardOptions, Lands } from "./board/engine";
 import { WORLD, playerColors, type Lang } from "@/lib/world";
@@ -43,6 +41,9 @@ const Board3D = dynamic(() => import("./Board3D"), {
   ssr: false,
   loading: () => <div className="board3d" />,
 });
+const GameScreen = dynamic(() => import("./GameScreen"));
+const VictoryCelebration = dynamic(() => import("./VictoryCelebration"));
+const DefeatAnimation = dynamic(() => import("./DefeatAnimation"));
 type TimedTroopChange = TroopChange & { expiresAt: number };
 type Preview = {
   code: string;
@@ -102,7 +103,6 @@ export default function Mappa() {
     [colorblind, setColorblind] = useState(false),
     [copied, setCopied] = useState(false),
     [draft, setDraft] = useState(""),
-    [now, setNow] = useState(Date.now()),
     [confirm, setConfirm] = useState<{ type: string; player?: string } | null>(
       null,
     ),
@@ -114,6 +114,8 @@ export default function Mappa() {
     requestRunning = useRef(false),
     sessionEpoch = useRef(0);
   const t = texts(lang);
+  // The clock also updates offline indicators during play, but the entrance and lobby are static.
+  const now = useUntilClock(game && game.phase !== "lobby" && game.phase !== "finished" ? Infinity : 0, 1000);
   const me = game?.players.find((p) => p.id === game.me),
     winner = game?.players.find((p) => p.id === game?.winner);
   const isHost = game?.host === game?.me;
@@ -214,33 +216,13 @@ export default function Mappa() {
     } else setLoading(false);
   }, [fetchState]);
   useEffect(() => {
-    const it = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(it);
-  }, []);
-  useEffect(() => {
     if (!game) return;
     const code = game.code;
     const poll = setInterval(() => void fetchState(code, true), 10000);
     const focus = () => void fetchState(code, true);
     window.addEventListener("online", focus);
     window.addEventListener("focus", focus);
-    let remove = () => {};
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
-      key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    if (url && key) {
-      const supabase = createClient(url, key, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-      const channel = supabase
-        .channel("mappa:" + game.channel)
-        .on("broadcast", { event: "change" }, () => void fetchState(code))
-        .subscribe((status) => {
-          if (status === "SUBSCRIBED") void fetchState(code);
-        });
-      remove = () => {
-        void supabase.removeChannel(channel);
-      };
-    }
+    const remove = subscribeRoom(game.channel, () => void fetchState(code));
     return () => {
       clearInterval(poll);
       window.removeEventListener("online", focus);

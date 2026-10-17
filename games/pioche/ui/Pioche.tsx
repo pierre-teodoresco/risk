@@ -1,6 +1,7 @@
 "use client";
 import ThemeToggle from "@/components/ThemeToggle";
 import ConfirmAction from "@/components/ConfirmAction";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { BookOpen, Flag, LayoutGrid, Link2, LogOut, Palette, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
 import { LANG_KEY, confirmationTexts, fmt } from "@/lib/i18n";
@@ -10,9 +11,7 @@ import { useRoom } from "@/platform/useRoom";
 import type { PublicGame } from "../engine";
 import { errorText, piocheTexts } from "../i18n";
 import { CARD_HEX, CardDefs, SKINS, SkinContext, type Skin } from "./CardFace";
-import Rules from "./Rules";
 import { Home, Lobby, RoundEnd } from "./Screens";
-import Table from "./Table";
 import { setSoundEnabled, soundEnabled } from "@/lib/sound";
 import { playCue, type Cue } from "./sound";
 
@@ -21,6 +20,8 @@ const AUDIO_KEY = "pioche.audio";
 /** Each player picks their own table; it changes nothing for the others. */
 const SKIN_KEY = "pioche.skin";
 const COPIED_MS = 2500;
+const Rules = dynamic(() => import("./Rules"));
+const Table = dynamic(() => import("./Table"));
 
 export default function Pioche() {
   const [lang, setLang] = useState<Lang>("fr"),

@@ -16,7 +16,8 @@ const OPERA_GAME = (() => {
   const positions = [startPosition()], played: ({ from: number; to: number } | null)[] = [null];
   for (const text of OPERA) {
     const p = positions.at(-1)!;
-    const m = legalMoves(p).find((x) => san(p, x) === text)!;
+    const legal = legalMoves(p);
+    const m = legal.find((x) => san(p, x, legal) === text)!;
     positions.push(play(p, m));
     played.push(m);
   }

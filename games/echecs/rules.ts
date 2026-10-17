@@ -171,7 +171,7 @@ export function canMate(board: Cell[], c: Color) {
 export const positionKey = (p: Position) => p.board.map((c) => c ?? ".").join("") + p.turn + p.castling + (p.ep ?? "-");
 
 /** Standard algebraic notation of `m` in position `p`: Nf3, exd5, O-O, e8=Q+, Qxf7#. */
-export function san(p: Position, m: Move) {
+export function san(p: Position, m: Move, legal?: Move[]) {
   const piece = p.board[m.from]!, k = kindOf(piece)!;
   let s: string;
   if (m.castle) s = m.castle === "k" ? "O-O" : "O-O-O";
@@ -179,7 +179,7 @@ export function san(p: Position, m: Move) {
     const to = squareName(m.to);
     if (k === "p") s = (m.capture ? "abcdefgh"[file(m.from)] + "x" : "") + to + (m.promo ? "=" + m.promo.toUpperCase() : "");
     else {
-      const twins = legalMoves(p).filter((o) => o.to === m.to && o.from !== m.from && p.board[o.from] === piece);
+      const twins = (legal ?? legalMoves(p)).filter((o) => o.to === m.to && o.from !== m.from && p.board[o.from] === piece);
       let dis = "";
       if (twins.length) {
         if (!twins.some((o) => file(o.from) === file(m.from))) dis = "abcdefgh"[file(m.from)];

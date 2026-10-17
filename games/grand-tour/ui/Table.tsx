@@ -84,12 +84,12 @@ export default function Table({ game, tx, lang, act, busy }: Props) {
 
   const me = game.players.find((p) => p.id === game.me)!;
   const active = game.players.find((p) => p.id === game.active)!;
-  const colorOf = (id: string) => PAWN_HEX[game.players.find((p) => p.id === id)?.emblem ?? 0];
+  const colorOf = useMemo(() => (id: string) => PAWN_HEX[game.players.find((p) => p.id === id)?.emblem ?? 0], [game.players]);
   const myTurn = game.active === game.me && game.phase === "playing" && !game.paused && inGame(me);
   const money = (n: number) => `₲${n.toLocaleString(lang)}`;
   const worth = (p: PublicPlayer) =>
     p.cash + ownedBy(game, p.id).reduce((s, i) => s + (game.holdings[String(i)].mortgaged ? mortgageValue(property(i)!) : property(i)!.price), 0);
-  const pawns = game.players.map((p) => ({ id: p.id, emblem: p.emblem, pos: p.pos, out: !inGame(p) }));
+  const pawns = useMemo(() => game.players.map((p) => ({ id: p.id, emblem: p.emblem, pos: p.pos, out: !inGame(p) })), [game.players]);
   const rollKey = String(game.events.findLast((e) => e.key === "rolled")?.id ?? "");
   // The pawn must reach its square before the square asks anything.
   const settled = !game.lastMove || arrived >= game.lastMove.at;

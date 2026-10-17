@@ -10,7 +10,8 @@ import ConfirmAction from "@/components/ConfirmAction";
 import { fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import type { Action } from "@/platform/contract";
-import { clockText, useClocks, type TableProps } from "./DuelScreen";
+import { clockText, type TableProps } from "./DuelScreen";
+import { useUntilClock } from "@/lib/useUntilClock";
 import { reasonText } from "../i18n";
 import type { Side } from "../engine";
 import Board2D, { type BoardCell, type BoardMove, type BoardProps } from "./Board2D";
@@ -26,7 +27,7 @@ export type Game2D<P, M> = {
   legal: (p: P) => M[];
   play: (p: P, m: M) => P;
   /** The move in the notation the server records, to rebuild the history. */
-  notation: (p: P, m: M) => string;
+  notation: (p: P, m: M, legal?: M[]) => string;
   /** Start, end, capture and promotion, for the board. */
   ends: (m: M) => { from: number; to: number; capture: boolean; promo?: string };
   /** What the server expects in the `move` action. */
@@ -96,7 +97,8 @@ function replay<P, M>(g: Game2D<P, M>, moves: string[], previous?: Replay<P, M>)
   const played = keep ? [...keep.played] : [null];
   for (let k = positions.length - 1; k < moves.length; k++) {
     const p = positions[k];
-    const m = g.legal(p).find((x) => g.notation(p, x) === moves[k]);
+    const legal = g.legal(p);
+    const m = legal.find((x) => g.notation(p, x, legal) === moves[k]);
     // A list that does not replay (should not happen) stops where it breaks.
     if (!m) break;
     positions.push(g.play(p, m));
@@ -105,10 +107,34 @@ function replay<P, M>(g: Game2D<P, M>, moves: string[], previous?: Replay<P, M>)
   return { moves: [...moves], positions, played };
 }
 
+/** Only the running clock ticks; the board and move list render on game or UI changes. */
+function Clock({ side, time, active, running, turnStart, serverTime, warn }: {
+  side: Side; time: number; active: boolean; running: boolean; turnStart: number; serverTime: number; warn: boolean;
+}) {
+  const skew = useMemo(() => serverTime - Date.now(), [serverTime]);
+  const ticking = active && running;
+  const until = ticking ? turnStart + time - skew : 0;
+  const now = useUntilClock(until, 200);
+  const ms = ticking ? Math.max(0, until - now) : time;
+  const low = ticking && ms < LOW_MS;
+  const lowRef = useRef(false);
+  useEffect(() => {
+    if (warn && low && !lowRef.current) playSound("low");
+    lowRef.current = low;
+  }, [warn, low]);
+  return (
+    <span className={`cc-clock ${side}` + (active ? " active" : "") + (ticking && ms < LOW_MS ? " low" : "")}>
+      {ticking && <Timer size={16} />}
+      {clockText(ms)}
+    </span>
+  );
+}
+
 export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy, error }: TableProps<P> & { rules: Game2D<P, M> }) {
   const t = TEXTS[lang];
   const R = rules;
-  const { turn, running, remaining } = useClocks(game);
+  const turn = R.turn(game.position);
+  const running = game.phase === "playing" && !game.paused && game.options.clock > 0;
   const [pending, setPending] = useState<{ move: M; base: number } | null>(null),
     [ply, setPly] = useState<number | null>(null),
     [confirmResign, setConfirmResign] = useState(false),
@@ -211,18 +237,9 @@ export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy, 
     return () => window.removeEventListener("keydown", onKey);
   }, [ply, game.moves.length]);
 
-  // Low-time tick for the player to move.
-  const mine: Side = side ?? "w";
-  const myMs = remaining(mine);
-  const lowRef = useRef(false);
-  useEffect(() => {
-    const low = running && turn === mine && myMs < LOW_MS;
-    if (low && !lowRef.current) playSound("low");
-    lowRef.current = low;
-  }, [running, turn, mine, myMs]);
-
   const seat = (s: Side) => game.players.find((p) => p.side === s);
   const { taken, score } = R.material(R.cells(shown));
+  const mine: Side = side ?? "w";
   const order: Side[] = [mine === "w" ? "b" : "w", mine];
   const minutes = game.options.clock;
   const category = !minutes ? t.untimed : minutes < 3 ? t.bullet : minutes < 10 ? t.blitz : t.rapid;
@@ -240,7 +257,6 @@ export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy, 
 
   const bar = (s: Side, top: boolean) => {
     const p = seat(s);
-    const ms = remaining(s);
     const caps = taken(s);
     const lead = s === "w" ? score : -score;
     const active = game.phase === "playing" && turn === s;
@@ -262,10 +278,7 @@ export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy, 
           </span>
         </div>
         {minutes > 0 && (
-          <span className={`cc-clock ${s}` + (active ? " active" : "") + (active && running && ms < LOW_MS ? " low" : "")}>
-            {active && running && <Timer size={16} />}
-            {clockText(ms)}
-          </span>
+          <Clock side={s} time={game.clocks[s]} active={active} running={running} turnStart={game.turnStart} serverTime={game.serverTime} warn={s === (side ?? "w")} />
         )}
       </div>
     );

@@ -3,7 +3,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import ConfirmAction from "@/components/ConfirmAction";
 // Shared screen of the two-player games: top bar, entrance, waiting room; each game brings its
 // table (`Table`, usually the shared Table2D with the game's rules).
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, BookOpen, Check, Volume2, VolumeX, Flag, Handshake, LayoutGrid, Link2, LogOut, Pause, Play as PlayIcon, Trophy, WifiOff, X } from "lucide-react";
 import EmblemBadge from "@/components/EmblemBadge";
 import { LANG_KEY, confirmationTexts, fmt } from "@/lib/i18n";
@@ -33,7 +33,6 @@ export type DuelConfig<P> = {
 };
 
 const COPIED_MS = 2500;
-const CLOCK_TICK_MS = 200;
 
 export function clockText(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -51,24 +50,6 @@ function EmblemPicker({ value, taken, onPick, label }: { value: number; taken: n
       ))}
     </div>
   );
-}
-
-/** Both players' remaining time, counted down locally between server updates. */
-export function useClocks<P>(game: DuelView<P>) {
-  const [now, setNow] = useState(() => Date.now());
-  const skew = useRef(0);
-  useEffect(() => {
-    skew.current = game.serverTime - Date.now();
-  }, [game.serverTime]);
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS);
-    return () => clearInterval(t);
-  }, []);
-  // Both games keep the side to move on their position.
-  const turn = (game.position as { turn: Side }).turn;
-  const running = game.phase === "playing" && !game.paused && game.options.clock > 0;
-  const remaining = (s: Side) => game.clocks[s] - (running && turn === s ? now + skew.current - game.turnStart : 0);
-  return { turn, running, remaining };
 }
 
 export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {

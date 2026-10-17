@@ -2,7 +2,7 @@
 // Browser side of a room: identity token, creation and joining, Realtime sync with polling
 // fallback, presence heartbeats and commands. Mappa still runs its own copy in components/Mappa.tsx.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { subscribeRoom } from "./realtime";
 import type { Action } from "./contract";
 
 export type SyncedState = {
@@ -21,8 +21,6 @@ const REQUEST_TIMEOUT_MS = 15000;
 const ACTION_TIMEOUT_MS = 20000;
 /** After a deadline, connected clients ask the server to apply it for a short while. */
 const DEADLINE_GRACE_MS = 12000;
-// Realtime topics keep the prefix the SQL notifier was written with.
-const TOPIC_PREFIX = "mappa:";
 
 export function useRoom<T extends SyncedState>(game: string, path: string) {
   const [state, setState] = useState<T | null>(null),
@@ -108,19 +106,7 @@ export function useRoom<T extends SyncedState>(game: string, path: string) {
     const wake = () => void sync(code, true);
     window.addEventListener("online", wake);
     window.addEventListener("focus", wake);
-    let remove = () => {};
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
-      key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    if (url && key) {
-      const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-      const channel = supabase
-        .channel(TOPIC_PREFIX + state.channel)
-        .on("broadcast", { event: "change" }, () => void sync(code))
-        .subscribe((status) => {
-          if (status === "SUBSCRIBED") void sync(code);
-        });
-      remove = () => void supabase.removeChannel(channel);
-    }
+    const remove = subscribeRoom(state.channel, () => void sync(code));
     return () => {
       clearInterval(poll);
       window.removeEventListener("online", wake);

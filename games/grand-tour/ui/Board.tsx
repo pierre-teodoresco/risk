@@ -1,30 +1,18 @@
 "use client";
 // The board, drawn in 3D by engine3d.ts. Pawn() is the flat token used in the players' cards.
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useAppFontReady } from "@/lib/useAppFontReady";
-import { renderToStaticMarkup } from "react-dom/server";
-import { EmblemShapes } from "@/components/Crest";
-import { EMBLEM_INK, EMBLEM_OUTLINE, emblemOf } from "@/lib/emblems";
 import type { Lang } from "@/lib/world";
 import { BOARD } from "../board";
 import { GROUP_HEX, PAWN_HEX, squareName } from "../i18n";
 import { TourBoard, type TourCallbacks, type TourMove } from "./engine3d";
+import { PawnFaces } from "./PawnFaces";
+export { Pawn } from "./Pawn";
 
 export type BoardHolding = { owner: string; houses: number; mortgaged: boolean };
 export type BoardPawn = { id: string; emblem: number; pos: number; out: boolean };
 export type BoardMove = TourMove;
 export type { TourBoard };
-
-export function Pawn({ emblem, size = 30 }: { emblem: number; size?: number }) {
-  return (
-    <svg className="gt-pawn-face" viewBox="-2 -2 68 68" width={size} height={size} aria-hidden="true">
-      <circle cx="32" cy="32" r="30" fill={PAWN_HEX[emblem % PAWN_HEX.length]} stroke="#ffffff" strokeWidth="4" />
-      <g transform="translate(32 33) scale(.82)" fill="#fff" stroke={EMBLEM_INK} strokeWidth={EMBLEM_OUTLINE} strokeLinejoin="round">
-        <EmblemShapes emblem={emblemOf(emblem)} />
-      </g>
-    </svg>
-  );
-}
 
 /** The country of each city, drawn on its square. */
 const FLAGS: Record<string, string> = {
@@ -36,16 +24,6 @@ export const flagOf = (i: number) => {
   const s = BOARD[i];
   return s?.kind === "city" ? FLAGS[s.name] ?? null : null;
 };
-/** Each emblem as a picture, for the avatars standing on the board. */
-const FACES = new Map<number, string>();
-function faceOf(emblem: number) {
-  let url = FACES.get(emblem);
-  if (!url) {
-    const svg = renderToStaticMarkup(<Pawn emblem={emblem} size={256} />).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
-    FACES.set(emblem, (url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg)));
-  }
-  return url;
-}
 const PRICES = BOARD.map((s) => (s.kind === "city" || s.kind === "airport" || s.kind === "utility" ? s.price : s.kind === "tax" ? s.amount : null));
 const GROUPS = BOARD.map((s) => (s.kind === "city" ? GROUP_HEX[s.group] : null));
 const FLAG_LIST = BOARD.map((_, i) => flagOf(i));
@@ -74,6 +52,7 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
   children?: ReactNode;
 }) {
   const fontReady = useAppFontReady();
+  const faces = useContext(PawnFaces);
   const host = useRef<HTMLDivElement>(null),
     board = useRef<TourBoard | null>(null),
     select = useRef(onSelect),
@@ -81,12 +60,13 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
   select.current = onSelect;
   handlers.current = events;
   const labels = useMemo(() => BOARD.map((_, i) => squareName(i, lang)), [lang]);
-  const tokens = pawns.map((p) => ({ id: p.id, color: PAWN_HEX[p.emblem % PAWN_HEX.length], pos: p.pos, out: p.out, face: faceOf(p.emblem) }));
-  const pawnKey = JSON.stringify(tokens);
+  const tokens = useMemo(() => pawns.map((p) => ({ id: p.id, color: PAWN_HEX[p.emblem % PAWN_HEX.length], pos: p.pos, out: p.out, face: faces[p.emblem % faces.length] })), [pawns, faces]);
+  // Compare the short source data, rather than serializing the SVG URLs on every clock tick.
+  const pawnKey = JSON.stringify(pawns);
   const state = () => ({ holdings, pawns: tokens, move, ownerColor, dice, selected, labels, prices: PRICES, rents, groupColors: GROUPS, flags: FLAG_LIST, active, pot, card });
 
   useEffect(() => {
-    if (!fontReady) return;
+    if (!fontReady || !faces.length) return;
     const b = new TourBoard(
       host.current!,
       {
@@ -107,7 +87,7 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
     };
     // One engine for the component's life; later props flow through the effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fontReady]);
+  }, [fontReady, faces]);
   useEffect(() => {
     board.current?.setOptions({ interactive, autoRotate, showcase });
   }, [fontReady, interactive, autoRotate, showcase]);
@@ -115,7 +95,7 @@ export default function Board({ lang, holdings, pawns, move, ownerColor, selecte
     board.current?.setState(state());
     // Compared by value: the server sends fresh objects with every state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fontReady, JSON.stringify(holdings), pawnKey, move?.at, dice?.key, selected, labels, active, pot, rents.join(), card?.at]);
+  }, [fontReady, faces, JSON.stringify(holdings), pawnKey, move?.at, dice?.key, selected, labels, active, pot, rents.join(), card?.at]);
 
   return (
     <div className="gt-board3d">

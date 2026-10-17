@@ -1,8 +1,9 @@
 "use client";
 import ThemeToggle from "@/components/ThemeToggle";
 import ConfirmAction from "@/components/ConfirmAction";
+import dynamic from "next/dynamic";
 // Grand Tour's screen: the top bar, then the entrance, the waiting room or the table.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BookOpen, Flag, LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
 import { LANG_KEY, confirmationTexts, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
@@ -11,13 +12,14 @@ import { useRoom } from "@/platform/useRoom";
 import type { PublicGame } from "../engine";
 import { errorText, gtTexts } from "../i18n";
 import { Home, Lobby, Rules } from "./Screens";
-import Table from "./Table";
+import { PawnFacesProvider } from "./PawnFaces";
 import { setSound, soundOn } from "./sound";
 
 const PATH = gamePath("grand-tour");
 const COPIED_MS = 2500;
+const Table = dynamic(() => import("./Table"));
 
-export default function GrandTour() {
+export default function GrandTour({ faces }: { faces: ReactNode }) {
   const [lang, setLang] = useState<Lang>("fr"),
     [copied, setCopied] = useState(false),
     [confirm, setConfirm] = useState<"leave" | "resign" | null>(null),
@@ -54,6 +56,7 @@ export default function GrandTour() {
 
   const pausedBy = g?.paused ? g.players.find((p) => p.id === g.active) : null;
   return (
+    <PawnFacesProvider faces={faces}>
     <div className="gt gt-tour">
       <header className="gt-top">
         <nav>
@@ -140,5 +143,6 @@ export default function GrandTour() {
         <div className="gt-note error" role="alert" onClick={() => room.setError("")}>{errorText(room.error, lang)}</div>
       )}
     </div>
+    </PawnFacesProvider>
   );
 }

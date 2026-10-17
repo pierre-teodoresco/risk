@@ -61,6 +61,21 @@ test("standard notation: captures, disambiguation, castling, promotion and mate"
   assert.equal(san(mate, legalMoves(mate).find((x) => x.to === sq(0, 7))!), "Ra8#");
 });
 
+test("notation with a shared legal move list preserves ambiguity, checks and special moves", () => {
+  for (const text of [
+    "r3k2r/8/8/8/8/8/1N3N2/R3K2R w KQkq -",
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
+    "8/P6k/8/8/8/8/8/K7 w - -",
+    "6k1/5ppp/8/8/8/8/8/R5K1 w - -",
+    "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",
+  ]) {
+    const p = fen(text), before = structuredClone(p), legal = legalMoves(p);
+    for (const m of legal) assert.equal(san(p, m, legal), san(p, m));
+    assert.deepEqual(p, before);
+    assert.deepEqual(legal, legalMoves(p));
+  }
+});
+
 // ---------- Chess games through the duel engine ----------
 type G = Duel<Position>;
 function table(clock = 0, increment = 0): G {
