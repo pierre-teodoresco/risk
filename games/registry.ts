@@ -100,6 +100,19 @@ export const GAMES: GameEntry[] = [
     accent: "#57806a",
   },
   {
+    id: "blackjack",
+    name: "Blackjack",
+    status: "live",
+    players: { min: 1, max: 7 },
+    minutes: { min: 20, max: 40 },
+    tagline: { fr: "La maison joue. À toi de la battre.", en: "The house plays. Your move." },
+    pitch: {
+      fr: "Blackjack de casino, croupier automatique et jetons fictifs. Seul ou entre amis.",
+      en: "Casino blackjack with an automatic dealer and play chips. Solo or with friends.",
+    },
+    accent: "#b49556",
+  },
+  {
     id: "loup-garou",
     name: "Loup-garou",
     status: "soon",

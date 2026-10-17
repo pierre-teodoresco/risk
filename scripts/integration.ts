@@ -290,4 +290,67 @@ for (const [game, opening, illegal] of [
   assert.ok(!restored.players.find((p: Any) => p.id === folded).left);
   console.log("PASS Poker: routing, private hands, settings, bets, idempotency and spectator reconnect");
 }
+{
+  const q = (path: string) => path + "?game=blackjack";
+  const create = await req(q("/api/rooms"), undefined, { game: "blackjack", name: "QA Blackjack 1", emblem: 0 });
+  assert.equal(create.status, 200, JSON.stringify(create));
+  const code = create.game.code, path = q("/api/rooms/" + code);
+  console.log("Created Blackjack test room " + code);
+  const join = await req(path, undefined, { type: "join", name: "QA Blackjack 2", emblem: 0 });
+  assert.equal(join.status, 200, JSON.stringify(join));
+  assert.notEqual(join.game.players[0].emblem, join.game.players[1].emblem);
+  assert.equal((await req("/api/rooms/" + code)).error, "roomNotFound");
+  const tokens = new Map<string, string>([[create.game.me, create.token], [join.game.me, join.token]]);
+  const options = await req(path, create.token, { type: "options", timer: 60, rounds: 20 });
+  assert.equal(options.status, 200, JSON.stringify(options));
+  const start = await req(path, create.token, { type: "start" });
+  assert.equal(start.status, 200, JSON.stringify(start)); assert.equal(start.game.step, "betting");
+  assert.equal((await req(path, undefined, { type: "join", name: "QA Late" })).error, "alreadyStarted");
+  assert.equal((await req(path, create.token, { type: "bet", amount: 15 })).error, "invalidAmount");
+  const requestId = randomUUID();
+  const firstBet = await req(path, create.token, { type: "bet", amount: 20, requestId });
+  assert.equal(firstBet.status, 200, JSON.stringify(firstBet)); assert.equal(firstBet.game.step, "betting");
+  const retry = await req(path, create.token, { type: "bet", amount: 20, requestId });
+  assert.equal(retry.status, 200, JSON.stringify(retry)); assert.equal(retry.game.players[0].bank, 980);
+  const secondBet = await req(path, join.token, { type: "bet", amount: 20 });
+  assert.equal(secondBet.status, 200, JSON.stringify(secondBet));
+  let g = secondBet.game;
+  assert.equal(g.step, "dealing"); assert.equal(g.dealer[1], null);
+  for (const token of tokens.values()) {
+    const view = (await req(path, token)).game;
+    assert.equal(view.dealer[1], null);
+    assert.ok(view.players.every((p: Any) => p.hands[0].cards.length === 2));
+    assert.ok(!("shoe" in view) && !("discard" in view) && !("requests" in view));
+    assert.ok(!JSON.stringify(view).includes("tokenHash"));
+  }
+  for (let step = 0; g.step !== "result" && step < 30; step++) {
+    if (g.step === "players") {
+      const stood = await req(path, tokens.get(g.active), { type: "stand" });
+      assert.equal(stood.status, 200, JSON.stringify(stood)); g = stood.game;
+    } else {
+      await new Promise((r) => setTimeout(r, 1550));
+      const advanced = await req(path, create.token, { type: "heartbeat" });
+      assert.equal(advanced.status, 200, JSON.stringify(advanced)); g = advanced.game;
+    }
+  }
+  assert.equal(g.step, "result"); assert.ok(g.dealer.every(Boolean));
+  assert.equal(g.players.reduce((sum: number, p: Any) => sum + p.bank, 0) + g.houseNet, 2000);
+  const resign = await req(path, join.token, { type: "resign" });
+  assert.equal(resign.status, 200, JSON.stringify(resign));
+  const restored = (await req(path, join.token)).game;
+  assert.equal(restored.me, join.game.me); assert.ok(restored.players[1].resigned && !restored.players[1].left);
+  assert.equal((await req(path, create.token, { type: "finish" })).status, 200);
+  const again = await req(path, create.token, { type: "again" });
+  assert.equal(again.status, 200, JSON.stringify(again));
+  assert.equal(again.game.round, 0); assert.ok(again.game.players.every((p: Any) => p.bank === 1000 && !p.resigned));
+  await req(path, create.token, { type: "finish" });
+  const solo = await req(q("/api/rooms"), undefined, { game: "blackjack", name: "QA Blackjack Solo" });
+  assert.equal(solo.status, 200, JSON.stringify(solo));
+  const soloPath = q("/api/rooms/" + solo.game.code);
+  const soloStart = await req(soloPath, solo.token, { type: "start" });
+  assert.equal(soloStart.status, 200, JSON.stringify(soloStart));
+  assert.equal(soloStart.game.players.length, 1); assert.equal(soloStart.game.step, "betting");
+  await req(soloPath, solo.token, { type: "finish" });
+  console.log("PASS Blackjack: solo, routing, settings, betting, idempotency, hidden dealer card, payouts and rematch");
+}
 console.log("Integration suite passed against " + base);

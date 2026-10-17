@@ -105,6 +105,16 @@ L’hôte choisit dans la salle d’attente le temps de réflexion (15, 30 ou 60
 
 `games/poker/engine.ts` porte les règles et la projection privée ; `cards.ts` évalue la meilleure combinaison de cinq cartes parmi sept. La brique utilise `platform/useRoom.ts`, les ressorts et la géométrie d’éventail partagés avec Pioche, ainsi que les sons de `games/cards/sound.ts`. Tests : `tests/poker.test.ts` et scénario Poker dans `npm run test:integration`.
 
+## Blackjack
+
+Blackjack de casino pour **1 à 7 joueurs**, seul ou entre amis, avec un croupier automatique. Chacun commence avec 1 000 jetons fictifs et confirme une mise de 10 à 200, par pas de 10, avant chaque donne. Aucune recharge. Le salon propose 20 donnes (par défaut) ou une table libre, et 15, 20, 30 ou 60 secondes pour miser et décider (20 par défaut).
+
+Six paquets, blackjack naturel payé 3:2, victoire normale 1:1, égalité remboursée. Le croupier vérifie son blackjack avant les décisions, tire jusqu’à 16 et reste à 17, même souple. Double sur deux cartes, y compris après séparation ; jusqu’à quatre mains séparées. Les As se séparent une seule fois et reçoivent une carte chacun, sans double. Un 21 après séparation est une main normale. Ni assurance ni abandon partiel d’une main. Le menu des règles FR/EN détaille les paiements et les cas particuliers.
+
+Les mains des joueurs sont ouvertes ; la deuxième carte du croupier et l’ordre du sabot restent privés jusqu’à leur révélation normale. Le croupier révèle et tire ses cartes progressivement, avec des étapes validées côté serveur. Sans mise confirmée, le joueur passe la donne ; sans décision après distribution, il reste. Les inscriptions ferment au lancement et la reconnexion restaure la place. Une absence de tous suspend les horloges. L’abandon retire les jetons restants, perd les mains distribuées et conserve la place de spectateur pour la revanche. L’hôte peut demander la fin après la donne en cours. Le bilan compare chaque réserve aux 1 000 jetons de départ.
+
+`games/blackjack/engine.ts` porte les règles et `publicGame`. Le rendu, les animations et les cartes classiques sont partagés avec le Poker dans `games/cards/` ; les règles des jeux restent séparées. Tests : `tests/blackjack.test.ts` (paiements, As, doubles, séparations, confidentialité, horloges et sessions simulées avec contrôle des comptes et des 312 cartes) et scénario Blackjack dans `npm run test:integration`.
+
 ## Échecs et Dames
 
 Deux jeux à **deux joueurs** sur le même socle (`games/duel/`) : pendule réglable par l’hôte (libre, 3, 5, 10 ou 15 minutes, avec 0, 2 ou 5 secondes ajoutées par coup), proposition de nulle, abandon, revanche avec couleurs inversées. Les couleurs sont tirées au sort au premier lancement.
@@ -124,7 +134,7 @@ npm run test:integration
 MAPPA_TEST_URL=https://votre-domaine.vercel.app npm run test:integration
 ```
 
-L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges, et une table d’échecs et de dames pour le routage, les deux places et la légalité des coups. Elle vérifie aussi une table Poker : confidentialité, options, mises, déduplication, reconnexion et abandon. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
+L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges, et une table d’échecs et de dames pour le routage, les deux places et la légalité des coups. Elle vérifie aussi une table Poker : confidentialité, options, mises, déduplication, reconnexion et abandon. Elle couvre aussi le Blackjack : jeu solo, carte fermée du croupier, mises, paiements, identité et revanche. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
 
 ## Déploiement
 

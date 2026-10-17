@@ -203,6 +203,14 @@ function PokerArt() {
     {[0, 1, 2].map((n) => <g key={n} transform={`translate(${56 + n * 7} ${40 - n * 7})`}><circle r="14" fill={n === 2 ? "#c2a25e" : "#457963"} stroke={CREAM} strokeWidth="3" strokeDasharray="5 4" /></g>)}
   </g></Scene>;
 }
+function BlackjackArt() {
+  return <Scene><g transform={CAMERA}>
+    <path d="M-120 55V-15A120 80 0 0 1 120-15V55Z" fill="#4d4537" />
+    <path d="M-110 45V-15A110 70 0 0 1 110-15V45Z" fill="#416e5e" stroke="#bda26b" strokeWidth="2" />
+    {[-1, 1].map((n) => <g key={n} transform={`translate(${n * 23 - 20} -45) rotate(${n * 8})`}><rect width="42" height="62" rx="4" fill={CREAM} /><text x="21" y="25" fontSize="20" fontWeight="bold" textAnchor="middle" fill={n < 0 ? "#253b35" : "#b84435"}>{n < 0 ? "A" : "K"}</text><text x="21" y="51" fontSize="24" textAnchor="middle" fill={n < 0 ? "#253b35" : "#b84435"}>{n < 0 ? "♠" : "♥"}</text></g>)}
+    <circle cx="68" cy="32" r="16" fill="#c2a25e" stroke={CREAM} strokeWidth="3" strokeDasharray="5 4" /><text x="68" y="38" fontSize="16" textAnchor="middle" fill="#4d4537">21</text>
+  </g></Scene>;
+}
 function LoupGarouArt() {
   return (
     <Scene>
@@ -216,7 +224,7 @@ function DiceArt() {
   return <Scene><Slab width={90} height={90}><circle r="9" fill={EDGE} /></Slab></Scene>;
 }
 const ARTS: Record<string, () => ReactNode> = {
-  poker: PokerArt, mappa: MappaArt, pioche: PiocheArt, "grand-tour": GrandTourArt,
+  blackjack: BlackjackArt, poker: PokerArt, mappa: MappaArt, pioche: PiocheArt, "grand-tour": GrandTourArt,
   echecs: EchecsArt, dames: DamesArt, "loup-garou": LoupGarouArt,
 };
 export const boxArt = (id: string) => (ARTS[id] ?? DiceArt)();

@@ -1,5 +1,6 @@
 "use client";
 // Card arrival, hover lift and flip use the same spring loop as Pioche's hand.
+import "./cards.css";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { Spring, SPRINGS, createLoop, prefersReducedMotion } from "@/platform/spring";
 export default function AnimatedCard({ front, back, revealed, label, index = 0, rotation = 0, selected = false, onSelect, origin }: {
@@ -37,11 +38,11 @@ export default function AnimatedCard({ front, back, revealed, label, index = 0, 
     loop.current = l; l.kick(); return () => l.stop();
   }, []);
   useEffect(() => { loop.current?.kick(); }, [revealed, rotation, selected]);
-  const faces = <span className="pk-card-turn"><span className="pk-card-front">{front}</span><span className="pk-card-back">{back}</span></span>;
+  const faces = <span className="gc-card-turn"><span className="gc-card-front">{front}</span><span className="gc-card-back">{back}</span></span>;
   const events = { onPointerEnter: () => { hover.current = true; loop.current?.kick(); }, onPointerLeave: () => { hover.current = false; loop.current?.kick(); } };
-  return <div className="pk-card-motion" ref={el} {...events}>
-    {onSelect ? <button className="pk-card-surface" type="button" aria-label={label} aria-pressed={selected} onClick={onSelect}
+  return <div className="gc-card-motion" ref={el} {...events}>
+    {onSelect ? <button className="gc-card-surface" type="button" aria-label={label} aria-pressed={selected} onClick={onSelect}
       onFocus={() => { hover.current = true; loop.current?.kick(); }} onBlur={() => { hover.current = false; loop.current?.kick(); }}>{faces}</button>
-      : <span className="pk-card-surface" role="img" aria-label={label}>{faces}</span>}
+      : <span className="gc-card-surface" role="img" aria-label={label}>{faces}</span>}
   </div>;
 }
