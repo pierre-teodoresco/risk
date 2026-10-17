@@ -1,11 +1,12 @@
 "use client";
 import ThemeToggle from "@/components/ThemeToggle";
+import ConfirmAction from "@/components/ConfirmAction";
 // Shared screen of the two-player games: top bar, entrance, waiting room; each game brings its
 // table (`Table`, usually the shared Table2D with the game's rules).
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, BookOpen, Check, Volume2, VolumeX, Flag, Handshake, LayoutGrid, Link2, LogOut, Pause, Play as PlayIcon, Trophy, WifiOff, X } from "lucide-react";
 import EmblemBadge from "@/components/EmblemBadge";
-import { LANG_KEY, fmt } from "@/lib/i18n";
+import { LANG_KEY, confirmationTexts, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import type { Action } from "@/platform/contract";
 import { useRoom } from "@/platform/useRoom";
@@ -13,7 +14,7 @@ import { CLOCKS, EMBLEM_COUNT, INCREMENTS, type DuelView, type Side } from "../e
 import { duelTexts, errorText, type DuelTexts } from "../i18n";
 import { setSound, soundOn } from "./sound";
 
-export type TableProps<P> = { game: DuelView<P>; side: Side | null; act: (a: Action) => Promise<boolean>; busy: boolean; lang: Lang; tx: DuelTexts };
+export type TableProps<P> = { game: DuelView<P>; side: Side | null; act: (a: Action) => Promise<boolean>; busy: boolean; error?: string; lang: Lang; tx: DuelTexts };
 export type DuelConfig<P> = {
   id: string;
   path: string;
@@ -32,7 +33,6 @@ export type DuelConfig<P> = {
 };
 
 const COPIED_MS = 2500;
-const CONFIRM_MS = 3000;
 const CLOCK_TICK_MS = 200;
 
 export function clockText(ms: number) {
@@ -105,15 +105,6 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
       room.setError("serverError");
     }
   }
-  function leave() {
-    if (!leaving) {
-      setLeaving(true);
-      setTimeout(() => setLeaving(false), CONFIRM_MS);
-      return;
-    }
-    setLeaving(false);
-    void room.act({ type: "leave" });
-  }
 
   const me = g?.players.find((p) => p.id === g.me);
   return (
@@ -140,7 +131,7 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
             <button aria-pressed={lang === "fr"} onClick={() => setLang("fr")}>FR</button>
             <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
           </div>
-          {g && <button className={"gt-orb" + (leaving ? " danger" : "")} aria-label={leaving ? tx.leaveConfirm : tx.leave} title={leaving ? tx.leaveConfirm : tx.leave} onClick={leave}><LogOut /></button>}
+          {g && <button className="gt-orb" aria-label={tx.leave} title={tx.leave} onClick={() => setLeaving(true)}><LogOut /></button>}
         </nav>
       </header>
 
@@ -155,7 +146,7 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
         <Lobby game={g} tx={tx} busy={room.busy} act={room.act} copied={copied} onCopy={copy} />
       ) : (
         <>
-          <config.Table game={g} side={me?.side ?? null} tx={tx} lang={lang} act={room.act} busy={room.busy} />
+          <config.Table game={g} side={me?.side ?? null} tx={tx} lang={lang} act={room.act} busy={room.busy} error={room.error ? errorText(room.error, lang) : undefined} />
           {g.paused && (
             <div className="gt-veil soft" role="status">
               <div className="gt-dialog">
@@ -185,6 +176,11 @@ export default function DuelScreen<P>({ config }: { config: DuelConfig<P> }) {
             <button className="gt-btn go big" onClick={() => setRules(false)}>{tx.close}</button>
           </section>
         </div>
+      )}
+      {g && leaving && (
+        <ConfirmAction lang={lang} title={tx.leave} description={confirmationTexts(lang).leave}
+          busy={room.busy} error={room.error ? errorText(room.error, lang) : undefined}
+          onCancel={() => setLeaving(false)} onConfirm={() => room.act({ type: "leave" })} />
       )}
       {room.lost && <div className="gt-note lost"><WifiOff size={16} /> {tx.connectionLost}</div>}
       {room.error && <div className="gt-note error" role="alert" onClick={() => room.setError("")}>{errorText(room.error, lang)}</div>}

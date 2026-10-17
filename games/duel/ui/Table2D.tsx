@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Flag, Handshake, Timer, Trophy, X } from "lucide-react";
 import EmblemBadge from "@/components/EmblemBadge";
+import ConfirmAction from "@/components/ConfirmAction";
 import { fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import type { Action } from "@/platform/contract";
@@ -15,7 +16,6 @@ import type { Side } from "../engine";
 import Board2D, { type BoardCell, type BoardMove, type BoardProps } from "./Board2D";
 import { playSound, type Sound } from "./sound";
 
-const CONFIRM_MS = 3000;
 const LOW_MS = 20000;
 
 export type Game2D<P, M> = {
@@ -105,7 +105,7 @@ function replay<P, M>(g: Game2D<P, M>, moves: string[], previous?: Replay<P, M>)
   return { moves: [...moves], positions, played };
 }
 
-export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy }: TableProps<P> & { rules: Game2D<P, M> }) {
+export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy, error }: TableProps<P> & { rules: Game2D<P, M> }) {
   const t = TEXTS[lang];
   const R = rules;
   const { turn, running, remaining } = useClocks(game);
@@ -384,16 +384,10 @@ export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy }
               <span className="cc-half">½</span> {game.drawOffer === side ? tx.drawOffered : tx.offerDraw}
             </button>
             <button
-              className={"cc-btn" + (confirmResign ? " red" : "")}
-              disabled={busy}
-              onClick={() => {
-                if (!confirmResign) {
-                  setConfirmResign(true);
-                  setTimeout(() => setConfirmResign(false), CONFIRM_MS);
-                } else void act({ type: "resign" });
-              }}
+              className="cc-btn"
+              onClick={() => setConfirmResign(true)}
             >
-              <Flag size={16} /> {confirmResign ? tx.resignConfirm : tx.resign}
+              <Flag size={16} /> {tx.resign}
             </button>
           </div>
         ) : (
@@ -407,6 +401,10 @@ export default function Table2D<P, M>({ rules, game, side, tx, lang, act, busy }
           )
         )}
       </aside>
+      {confirmResign && (
+        <ConfirmAction lang={lang} title={tx.resign} description={tx.resignConfirm} busy={busy} error={error}
+          onCancel={() => setConfirmResign(false)} onConfirm={() => act({ type: "resign" })} />
+      )}
     </div>
   );
 }

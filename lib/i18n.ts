@@ -855,6 +855,22 @@ export const hudTexts = (lang: Lang) => (lang === "fr" ? hudFr : hudEn);
 // Shared by the hub and every game; the key predates the hub, so saved choices survive.
 export const LANG_KEY = "mappa.lang";
 
+const confirmationFr = {
+  cancel: "Annuler",
+  sending: "Envoi en cours…",
+  waiting: "Une action est déjà en cours…",
+  failed: "L’action n’a pas abouti. Réessaie.",
+  leave: "Tu quittes la table. Une partie en cours compte comme un abandon.",
+};
+const confirmationEn: typeof confirmationFr = {
+  cancel: "Cancel",
+  sending: "Sending…",
+  waiting: "Another action is in progress…",
+  failed: "The action did not complete. Try again.",
+  leave: "You leave the table. An ongoing game counts as a resignation.",
+};
+export const confirmationTexts = (lang: Lang) => lang === "fr" ? confirmationFr : confirmationEn;
+
 const hallFr = {
   joinTitle: "Rejoindre avec un code",
   joining: "Recherche…",

@@ -1,9 +1,10 @@
 "use client";
 import ThemeToggle from "@/components/ThemeToggle";
+import ConfirmAction from "@/components/ConfirmAction";
 // Grand Tour's screen: the top bar, then the entrance, the waiting room or the table.
 import { useEffect, useState } from "react";
 import { BookOpen, Flag, LayoutGrid, Link2, LogOut, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
-import { LANG_KEY, fmt } from "@/lib/i18n";
+import { LANG_KEY, confirmationTexts, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { gamePath } from "@/games/registry";
 import { useRoom } from "@/platform/useRoom";
@@ -15,13 +16,11 @@ import { setSound, soundOn } from "./sound";
 
 const PATH = gamePath("grand-tour");
 const COPIED_MS = 2500;
-const LEAVE_CONFIRM_MS = 3000;
 
 export default function GrandTour() {
   const [lang, setLang] = useState<Lang>("fr"),
     [copied, setCopied] = useState(false),
-    [leaving, setLeaving] = useState(false),
-    [resigning, setResigning] = useState(false),
+    [confirm, setConfirm] = useState<"leave" | "resign" | null>(null),
     [rules, setRules] = useState(false),
     [sound, setSoundState] = useState(true);
   const room = useRoom<PublicGame>("grand-tour", PATH);
@@ -51,24 +50,6 @@ export default function GrandTour() {
     } catch {
       room.setError("serverError");
     }
-  }
-  function resign() {
-    if (!resigning) {
-      setResigning(true);
-      setTimeout(() => setResigning(false), LEAVE_CONFIRM_MS);
-      return;
-    }
-    setResigning(false);
-    void room.act({ type: "resign" });
-  }
-  function leave() {
-    if (!leaving) {
-      setLeaving(true);
-      setTimeout(() => setLeaving(false), LEAVE_CONFIRM_MS);
-      return;
-    }
-    setLeaving(false);
-    void room.act({ type: "leave" });
   }
 
   const pausedBy = g?.paused ? g.players.find((p) => p.id === g.active) : null;
@@ -101,12 +82,12 @@ export default function GrandTour() {
             const me = g.players.find((p) => p.id === g.me);
             return me && !me.bankrupt && !me.left;
           })() && (
-            <button className={"gt-orb" + (resigning ? " danger" : "")} aria-label={resigning ? tx.resignConfirm : tx.resign} title={resigning ? tx.resignConfirm : tx.resign} onClick={resign}>
+            <button className="gt-orb" aria-label={tx.resign} title={tx.resign} onClick={() => setConfirm("resign")}>
               <Flag />
             </button>
           )}
           {g && (
-            <button className={"gt-orb" + (leaving ? " danger" : "")} aria-label={leaving ? tx.leaveConfirm : tx.leave} title={leaving ? tx.leaveConfirm : tx.leave} onClick={leave}><LogOut /></button>
+            <button className="gt-orb" aria-label={tx.leave} title={tx.leave} onClick={() => setConfirm("leave")}><LogOut /></button>
           )}
         </nav>
       </header>
@@ -148,6 +129,12 @@ export default function GrandTour() {
       )}
 
       {rules && <Rules tx={tx} game={g} onClose={() => setRules(false)} />}
+      {g && confirm && (
+        <ConfirmAction key={confirm} lang={lang} title={confirm === "leave" ? tx.leave : tx.resign}
+          description={confirm === "leave" ? confirmationTexts(lang).leave : tx.resignConfirm}
+          busy={room.busy} error={room.error ? errorText(room.error, lang) : undefined}
+          onCancel={() => setConfirm(null)} onConfirm={() => room.act({ type: confirm })} />
+      )}
       {room.lost && <div className="gt-note lost"><WifiOff size={16} /> {tx.connectionLost}</div>}
       {room.error && (
         <div className="gt-note error" role="alert" onClick={() => room.setError("")}>{errorText(room.error, lang)}</div>

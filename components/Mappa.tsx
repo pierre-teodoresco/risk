@@ -1,5 +1,6 @@
 "use client";
 import ThemeToggle from "@/components/ThemeToggle";
+import ConfirmAction from "@/components/ConfirmAction";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -261,16 +262,15 @@ export default function Mappa() {
     localStorage.setItem(LANG_KEY, lang);
   }, [lang]);
   useEffect(() => {
-    if (!rules && !confirm) return;
+    if (!rules) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setRules(false);
-        setConfirm(null);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [rules, confirm]);
+  }, [rules]);
   async function enter(joining: boolean) {
     if (busyRef.current) return;
     if (joining && !/^[A-Z2-9]{6}$/.test(room)) {
@@ -580,39 +580,11 @@ export default function Mappa() {
         </div>
       )}
       {confirm && (
-        <div className="modal-backdrop">
-          <section
-            className="confirm-modal panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirm-title"
-          >
-            <LogOut size={26} />
-            <h2 id="confirm-title">
-              {confirm.type === "leave" ? t.leave : confirm.type === "resign" ? t.resign : t.kick}
-            </h2>
-            <p>{confirm.type === "leave" ? t.leaveConfirm : confirm.type === "resign" ? t.resignConfirm : t.kickConfirm}</p>
-            <div className="btns">
-              <button
-                className="btn ghost"
-                onClick={() => setConfirm(null)}
-                autoFocus
-              >
-                {t.cancel}
-              </button>
-              <button
-                className="btn red"
-                disabled={busy}
-                onClick={() => {
-                  void act(confirm);
-                  setConfirm(null);
-                }}
-              >
-                {t.confirm}
-              </button>
-            </div>
-          </section>
-        </div>
+        <ConfirmAction key={`${confirm.type}:${confirm.player ?? ""}`} lang={lang}
+          title={confirm.type === "leave" ? t.leave : confirm.type === "resign" ? t.resign : t.kick}
+          description={confirm.type === "leave" ? t.leaveConfirm : confirm.type === "resign" ? t.resignConfirm : t.kickConfirm}
+          busy={busy} error={error ? errorText(error, lang) : undefined}
+          onCancel={() => setConfirm(null)} onConfirm={() => act(confirm)} />
       )}
     </>
   );

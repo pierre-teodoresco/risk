@@ -1,11 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { observeRenderVisibility } from "../platform/render-visibility";
+import { notifyModalChange, observeRenderVisibility } from "../platform/render-visibility";
 
 test("render visibility combines viewport and tab state, deduplicates changes and cleans up", () => {
   const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   const originalObserver = Object.getOwnPropertyDescriptor(globalThis, "IntersectionObserver");
-  const document = Object.assign(new EventTarget(), { visibilityState: "visible" });
+  let modalOpen = false;
+  const document = Object.assign(new EventTarget(), { visibilityState: "visible", querySelector: () => modalOpen ? {} : null });
   let intersection!: (entries: { isIntersecting: boolean }[]) => void;
   let observed: unknown, disconnected = false;
   class Observer {
@@ -28,11 +29,18 @@ test("render visibility combines viewport and tab state, deduplicates changes an
     document.visibilityState = "visible";
     document.dispatchEvent(new Event("visibilitychange"));
     assert.deepEqual(changes, [true, false, true]);
+    modalOpen = true;
+    notifyModalChange();
+    notifyModalChange();
+    assert.deepEqual(changes, [true, false, true, false]);
+    modalOpen = false;
+    notifyModalChange();
+    assert.deepEqual(changes, [true, false, true, false, true]);
     stop();
     assert.ok(disconnected);
     document.visibilityState = "hidden";
     document.dispatchEvent(new Event("visibilitychange"));
-    assert.deepEqual(changes, [true, false, true]);
+    assert.deepEqual(changes, [true, false, true, false, true]);
   } finally {
     if (originalDocument) Object.defineProperty(globalThis, "document", originalDocument);
     else Reflect.deleteProperty(globalThis, "document");

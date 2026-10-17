@@ -1,8 +1,9 @@
 "use client";
 import ThemeToggle from "@/components/ThemeToggle";
+import ConfirmAction from "@/components/ConfirmAction";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { BookOpen, Flag, LayoutGrid, Link2, LogOut, Palette, Pause, Play, Volume2, VolumeX, WifiOff } from "lucide-react";
-import { LANG_KEY, fmt } from "@/lib/i18n";
+import { LANG_KEY, confirmationTexts, fmt } from "@/lib/i18n";
 import type { Lang } from "@/lib/world";
 import { gamePath } from "@/games/registry";
 import { useRoom } from "@/platform/useRoom";
@@ -20,14 +21,12 @@ const AUDIO_KEY = "pioche.audio";
 /** Each player picks their own table; it changes nothing for the others. */
 const SKIN_KEY = "pioche.skin";
 const COPIED_MS = 2500;
-const LEAVE_CONFIRM_MS = 3000;
 
 export default function Pioche() {
   const [lang, setLang] = useState<Lang>("fr"),
     [audio, setAudio] = useState(false),
     [copied, setCopied] = useState(false),
-    [leaving, setLeaving] = useState(false),
-    [resigning, setResigning] = useState(false),
+    [confirm, setConfirm] = useState<"leave" | "resign" | null>(null),
     [rules, setRules] = useState(false),
     [skin, setSkinState] = useState<Skin>("arcade");
   const room = useRoom<PublicGame>("pioche", PATH);
@@ -83,24 +82,6 @@ export default function Pioche() {
       room.setError("serverError");
     }
   }
-  function resign() {
-    if (!resigning) {
-      setResigning(true);
-      setTimeout(() => setResigning(false), LEAVE_CONFIRM_MS);
-      return;
-    }
-    setResigning(false);
-    void room.act({ type: "resign" });
-  }
-  function leave() {
-    if (!leaving) {
-      setLeaving(true);
-      setTimeout(() => setLeaving(false), LEAVE_CONFIRM_MS);
-      return;
-    }
-    setLeaving(false);
-    void room.act({ type: "leave" });
-  }
 
   const pausedBy = g?.paused ? g.players.find((p) => p.id === g.active) : null;
   return (
@@ -144,12 +125,12 @@ export default function Pioche() {
             <button aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
           </div>
           {g && g.phase === "playing" && !g.players.find((p) => p.id === g.me)?.left && (
-            <button className={"orb small" + (resigning ? " danger" : "")} aria-label={resigning ? tx.resignConfirm : tx.resign} title={resigning ? tx.resignConfirm : tx.resign} onClick={resign}>
+            <button className="orb small" aria-label={tx.resign} title={tx.resign} onClick={() => setConfirm("resign")}>
               <Flag />
             </button>
           )}
           {g && (
-            <button className={"orb small" + (leaving ? " danger" : "")} aria-label={tx.leave} title={tx.leave} onClick={leave}>
+            <button className="orb small" aria-label={tx.leave} title={tx.leave} onClick={() => setConfirm("leave")}>
               <LogOut />
             </button>
           )}
@@ -193,6 +174,12 @@ export default function Pioche() {
       )}
 
       {rules && <Rules tx={tx} game={g} busy={room.busy} act={room.act} onClose={() => setRules(false)} />}
+      {g && confirm && (
+        <ConfirmAction key={confirm} lang={lang} title={confirm === "leave" ? tx.leave : tx.resign}
+          description={confirm === "leave" ? confirmationTexts(lang).leave : tx.resignConfirm}
+          busy={room.busy} error={room.error ? errorText(room.error, lang) : undefined}
+          onCancel={() => setConfirm(null)} onConfirm={() => room.act({ type: confirm })} />
+      )}
       {room.lost && <div className="lost-note"><WifiOff size={16} /> {tx.connectionLost}</div>}
       {room.error && (
         <div className="error-note" role="alert" onClick={() => room.setError("")}>

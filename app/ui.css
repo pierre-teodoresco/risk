@@ -125,6 +125,24 @@ input::placeholder, textarea::placeholder { color: var(--app-dim); opacity: 1; }
 :is(.ui-panel, .panel, .gt-card-panel, .gt-panel, .gt-dialog, .cc-side, .cc-result-card, .round-end-card) { border: 1px solid var(--app-line); border-radius: var(--radius-panel); background: var(--app-panel); color: var(--app-text); box-shadow: var(--app-shadow); }
 .ui-panel { padding: var(--space-6); }
 .ui-panel.is-compact { padding: var(--space-4); }
+.ui-confirm {
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+.ui-confirm::backdrop { background: var(--app-overlay); }
+.ui-confirm-icon { color: var(--app-danger); width: 28px; height: 28px; margin-bottom: var(--space-3); }
+.ui-confirm h2 { margin: 0 0 var(--space-3); }
+.ui-confirm p { margin: 0; color: var(--app-muted); font-size: var(--text-body); line-height: var(--leading-body); }
+.ui-confirm-status { display: flex; align-items: center; gap: var(--space-2); min-height: 28px; margin-top: var(--space-3); color: var(--app-muted); font-size: var(--text-meta); }
+.ui-confirm .ui-confirm-error { color: var(--app-danger); margin-bottom: var(--space-3); }
+.ui-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.ui-confirm-actions button { white-space: normal; }
+.ui-pending-icon { flex: none; width: 18px; height: 18px; animation: ui-pending 800ms linear infinite; }
+@keyframes ui-pending { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .ui-pending-icon { animation: none; } }
 :is(.entry, .entrance-panel, .lobby-panel, .gt-card-panel, .gt-dialog) { padding: var(--space-6); }
 :is(.entry, .entrance-panel, .lobby-panel, .gt-card-panel) h2 { font: var(--weight-heading) var(--text-heading)/var(--leading-heading) var(--font-app); letter-spacing: -.02em; }
 :is(.eyebrow, .gt-label, .gt-label.mono) { color: var(--app-muted); font: var(--weight-control) var(--text-caption)/1.4 var(--font-app); letter-spacing: .08em; text-transform: uppercase; }

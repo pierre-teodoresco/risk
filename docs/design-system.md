@@ -33,6 +33,11 @@ Une base légère pour que le hub et les jeux partagent la même interface. Les 
 - `.ui-panel` : surface normale ; `.is-compact` pour les panneaux de jeu denses.
 - `.ui-choice` : groupe de boutons avec `aria-pressed` pour le choix actif et un nom accessible pour le groupe.
 - `.ui-switch` : bouton à bascule avec `aria-pressed` et un libellé accessible.
+- `components/ConfirmAction.tsx` : confirmation destructive commune, ouverte dès le premier clic. Utiliser un titre d'action et une phrase expliquant sa conséquence ; ne pas demander un deuxième clic sur une petite icône dans un délai limité.
+
+La confirmation utilise un dialogue natif : focus contenu dans la fenêtre, Annuler sélectionné au départ, Échap pour annuler avant l'envoi, puis retour du focus au déclencheur. `onConfirm` renvoie une promesse booléenne : seul `true` ferme la fenêtre. Pendant l'envoi, un statut est visible et les doublons sont bloqués ; un échec reste affiché dans la fenêtre et permet une nouvelle tentative. Le paramètre `busy` signale aussi une commande déjà en cours dans le jeu.
+
+Les moteurs 3D écoutent l'ouverture et la fermeture de cette fenêtre via `platform/render-visibility.ts` et suspendent leur rendu derrière elle. Le réseau et les horloges du jeu restent indépendants.
 
 Les alias existants (`.btn`, `.gt-btn`, `.cc-btn`, `.orb`, `.gt-orb`, `.seg`, `.gt-seg`, `.switch`, `.gt-switch`, `.panel`, etc.) consomment les mêmes règles. Pour un nouvel écran, utiliser les classes `.ui-*`.
 
