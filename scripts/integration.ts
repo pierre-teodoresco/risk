@@ -238,4 +238,56 @@ for (const [game, opening, illegal] of [
   assert.equal(moved.game.moves.length, 1);
   console.log(`PASS ${game}: routing, two seats, move legality`);
 }
+{
+  const q = (path: string) => path + "?game=poker";
+  const create = await req(q("/api/rooms"), undefined, { game: "poker", name: "QA Poker 1", emblem: 0 });
+  assert.equal(create.status, 200, JSON.stringify(create));
+  const code = create.game.code, path = q("/api/rooms/" + code);
+  console.log("Created Poker test room " + code);
+  const joins = [];
+  for (let i = 2; i <= 3; i++) {
+    const j = await req(path, undefined, { type: "join", name: "QA Poker " + i, emblem: 0 });
+    assert.equal(j.status, 200, JSON.stringify(j)); joins.push(j);
+  }
+  const tokens = new Map<string, string>([[create.game.me, create.token], ...joins.map((j) => [j.game.me, j.token] as [string, string])]);
+  assert.equal((await req("/api/rooms/" + code)).error, "roomNotFound");
+  const options = await req(path, create.token, { type: "options", timer: 60, levelMinutes: 2 });
+  assert.equal(options.status, 200, JSON.stringify(options));
+  const started = await req(path, create.token, { type: "start" });
+  assert.equal(started.status, 200, JSON.stringify(started));
+  let g = started.game;
+  assert.equal(g.phase, "playing"); assert.equal(g.options.timer, 60);
+  assert.equal(g.players.reduce((sum: number, p: Any) => sum + p.stack + p.contributed, 0), 4500);
+  for (const [id, token] of tokens) {
+    const view = (await req(path, token)).game;
+    assert.equal(view.me, id);
+    for (const p of view.players) assert.equal(p.hand.length, p.id === id ? 2 : 0);
+    for (const field of ["deck", "burned", "requests", "acted", "pending"]) assert.ok(!(field in view));
+    assert.ok(!JSON.stringify(view).includes("tokenHash"));
+  }
+  const preview = await req(path);
+  assert.ok(!JSON.stringify(preview).includes("hand"));
+  assert.equal((await req(path, undefined, { type: "join", name: "QA Late" })).error, "alreadyStarted");
+  const invalid = await req(path, tokens.get(g.active), { type: "check" });
+  assert.equal(invalid.error, "cannotCheck");
+  const requestId = randomUUID(), actor = g.active;
+  const call = await req(path, tokens.get(actor), { type: "call", requestId });
+  assert.equal(call.status, 200, JSON.stringify(call));
+  const retried = await req(path, tokens.get(actor), { type: "call", requestId });
+  assert.equal(retried.status, 200, JSON.stringify(retried));
+  assert.equal(retried.game.players.find((p: Any) => p.id === actor).stack, call.game.players.find((p: Any) => p.id === actor).stack);
+  const folded = call.game.active;
+  const fold = await req(path, tokens.get(folded), { type: "fold" });
+  assert.equal(fold.status, 200, JSON.stringify(fold)); g = fold.game;
+  // A spectator retains identity while folded cards stay hidden to other players.
+  const observer = (await req(path, tokens.get(actor))).game;
+  assert.equal(observer.players.find((p: Any) => p.id === folded).hand.length, 0);
+  const resigned = await req(path, tokens.get(folded), { type: "resign" });
+  assert.equal(resigned.status, 200, JSON.stringify(resigned));
+  const restored = (await req(path, tokens.get(folded))).game;
+  assert.equal(restored.me, folded);
+  assert.ok(restored.players.find((p: Any) => p.id === folded).resigned);
+  assert.ok(!restored.players.find((p: Any) => p.id === folded).left);
+  console.log("PASS Poker: routing, private hands, settings, bets, idempotency and spectator reconnect");
+}
 console.log("Integration suite passed against " + base);

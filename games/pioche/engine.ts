@@ -1,6 +1,8 @@
 // Pioche: a shedding card game. Pure rules, independent of network and storage; time and
 // randomness are injected so tests can replay any game.
 import type { Action } from "../../platform/contract";
+import { shuffle } from "../../platform/cards";
+export { shuffle } from "../../platform/cards";
 import { fail } from "../../platform/errors";
 
 export const CARD_COLORS = ["red", "yellow", "green", "blue"] as const;
@@ -91,15 +93,6 @@ const name = (v: unknown) =>
   typeof v === "string" && v.trim().length >= 2 && v.trim().length <= 20 ? v.trim() : fail("invalidName");
 const integer = (v: unknown, min: number, max: number) =>
   typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : fail("invalidAmount");
-
-export function shuffle<T>(items: T[], random: () => number) {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 /** The 108-card deck: per colour one 0, two of 1–9, two of each action; four of each wild. */
 export function makeDeck(): Card[] {

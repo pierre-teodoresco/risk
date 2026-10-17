@@ -87,6 +87,19 @@ export const GAMES: GameEntry[] = [
     accent: "#9a6a4b",
   },
   {
+    id: "poker",
+    name: "Poker",
+    status: "live",
+    players: { min: 2, max: 8 },
+    minutes: { min: 20, max: 30 },
+    tagline: { fr: "Deux cartes. Toutes les possibilités.", en: "Two cards. Every possibility." },
+    pitch: {
+      fr: "Tournoi de Texas Hold’em no-limit entre amis, avec des jetons fictifs.",
+      en: "A no-limit Texas Hold’em tournament with friends and play chips.",
+    },
+    accent: "#57806a",
+  },
+  {
     id: "loup-garou",
     name: "Loup-garou",
     status: "soon",

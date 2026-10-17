@@ -95,6 +95,16 @@ Options choisies par l’hôte dans la salle d’attente :
 
 Simplification : la carte « anniversaire » ne met jamais un autre joueur en dette ; il donne ce qu’il a.
 
+## Poker
+
+Texas Hold’em **no-limit pour 2 à 8 joueurs**, avec des jetons fictifs uniquement. Chaque joueur commence avec 1 500 jetons ; pas de recave ni d’entrée après le lancement. Les blindes commencent à 10/20 et progressent entre les mains. Le dernier joueur avec des jetons gagne ; les éliminés restent pour regarder et pour la revanche.
+
+L’hôte choisit dans la salle d’attente le temps de réflexion (15, 30 ou 60 secondes ; 30 par défaut) et la durée des niveaux de blindes (2, 3 ou 5 minutes ; 3 par défaut). Durée visée : 20–30 minutes, sans limite stricte. Le menu des règles détaille les tours de mises, les combinaisons, les tapis, les pots annexes et le partage des égalités. Les relances et l’ordre des blindes suivent les conventions de tournoi de la [Poker TDA](https://www.pokertda.com/view-poker-tda-rules/) ; les absences et abandons ont les règles de salon décrites ci-dessous.
+
+À expiration : parole si possible, sinon coucher. La main suivante démarre automatiquement après le résultat. La reconnexion restaure la place ; après une absence de tous, les horloges sont suspendues. Les mains couchées restent privées, y compris après le tournoi. L’abandon couche la main et retire les jetons non engagés du tournoi ; les mises restent au pot, les cartes hors du paquet.
+
+`games/poker/engine.ts` porte les règles et la projection privée ; `cards.ts` évalue la meilleure combinaison de cinq cartes parmi sept. La brique utilise `platform/useRoom.ts`, les ressorts et la géométrie d’éventail partagés avec Pioche, ainsi que les sons de `games/cards/sound.ts`. Tests : `tests/poker.test.ts` et scénario Poker dans `npm run test:integration`.
+
 ## Échecs et Dames
 
 Deux jeux à **deux joueurs** sur le même socle (`games/duel/`) : pendule réglable par l’hôte (libre, 3, 5, 10 ou 15 minutes, avec 0, 2 ou 5 secondes ajoutées par coup), proposition de nulle, abandon, revanche avec couleurs inversées. Les couleurs sont tirées au sort au premier lancement.
@@ -114,7 +124,7 @@ npm run test:integration
 MAPPA_TEST_URL=https://votre-domaine.vercel.app npm run test:integration
 ```
 
-L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges, et une table d’échecs et de dames pour le routage, les deux places et la légalité des coups. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
+L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges, et une table d’échecs et de dames pour le routage, les deux places et la légalité des coups. Elle vérifie aussi une table Poker : confidentialité, options, mises, déduplication, reconnexion et abandon. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
 
 ## Déploiement
 

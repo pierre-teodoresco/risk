@@ -3,6 +3,7 @@
 // the DOM from one animation loop, so hovering, dragging and reflowing never re-render React.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { Spring, SPRINGS, createLoop, prefersReducedMotion } from "@/platform/spring";
+import { fanSlot as slot } from "@/platform/cards";
 import type { Card } from "../engine";
 import { CardBack, CardFace } from "./CardFace";
 import { fmt } from "@/lib/i18n";
@@ -76,21 +77,9 @@ const DROP_MARGIN_PX = 40;
 const DEAL_STAGGER_S = 0.07;
 const SWAY_DEG = 0.7;
 const SWAY_PX = 2;
-const MAX_STEP_RATIO = 0.72;
-const FAN_DEG = 40;
-const FAN_MAX_STEP_DEG = 5;
-const ARC_RATIO = 0.07;
 /** The other cards of a dragged lot trail behind it like a held fan. */
 const TRAIL_STEP_PX = 14;
 const TRAIL_STEP_DEG = 7;
-
-function slot(i: number, n: number, width: number, cardW: number) {
-  const centre = i - (n - 1) / 2;
-  const spread = Math.max(0, width - cardW - 24);
-  const step = n > 1 ? Math.min(cardW * MAX_STEP_RATIO, spread / (n - 1)) : 0;
-  const norm = n > 1 ? centre / ((n - 1) / 2) : 0;
-  return { x: centre * step, y: norm * norm * cardW * 1.5 * ARC_RATIO, rot: centre * Math.min(FAN_MAX_STEP_DEG, FAN_DEG / n) };
-}
 
 export default function Hand({ cards, canPlay, highlight, drawOrigin, dropZone, selected, onSelect, canJoin, onPlay, onCue, tx }: Props) {
   const [order, setOrder] = useState<string[]>([]);

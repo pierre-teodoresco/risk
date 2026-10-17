@@ -6,10 +6,12 @@ import { mappa } from "@/games/mappa/module";
 import { pioche } from "@/games/pioche/module";
 import { grandTour } from "@/games/grand-tour/module";
 import { echecs } from "@/games/echecs/module";
+import { poker } from "@/games/poker/module";
 import { dames } from "@/games/dames/module";
 
 // Each module only ever receives rooms of its own game (see gameOf), hence the widening casts.
 const MODULES: Record<string, GameModule<RoomState>> = {
+  [poker.id]: poker as unknown as GameModule<RoomState>,
   [mappa.id]: mappa as unknown as GameModule<RoomState>,
   [pioche.id]: pioche as unknown as GameModule<RoomState>,
   [grandTour.id]: grandTour as unknown as GameModule<RoomState>,

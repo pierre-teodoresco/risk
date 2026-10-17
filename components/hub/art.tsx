@@ -195,6 +195,14 @@ function DamesArt() {
     </Checkerboard>
   );
 }
+function PokerArt() {
+  return <Scene><g transform={CAMERA}>
+    <rect x="-115" y="-78" width="230" height="156" rx="68" fill="#4d4537" />
+    <rect x="-105" y="-68" width="210" height="136" rx="60" fill="#416e5e" stroke="#bda26b" strokeWidth="2" />
+    {[-1, 0, 1].map((n) => <g key={n} transform={`translate(${n * 43 - 18} -28)`}><rect width="36" height="54" rx="4" fill={CREAM} /><text x="18" y="36" fontSize="30" textAnchor="middle" fill={n === 0 ? "#b84435" : "#253b35"}>{n === 0 ? "♥" : "♠"}</text></g>)}
+    {[0, 1, 2].map((n) => <g key={n} transform={`translate(${56 + n * 7} ${40 - n * 7})`}><circle r="14" fill={n === 2 ? "#c2a25e" : "#457963"} stroke={CREAM} strokeWidth="3" strokeDasharray="5 4" /></g>)}
+  </g></Scene>;
+}
 function LoupGarouArt() {
   return (
     <Scene>
@@ -208,7 +216,7 @@ function DiceArt() {
   return <Scene><Slab width={90} height={90}><circle r="9" fill={EDGE} /></Slab></Scene>;
 }
 const ARTS: Record<string, () => ReactNode> = {
-  mappa: MappaArt, pioche: PiocheArt, "grand-tour": GrandTourArt,
+  poker: PokerArt, mappa: MappaArt, pioche: PiocheArt, "grand-tour": GrandTourArt,
   echecs: EchecsArt, dames: DamesArt, "loup-garou": LoupGarouArt,
 };
 export const boxArt = (id: string) => (ARTS[id] ?? DiceArt)();
