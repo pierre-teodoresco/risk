@@ -22,7 +22,7 @@ export type GameEntry = {
 export const GAMES: GameEntry[] = [
   {
     id: "mappa",
-    name: "Mappa",
+    name: "Bastion",
     status: "live",
     players: { min: 3, max: 6 },
     minutes: { min: 60, max: 120 },
@@ -102,3 +102,4 @@ export const GAMES: GameEntry[] = [
 ];
 
 export const gamePath = (id: string) => `/${id}`;
+export const gameName = (id: string) => GAMES.find((game) => game.id === id)?.name ?? id;

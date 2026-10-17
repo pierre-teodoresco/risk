@@ -32,6 +32,7 @@ import { BY_ID, CONTINENTS, WORLD, type Lang } from "@/lib/world";
 import { connected, validSet, type Action, type PublicGame } from "@/lib/game";
 import { inConversation, unreadMessages } from "@/lib/chat-inbox";
 import { blitzOdds } from "@/lib/odds";
+import { gameName } from "@/games/registry";
 import { eventText, fmt, hudTexts, texts } from "@/lib/i18n";
 
 const Board3D = dynamic(() => import("./Board3D"), {
@@ -393,7 +394,7 @@ export default function GameScreen(props: Props) {
       <div className="victory">
         {winner && <Crest color={winner.color} size={84} />}
         <div className="eyebrow">{t.victoryTitle}</div>
-        <h2>{winner?.name ?? "Mappa"}</h2>
+        <h2>{winner?.name ?? gameName("mappa")}</h2>
         <p>{winner?.name} {t.victoryText}</p>
         <div className="btns"><button className="btn go" onClick={props.onHome}>{t.newGame}</button></div>
       </div>

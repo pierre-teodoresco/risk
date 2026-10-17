@@ -35,7 +35,7 @@ import type { BoardOptions, Lands } from "./board/engine";
 import { WORLD, playerColors, type Lang } from "@/lib/world";
 import { type PublicGame, type Action } from "@/lib/game";
 import { texts, errorText, LANG_KEY } from "@/lib/i18n";
-import { gamePath } from "@/games/registry";
+import { gameName, gamePath } from "@/games/registry";
 import { setSoundEnabled, soundEnabled } from "@/lib/sound";
 
 const Board3D = dynamic(() => import("./Board3D"), {
@@ -508,7 +508,7 @@ export default function Mappa() {
             >
               <X size={18} />
             </button>
-            <span className="eyebrow">MAPPA · {t.rules}</span>
+            <span className="eyebrow">{gameName("mappa")} · {t.rules}</span>
             <h2 id="rules-title">{t.rulesTitle}</h2>
             <p className="rules-intro">{t.rulesIntro}</p>
             {[
