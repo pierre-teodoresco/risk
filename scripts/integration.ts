@@ -353,4 +353,41 @@ for (const [game, opening, illegal] of [
   await req(soloPath, solo.token, { type: "finish" });
   console.log("PASS Blackjack: solo, routing, settings, betting, idempotency, hidden dealer card, payouts and rematch");
 }
+{
+  // Jeu oublié: the battle runs in the browsers; the server only holds the room and the result.
+  const q = (path: string) => path + "?game=jeu-oublie";
+  const create = await req(q("/api/rooms"), undefined, { game: "jeu-oublie", name: "QA Oubli 1", faction: "mamies" });
+  assert.equal(create.status, 200, JSON.stringify(create));
+  const code = create.game.code, path = q("/api/rooms/" + code);
+  console.log("Created Jeu oublié test room " + code);
+  assert.equal((await req("/api/rooms/" + code)).error, "roomNotFound");
+  assert.equal((await req(path, create.token, { type: "start" })).error, "playerCount");
+  const join = await req(path, undefined, { type: "join", name: "QA Oubli 2", faction: "licornes" });
+  assert.equal(join.error, "invalidFaction");
+  const second = await req(path, undefined, { type: "join", name: "QA Oubli 2", faction: "mamies" });
+  assert.equal(second.status, 200, JSON.stringify(second));
+  assert.equal(second.game.players[1].faction, "mamies");
+  const profile = await req(path, second.token, { type: "profile", faction: "joggeurs" });
+  assert.equal(profile.game.players[1].faction, "joggeurs");
+  const start = await req(path, create.token, { type: "start" });
+  assert.equal(start.status, 200, JSON.stringify(start));
+  assert.equal(start.game.phase, "playing"); assert.equal(start.game.match, 1);
+  assert.equal(start.game.roster.length, 2); assert.ok(Number.isInteger(start.game.seed));
+  assert.ok(!JSON.stringify(start.game).includes("tokenHash") && !("requests" in start.game));
+  assert.equal((await req(path, undefined, { type: "join", name: "QA Late" })).error, "alreadyStarted");
+  const resign = await req(path, second.token, { type: "resign" });
+  assert.ok(resign.game.players[1].resigned && !resign.game.players[1].left);
+  const stats = start.game.roster.map((s: Any) => ({ id: s.id, tiles: 2, kills: 1, lost: 0, out: -1 }));
+  const report = { type: "finish", match: 1, winner: create.game.me, ticks: 1200, stats, requestId: randomUUID() };
+  const finish = await req(path, second.token, report);
+  assert.equal(finish.status, 200, JSON.stringify(finish)); assert.equal(finish.game.phase, "finished");
+  assert.equal((await req(path, second.token, report)).game.result.winner, create.game.me);
+  const late = await req(path, create.token, { ...report, winner: second.game.me, requestId: randomUUID() });
+  assert.equal(late.game.result.winner, create.game.me);
+  const again = await req(path, create.token, { type: "again" });
+  assert.equal(again.game.phase, "lobby"); assert.ok(again.game.players.every((p: Any) => !p.resigned));
+  const restored = (await req(path, second.token)).game;
+  assert.equal(restored.me, second.game.me);
+  console.log("PASS Jeu oublié: routing, factions, start, resign, single result report, rematch and seat restore");
+}
 console.log("Integration suite passed against " + base);

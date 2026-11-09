@@ -9,6 +9,7 @@ import { echecs } from "@/games/echecs/module";
 import { blackjack } from "@/games/blackjack/module";
 import { poker } from "@/games/poker/module";
 import { dames } from "@/games/dames/module";
+import { jeuOublie } from "@/games/jeu-oublie/module";
 
 // Each module only ever receives rooms of its own game (see gameOf), hence the widening casts.
 const MODULES: Record<string, GameModule<RoomState>> = {
@@ -19,6 +20,7 @@ const MODULES: Record<string, GameModule<RoomState>> = {
   [grandTour.id]: grandTour as unknown as GameModule<RoomState>,
   [echecs.id]: echecs as unknown as GameModule<RoomState>,
   [dames.id]: dames as unknown as GameModule<RoomState>,
+  [jeuOublie.id]: jeuOublie as unknown as GameModule<RoomState>,
 };
 /** Rooms saved before the hub carry no game id: they are Mappa rooms. */
 export const LEGACY_GAME = mappa.id;

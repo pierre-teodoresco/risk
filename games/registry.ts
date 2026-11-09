@@ -113,6 +113,19 @@ export const GAMES: GameEntry[] = [
     accent: "#b49556",
   },
   {
+    id: "jeu-oublie",
+    name: "Le jeu de mon enfance que je n'arrive pas à retrouver et qui n'existe plus que dans ma tête",
+    status: "live",
+    players: { min: 2, max: 4 },
+    minutes: { min: 10, max: 20 },
+    tagline: { fr: "Conquiers le damier. Retrouve ton enfance (ou pas).", en: "Conquer the board. Find your childhood (or not)." },
+    pitch: {
+      fr: "Stratégie en temps réel sur un damier isométrique : escargots, joggeurs, armoires et mamies.",
+      en: "Real-time strategy on an isometric board: snails, joggers, wardrobes and grannies.",
+    },
+    accent: "#ff3fa4",
+  },
+  {
     id: "loup-garou",
     name: "Loup-garou",
     status: "soon",

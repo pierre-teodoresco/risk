@@ -115,6 +115,12 @@ Les mains des joueurs sont ouvertes ; la deuxième carte du croupier et l’ordr
 
 `games/blackjack/engine.ts` porte les règles et `publicGame`. Le rendu, les animations et les cartes classiques sont partagés avec le Poker dans `games/cards/` ; les règles des jeux restent séparées. Tests : `tests/blackjack.test.ts` (paiements, As, doubles, séparations, confidentialité, horloges et sessions simulées avec contrôle des comptes et des 312 cartes) et scénario Blackjack dans `npm run test:integration`.
 
+## Le jeu de mon enfance que je n’arrive pas à retrouver et qui n’existe plus que dans ma tête
+
+Stratégie en temps réel pour **2 à 4 joueurs** (`/jeu-oublie`). Chacun part d’un coin d’un damier isométrique où ses unités apparaissent seules ; une case sur deux se capture, les autres sont des chemins. Les unités se battent dès qu’elles se croisent, les bases se défendent, la dernière base debout gagne. Quatre factions (Escargots Turbo, Joggeurs du Dimanche, Armoires Normandes, Mamies Indestructibles) partent de la même unité et se spécialisent chacune dans l’apparition, la vitesse, les dégâts ou la vie. Sélection à la souris (clic, ou clic puis clic pour une zone), clic droit pour envoyer, mini-carte, défilement par les bords ; mode tactile sur tablette. Un livret de règles illustré s'ouvre au premier passage dans le salon.
+
+La bataille tourne dans les navigateurs, qui ne s’échangent que les ordres par Supabase Realtime ; le serveur ne garde que la salle et le résultat. Architecture, règles détaillées, équilibrage et limites : [docs/jeu-oublie.md](docs/jeu-oublie.md). Tests : `tests/jeu-oublie.test.ts` et scénario dans `npm run test:integration`. Équilibrage des factions : `npx tsx scripts/balance-jeu-oublie.ts 30`.
+
 ## Échecs et Dames
 
 Deux jeux à **deux joueurs** sur le même socle (`games/duel/`) : pendule réglable par l’hôte (libre, 3, 5, 10 ou 15 minutes, avec 0, 2 ou 5 secondes ajoutées par coup), proposition de nulle, abandon, revanche avec couleurs inversées. Les couleurs sont tirées au sort au premier lancement.
@@ -134,7 +140,7 @@ npm run test:integration
 MAPPA_TEST_URL=https://votre-domaine.vercel.app npm run test:integration
 ```
 
-L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges, et une table d’échecs et de dames pour le routage, les deux places et la légalité des coups. Elle vérifie aussi une table Poker : confidentialité, options, mises, déduplication, reconnexion et abandon. Elle couvre aussi le Blackjack : jeu solo, carte fermée du croupier, mises, paiements, identité et revanche. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
+L’intégration crée des salons de test nommés QA et vérifie 3 et 6 joueurs, les accès, les commandes simultanées, la confidentialité, les combats, la reconnexion et les commandes de l’hôte. Elle crée aussi une table Pioche pour vérifier le routage, la confidentialité des mains, la donne et la pioche, une table Grand Tour pour le routage, l’ordre caché des cartes, un lancer de dés et la confidentialité des échanges, et une table d’échecs et de dames pour le routage, les deux places et la légalité des coups. Elle vérifie aussi une table Poker : confidentialité, options, mises, déduplication, reconnexion et abandon. Elle couvre aussi le Blackjack : jeu solo, carte fermée du croupier, mises, paiements, identité et revanche, et le jeu oublié : factions, départ, abandon, résultat unique et revanche. Elle n’envoie rien à des personnes réelles. Les données de test expirent avec la rétention normale.
 
 ## Déploiement
 

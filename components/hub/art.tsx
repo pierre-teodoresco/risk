@@ -220,11 +220,31 @@ function LoupGarouArt() {
     </Scene>
   );
 }
+// The forgotten game: an isometric checkerboard, two little armies and a question mark.
+function JeuOublieArt() {
+  const N = 6, COLORS = ["#ff3b3b", "#2f7bff"];
+  const iso = (x: number, y: number) => [200 + (x - y) * 22, 70 + (x + y) * 11];
+  const cells = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const p = [iso(x, y), iso(x + 1, y), iso(x + 1, y + 1), iso(x, y + 1)];
+    const own = (x + y) % 2 ? null : x + y < 3 ? 0 : x + y > 7 ? 1 : x === 2 && y === 2 ? 0 : null;
+    cells.push(<path key={`${x}-${y}`} d={"M" + p.map(([a, b]) => `${a} ${b}`).join("L") + "Z"} fill={(x + y) % 2 ? "#8fd36a" : own === null ? "#f6e9c4" : COLORS[own]} stroke="#2b2118" strokeOpacity=".25" />);
+  }
+  const unit = (x: number, y: number, c: string) => { const [a, b] = iso(x, y); return <g key={`${x}${y}`} transform={`translate(${a} ${b})`}><ellipse rx="6" ry="3" fill="#000" opacity=".25" /><path d="M-5 0L-3-11H3L5 0Z" fill={c} stroke="#2b2118" strokeWidth="1.2" /><circle cy="-14" r="4" fill="#f2d2b6" stroke="#2b2118" strokeWidth="1.2" /></g>; };
+  const [ex, ey] = iso(N, N), [rx, ry] = iso(N, 0), [lx, ly] = iso(0, N);
+  return <Scene>
+    <path d={`M${rx} ${ry}L${ex} ${ey}L${ex} ${ey + 12}L${rx} ${ry + 12}Z`} fill="#a8743f" />
+    <path d={`M${lx} ${ly}L${ex} ${ey}L${ex} ${ey + 12}L${lx} ${ly + 12}Z`} fill="#8a5c2f" />
+    {cells}
+    {unit(1.5, 2.6, COLORS[0])}{unit(2.4, 3.2, COLORS[0])}{unit(3.4, 2.2, COLORS[1])}{unit(4.2, 3.4, COLORS[1])}
+    <text x="200" y="60" fontSize="46" fontWeight="900" textAnchor="middle" fill="#ffd600" stroke="#2b2118" strokeWidth="3" paintOrder="stroke" fontFamily="'Comic Sans MS', 'Comic Neue', cursive">?</text>
+  </Scene>;
+}
 function DiceArt() {
   return <Scene><Slab width={90} height={90}><circle r="9" fill={EDGE} /></Slab></Scene>;
 }
 const ARTS: Record<string, () => ReactNode> = {
   blackjack: BlackjackArt, poker: PokerArt, mappa: MappaArt, pioche: PiocheArt, "grand-tour": GrandTourArt,
-  echecs: EchecsArt, dames: DamesArt, "loup-garou": LoupGarouArt,
+  echecs: EchecsArt, dames: DamesArt, "loup-garou": LoupGarouArt, "jeu-oublie": JeuOublieArt,
 };
 export const boxArt = (id: string) => (ARTS[id] ?? DiceArt)();

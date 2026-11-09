@@ -52,6 +52,15 @@ Ces consignes s’appliquent à tout le dépôt. Le projet s’appelle **Mappa**
 - L’historique se rejoue côté client depuis la notation enregistrée par le serveur ; le serveur reste juge des coups. Aux dames, une rafle se choisit par sa case d’arrivée.
 - Textes partagés et erreurs dans `games/duel/i18n.ts`. Tests : `tests/duel.test.ts` (perft, notation, fins de partie, pendule, dames), et un passage par jeu dans `npm run test:integration`.
 
+## Jeu oublié (temps réel)
+
+- « Le jeu de mon enfance que je n'arrive pas à retrouver et qui n'existe plus que dans ma tête », identifiant `jeu-oublie` : stratégie en temps réel, 2 à 4 joueurs, damier isométrique. Lire [docs/jeu-oublie.md](docs/jeu-oublie.md) avant d'y toucher.
+- Seul jeu temps réel : la bataille ne passe pas par le serveur. `games/jeu-oublie/sim.ts` est une simulation **déterministe** exécutée dans chaque navigateur ; `net.ts` échange seulement les ordres sur un canal Realtime broadcast (un navigateur hôte date les ordres, relais automatique s'il disparaît, instantanés JSON pour les retardataires et les désynchronisations). `engine.ts` (serveur) ne porte que la salle : salon, factions, graine, `roster`, abandon, résultat rapporté (`finish`), revanche et `abort`. Pas d'anti-triche, par choix.
+- Dans `sim.ts` : entiers, opérations de base, `Math.sqrt`, `round`, `floor`, `imul` seulement ; hasard par `rand(s)` ; parcours de tableaux ; rien hors de l'état. Toute règle nouvelle garde l'état en JSON pur et reçoit un test, dont le test de déterminisme reste vert.
+- Les statistiques des factions sont dans `factions.ts`, seul endroit à équilibrer ; vérifier un rééquilibrage avec `npx tsx scripts/balance-jeu-oublie.ts 30` (manches de bots, taux de victoire par faction). Une faction nouvelle demande aussi son dessin (`unitBody` dans `ui/render.ts`) et ses textes dans les deux langues.
+- `ui/Battle.tsx` dessine sur un canvas hors du rendu React (`ui/render.ts`) ; le HUD est rafraîchi quatre fois par seconde. Les blagues font partie du jeu : les garder dans les deux langues (`i18n.ts`). Le livret de règles (`ui/Rules.tsx`) tire ses nombres des constantes : une règle nouvelle y ajoute sa page ou son paragraphe. Raccourcis clavier par `e.key` (claviers AZERTY). Styles sous le préfixe `jo-`.
+- Tests : `tests/jeu-oublie.test.ts` et un passage dans `npm run test:integration`. Une modification de `net.ts` s'essaie avec plusieurs sessions navigateur indépendantes (rechargement, départ de l'hôte, retour).
+
 ## Répartition des responsabilités (Mappa)
 
 - `lib/game.ts` porte les règles, les transitions et la projection `publicGame`. Conserver le moteur indépendant du réseau et du stockage, avec le temps et l’aléatoire injectables pour les tests.
